@@ -1,0 +1,19 @@
+{
+  "name": "time-parser",
+  "version": "1.0.0",
+  "description": "Parse the CSV export of open source app, Tockler.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "Chris Poche",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^13.1.9"
+  },
+  "dependencies": {
+    "chart.js": "^3.5.1",
+    "chartjs-plugin-datalabels": "^2.0.0",
+    "electron-context-menu": "^3.1.1"
+  }
+}
