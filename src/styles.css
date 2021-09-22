@@ -300,7 +300,7 @@ thead {
     display: flex;
 }
 
-#left-arrows{
+#left-arrows {
     margin-top: 1px;
 }
 
@@ -315,26 +315,72 @@ thead {
 }
 
 #download-success {
-    position : fixed;
+    position: fixed;
     width: 200px;
-    top : 92vh;
-    left : 20px;
-    color : red;
+    top: 92vh;
+    left: 20px;
+    color: red;
     opacity: 0;
     transition: all .75s;
     -webkit-animation: softFadeInOut 2.5s;
-     animation: softFadeInOut 2.5s;
+    animation: softFadeInOut 2.5s;
 }
 
 @keyframes softFadeInOut {
-    0%   { opacity:0; }
-    25%  { opacity:1; }
-    75%  { opacity:1; }
-    100% { opacity:0; }
+    0% {
+        opacity: 0;
+    }
+    25% {
+        opacity: 1;
+    }
+    75% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
 }
-@-webkit-keyframes softFadeInOut{
-    0%   { opacity:0; }
-    25%  { opacity:1; }
-    75%  { opacity:1; }
-    100% { opacity:0; }
-  }
+
+@-webkit-keyframes softFadeInOut {
+    0% {
+        opacity: 0;
+    }
+    25% {
+        opacity: 1;
+    }
+    75% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+    }
+}
+
+.tags {
+    border-radius: .9em;
+    background-color: #0075ff;
+    /* background-color: #2a8cfc; */
+    padding: .3em .9em;
+    margin-right: .3em;
+    display: inline;
+    white-space: nowrap;
+    color: white;
+}
+
+.tags:hover {
+    padding: .3em .1em .3em .9em;
+}
+
+.delete-tag, .add-tag {
+    border-radius: 3em;
+    background-color: gray;
+    padding: .2em .5em;
+    margin-left: .4em;
+    font-family: sans-serif;
+}
+
+.add-tag {
+    color: white;
+    margin-left: .3em;
+    background-color: #0075ff;
+}

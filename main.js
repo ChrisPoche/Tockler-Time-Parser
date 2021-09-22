@@ -56,21 +56,6 @@ function createWindow() {
       }
     })
   });
-
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
-    {
-      label: 'Edit',
-       submenu: [
-        {
-          label: 'Font Larger',
-          accelerator: 'CmdOrCtrl+Plus',
-          click: () => {
-            console.log('Font Larger')
-          }
-        }
-      ]
-    }
-  ]))
 }
 
 app.whenReady().then(() => {
@@ -79,7 +64,7 @@ app.whenReady().then(() => {
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
-})
+}).catch((e) => console.log('An error occurred when creating the window.', e.message));
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit()

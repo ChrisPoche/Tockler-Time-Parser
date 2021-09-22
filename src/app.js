@@ -18,6 +18,10 @@ let sortByHeader = {
     end: '',
     duration: '',
 }
+let tags = [
+    {'id':0,'name':'Default'}, 
+    {'id':1,'name':'Ticket #'}
+]
 
 window.addEventListener('load', () => {
     createDragAndDropArea();
@@ -42,9 +46,9 @@ window.addEventListener('load', () => {
         if (e.key === 'M' && e.ctrlKey && e.shiftKey && dataLoaded) {
             console.log('Minimizing All');
         }
-        if((e.key === '-' && e.ctrlKey) || (e.key === '+' && e.ctrlKey && e.shiftKey)) {
+        if ((e.key === '-' && e.ctrlKey) || (e.key === '+' && e.ctrlKey && e.shiftKey)) {
             console.log('resize font');
-            resizeTableColumns();   
+            resizeTableColumns();
         }
     });
 });
@@ -191,7 +195,8 @@ const parseFile = (files) => {
                     'start': rec[3],
                     'end': rec[4],
                     dur,
-                    'duration': `${mm}:${ss}`
+                    'duration': `${mm}:${ss}`,
+                    tags: [0,1]
                 }
             });
             globalRecords = records;
@@ -209,9 +214,6 @@ const parseFile = (files) => {
             downloadBttn.addEventListener('click', (e) => {
                 let filteredResults = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked);
                 let exportVals = 'app,title,start,end,dur,duration\n' + filteredResults.map(r => `${r.app},${r.title.replace(/,/g, ';')},${r.start},${r.end},${r.dur},${r.duration}\n`).join('');
-                // console.log(filteredResults[0].start.split(' ')[0].split('-')[1]+'-'+filteredResults[0].start.split(' ')[0].split('-')[2]+'_'+filteredResults[filteredResults.length-1].start.split(' ')[0].split('-')[1]+'-'+filteredResults[filteredResults.length-1].start.split(' ')[0].split('-')[2]);
-                // console.log(filteredResults[0].start.split(' ')[0]);
-                // console.log(filteredResults[filteredResults.length-1].start.split(' ')[0]);
                 let subject = filteredResults[0].start.split(' ')[0].split('-')[1] + '-' + filteredResults[0].start.split(' ')[0].split('-')[2] + '_' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[1] + '-' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[2] + '_time_tracking';
                 window.api.send('write-csv', exportVals);
                 window.api.receive('return-csv', (data) => {
@@ -309,7 +311,7 @@ const grabRecords = (record) => {
         recordSection.style.maxHeight = maxHeight + 'px';
     });
     hr.appendChild(topLeftTH);
-    let header = ['app', 'title', 'start', 'end', 'duration'];
+    let header = ['app', 'title', 'start', 'end', 'duration', 'tags'];
     header.forEach(h => {
         let th = document.createElement('th');
         th.innerHTML = `${h}<span style="line-height: 1.2">${sortByHeader[h] === 'asc' ? ' &#129041;' : sortByHeader[h] === 'desc' ? ' &#129043;' : ''}</span>`;
@@ -362,13 +364,14 @@ const grabRecords = (record) => {
         });
         tr.addEventListener('click', (e) => {
             if (e.target.tagName !== 'INPUT') {
-                let id = e.target.parentElement.id.substring('record-'.length);
-                // console.log(e)
-                let cb = document.getElementById(`check-record-${id}`);
-                globalRecords[id].checked = !cb.checked;
-                cb.checked = !cb.checked;
-                //console.log(globalRecords[id]);
-                aggregateRecords();
+                if (![...e.target.classList][0].includes('tag')) {
+                    let id = e.target.parentElement.id.substring('record-'.length);
+                    let cb = document.getElementById(`check-record-${id}`);
+                    globalRecords[id].checked = !cb.checked;
+                    cb.checked = !cb.checked;
+                    //console.log(globalRecords[id]);
+                    aggregateRecords();
+                }
             }
         });
         firstCol.appendChild(checkbox);
@@ -380,7 +383,53 @@ const grabRecords = (record) => {
             td.innerText = val;
             if (index === 0) td.classList = 'app-col';
             if (index === 1) td.classList = 'title-col';
-            if (index >= 2) td.classList = 'time-col';
+            if (index >= 2 && index <= 4) td.classList = 'time-col';
+            if (index === 5) {
+                td.innerText = '';
+                td.classList = 'tags-col';
+                td.addEventListener('mouseenter', (e) => {
+                    let addTag = document.createElement('span');
+                        addTag.classList = 'add-tag';
+                        addTag.innerText = '+';
+                        td.appendChild(addTag);
+                        addTag.addEventListener('click',(e) => {
+                            console.log('open add tag input');
+                        });
+                });
+                td.addEventListener('mouseleave',(e) => {
+                    let addTag = td.childNodes[td.childNodes.length-1];
+                    addTag.remove();
+                });
+                val.forEach((tid) => {
+                    let t = tags.filter(tag => tag.id === tid)[0];
+                    let tag = document.createElement('p');
+                    tag.innerText = t.name;
+                    tag.classList = `tags tag-${t.id}`;
+                    tag.addEventListener('mouseenter',(e) => {
+                        let x = document.createElement('span');
+                        x.classList = 'delete-tag';
+                        x.innerText = 'x'
+                        tag.appendChild(x);
+                        x.addEventListener('click',(e) => {
+                            let idToRemove = parseInt(e.target.parentNode.classList[1].split('-')[1]);
+                            console.log(idToRemove);
+                            if(/^\d+$/.test(idToRemove)) {
+                                let id = e.target.parentNode.parentNode.parentNode.id.substring('record-'.length);
+                                const val = globalRecords[id].tags;
+                                console.log(val);
+                                globalRecords[id].tags = globalRecords[id].tags.filter(t => t !== idToRemove);
+                                console.log(globalRecords[id].tags);
+                                tag.remove();
+                            };
+                        })
+                    });
+                    tag.addEventListener('mouseleave', (e) => {
+                        let x = tag.childNodes[tag.childNodes.length-1];
+                        x.remove();
+                    })
+                    td.appendChild(tag);
+                })
+            }
             tr.appendChild(td);
         })
         tbody.appendChild(tr);
@@ -479,7 +528,7 @@ const grabRecords = (record) => {
         rightSingleArrow.innerHTML = '&#8250;';
         rightSingleArrow.classList = 'right page-arrows';
         rightArrowBox.appendChild(rightSingleArrow);
-        
+
         let rightDoubleArrow = document.createElement('label');
         rightDoubleArrow.id = 'last-page-arrow';
         rightDoubleArrow.addEventListener('click', (e) => {
