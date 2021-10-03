@@ -6,8 +6,8 @@ const fs = require('fs');
 
 function createWindow() {
   let mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1400,//800,
+    height: 740,//600,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
