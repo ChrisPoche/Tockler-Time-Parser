@@ -12,7 +12,7 @@ Initializes a new Electron browser window.
 
 ### Planned features:
 Tagging
-- Adds tags to global record object for filtering and calculating related projects / work
+- Add calculations of related projects / work by tag
 - Auto tagging based on ticket numbers from records loaded in
 - Ability to combine tags - Drag and Drop: when overlapping pops up modal to ask if user wants to merge or create parent-child with element
     - This will update the tags object, and trigger a redraw of the table with the new values

@@ -98,10 +98,6 @@ body {
     display: none;
 }
 
-/* #container div {
-    width: fit-content;
-} */
-
 #app-drawer {
     /* width: fit-content; */
     width: 220px;
@@ -146,6 +142,7 @@ th {
 
 tr {
     border: 1px solid black;
+    height: 2em;
 }
 
 .record-row:hover {
@@ -383,4 +380,32 @@ thead {
     color: white;
     margin-left: .3em;
     background-color: #0075ff;
+}
+
+.tags-col {
+    min-width: 15em;
+    padding: .5em .4em .4em;
+}
+
+#tag-search {
+    width: 6em;
+}
+
+.tag-search-result {
+    min-width: 6em;
+    max-width: 6em;
+    margin: 0;
+}
+
+.tag-search-result:hover {
+    background-color: darkgray;
+}
+
+#tags-dropdown {
+    position: absolute;
+    min-width: 6em;
+    max-width: 6em;
+    background-color: white;
+    padding: .1em;
+    overflow-y: auto;
 }
