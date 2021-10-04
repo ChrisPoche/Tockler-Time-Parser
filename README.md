@@ -12,8 +12,6 @@ Initializes a new Electron browser window.
 
 ### Planned features:
 Tagging
-- Add calculations of related projects / work by tag
-- Auto tagging based on ticket numbers from records loaded in
 - Ability to combine tags - Drag and Drop: when overlapping pops up modal to ask if user wants to merge or create parent-child with element
     - This will update the tags object, and trigger a redraw of the table with the new values
 
@@ -21,6 +19,7 @@ Calculated / Tag Section
 - Using auto tagging, create a table of tagged records to see them at a glance
     - Auto tagging pulls tangential events together. If Slack event (from channel, no direct message) is followed by a browser event, pair those together 
 - Dropdown of related child rows based on tag
+    - Click event on tag to filter Tag Section to results
 - Ability to toggle chart from displaying results by Apps to Tags
 
 Styling
