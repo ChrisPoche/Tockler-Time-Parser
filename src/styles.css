@@ -131,7 +131,7 @@ body {
 }
 
 td, th {
-    padding: 5px 15px;
+    padding: .4em 1em;
     text-align: left;
 }
 
@@ -408,4 +408,21 @@ thead {
     background-color: white;
     padding: .1em;
     overflow-y: auto;
+}
+
+.tool-tip {
+    visibility: hidden;
+    padding: .4em 1em;
+    background-color: rgb(107, 107, 107);
+    border-radius: .2em;
+    position: fixed;
+    opacity: 0;
+    transition: opacity 0.3s;
+    left: 0;
+    top: 0;
+}
+
+.title-col:hover .tool-tip {
+    visibility: visible;
+    opacity: 1;
 }

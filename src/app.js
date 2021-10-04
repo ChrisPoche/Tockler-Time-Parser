@@ -341,6 +341,7 @@ const drawTag = (val, rowID) => {
         }
     })
 }
+
 const grabRecords = (record) => {
     // console.log('grabbing records');
     let filteredRecord = record.filter(r => !removedApps.includes(r.app));
@@ -471,7 +472,19 @@ const grabRecords = (record) => {
             let td = document.createElement('td');
             td.innerText = val;
             if (index === 0) td.classList = 'app-col';
-            if (index === 1) td.classList = 'title-col';
+            if (index === 1) {
+                let tooltTip = document.createElement('span');
+                tooltTip.classList = 'tool-tip';
+                tooltTip.innerText = val;
+                td.appendChild(tooltTip);
+                td.classList = 'title-col';
+                td.addEventListener('mouseover',(e) => {
+                    let coord = e.target.getBoundingClientRect();
+                    tooltTip.style.left = coord.x+'px';
+                    tooltTip.style.top = coord.y+.4+'px';
+                    console.log(coord.x,coord.y);
+                })
+            }
             if (index >= 2 && index <= 4) td.classList = 'time-col';
             if (index === 5) {
                 td.innerText = '';
