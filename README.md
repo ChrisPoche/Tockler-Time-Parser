@@ -10,13 +10,19 @@ In the project directory, you can run:
 
 Initializes a new Electron browser window.
 
+### Considerations:
+
+At this time, I've not included a application distribution tool in the package.json. Here are the suggestions made by [Electron](https://www.electronjs.org/docs/tutorial/application-distribution).
+
 ### Planned features:
 Tagging
 - Ability to combine tags - Drag and Drop: when overlapping pops up modal to ask if user wants to merge or create parent-child with element
     - This will update the tags object, and trigger a redraw of the table with the new values
+- Enable user to create custom auto tag filters
+    - Prioritize after implementing local storage / database to allow preferences to persist
 
 Calculated / Tag Section
-- Using auto tagging, create a table of tagged records to see them at a glance
+- Create a table of tagged records to see them at a glance
     - Auto tagging pulls tangential events together. If Slack event (from channel, no direct message) is followed by a browser event, pair those together 
 - Dropdown of related child rows based on tag
     - Click event on tag to filter Tag Section to results
