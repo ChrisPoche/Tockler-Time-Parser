@@ -211,12 +211,16 @@ const parseFile = (files) => {
             createAppFilter(apps);
             grabRecords(records);
 
-            // Auto Tagging
-            let filters = [/\d{8}/,/[A-Z]{3,7}\-\d+/]
+            // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
+            let filters = [/0[2-3]\d{6}\s?\-?/,/[A-Z]{3,7}\-\d+/,/[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/,/[J-j]ira/,/[S-s]alesforce /,/DRAFT \-/]
             filters.forEach(filter => {
-                globalRecords.filter(r => filter.test(r.title)).forEach(ticket => {
-                    let title = ticket.title.match(filter)[0];
-                    tags.filter(tag => tag.name === title).length === 0 ? createNewTag(title, ticket.tags, ticket.id) : globalRecords[ticket.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
+                globalRecords.filter(r => filter.test(r.title)).forEach(row => {
+                    let title = row.title.match(filter)[0];
+                    if (title.match(/DRAFT \-/)) title = 'RCA';
+                    title = title.replace(/-$/,'').trim();
+                    if (title.match(/[P-p]ower [A-a]utomate/) || title.match(/\b[F-f]low[s]?\b/)) title = 'Automation';
+                    if (title.match(/jira/) || title.match(/salesforce/)) title = title[0].toUpperCase()+title.substring(1);
+                    tags.filter(tag => tag.name === title).length === 0 ? createNewTag(title, row.tags, row.id) : globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
                 });
             })
                 
@@ -482,7 +486,6 @@ const grabRecords = (record) => {
                     let coord = e.target.getBoundingClientRect();
                     tooltTip.style.left = coord.x+'px';
                     tooltTip.style.top = coord.y+.4+'px';
-                    console.log(coord.x,coord.y);
                 })
             }
             if (index >= 2 && index <= 4) td.classList = 'time-col';
