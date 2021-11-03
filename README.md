@@ -23,7 +23,8 @@ Tagging
 
 Calculated / Tag Section
 - Create a table of tagged records to see them at a glance
-    - Auto tagging pulls tangential events together. If Slack event (from channel, no direct message) is followed by a browser event, pair those together 
+    - Auto tagging pulls tangential events together. If Slack event (from channel, no direct message) is followed by a browser event, pair those together
+        - Zoom events are tagged by Slack or Outlook events that precede browser connection event. Stop tagging when 'End / Leave' event is logged.
 - Dropdown of related child rows based on tag
     - Click event on tag to filter Tag Section to results
 - Ability to toggle chart from displaying results by Apps to Tags
@@ -37,4 +38,4 @@ Tabs
 - Allow elements to be minimized into tabs to help keep the page organized
 
 Local Storage
-- Potentially implement a light weight local database
+- Extend existing Tockler sqlite database with tables for user preference and settings in this app
