@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld(
   "api", {
   send: (channel, data) => {
     // whitelist channels
-    let validChannels = ["toRead", "createChart", "write-csv"];
+    let validChannels = ["toRead", "createChart", "write-csv", "askForDates", 'retrieve-events-by-date'];
     if (channel === "createChart" && chartVisible) {
       const createChart = () => {
         if (document.getElementById('app-chart')) document.getElementById('app-chart').remove();
@@ -106,10 +106,11 @@ contextBridge.exposeInMainWorld(
     }
   },
   receive: (channel, func) => {
-    let validChannels = ['fromRead', 'return-csv'];
+    let validChannels = ['fromRead', 'return-csv', 'returnDates','return-events-by-date'];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
-      ipcRenderer.once(channel, (event, ...args) => func(args));
+      if(channel === 'return-events-by-date') ipcRenderer.on(channel, (event, ...args) => func(args)); 
+      else ipcRenderer.once(channel, (event, ...args) => func(args));
     }
   }
 }
