@@ -18,13 +18,36 @@ let sortByHeader = {
     end: '',
     duration: '',
 }
-let tags = [
-    { 'id': 0, 'name': 'Ticket #' },
-    { 'id': 1, 'name': 'Default' },
-]
+let tags = [];
+let dWR = []; // Days With Records
 
 window.addEventListener('load', () => {
     createDragAndDropArea();
+    let dateInput = document.getElementById('date-input');
+    window.api.send('askForDates', 'no-options');
+    window.api.receive('returnDates', (dates) => {
+        dWR = dates[0];
+        dateInput.min = dWR[0];
+        dateInput.max = dWR[dWR.length - 1];
+        dateInput.value = dWR[dWR.length - 1];
+    });
+
+    dateInput.addEventListener('blur', (e) => {
+        e.stopImmediatePropagation();
+        if (dWR.includes(e.target.value)) grabRecordsFromDatePicker(e.target.value);
+        // console.log('Blur: date picker changed',e.target.value);
+    });
+    dateInput.addEventListener('keyup', (e) => {
+        e.stopImmediatePropagation();
+        if (e.key === 'Enter') {
+            //console.log('Enter: date picker changed',e.target.value)
+            if (dWR.includes(e.target.value)) grabRecordsFromDatePicker(e.target.value);
+        }
+    });
+    dateInput.addEventListener('change', (e) => {
+        if (!dWR.includes(e.target.value)) dateInput.style.color = 'red';
+        else dateInput.style.removeProperty('color');
+    });
     document.getElementById('csv-input').addEventListener('change', (e) => {
         if (document.getElementById('container').childElementCount > 1) document.getElementById('error-invalid').remove();
         files = e.target.files
@@ -52,6 +75,35 @@ window.addEventListener('load', () => {
         }
     });
 });
+
+const grabRecordsFromDatePicker = (date) => {
+    document.getElementById('date-input').classList = 'data-loaded';
+    window.api.send('retrieve-events-by-date', date);
+    window.api.receive('return-events-by-date', (arr) => {
+        removedApps = [];
+        if (document.getElementById('instructions')) document.getElementById('instructions').remove();
+        if (document.getElementById('csv-input')) document.getElementById('csv-input').remove();
+        let records = arr[0].map((r, id) => {
+            let dur = (r.end - r.start) / 1000;
+            let mm = ((Math.floor(dur / 60) < 10) ? ("0" + Math.floor(dur / 60)) : Math.floor(dur / 60));
+            let ss = ((Math.floor(dur % 60) < 10) ? ("0" + Math.floor(dur % 60)) : Math.floor(dur % 60));
+            
+            return {
+                id,
+                'checked': true,
+                'app': cleanUpAppName(r.app),
+                'title': r.title.replace(/"/g, '').replace(/●/g, '').replace(/\%2f?F?/g, '/').trim(),
+                'start': new Date(new Date(r.start).getTime() - new Date(r.start).getTimezoneOffset()*60000).toISOString().replace('T',' ').split('.')[0],
+                'end': new Date(new Date(r.end).getTime() - new Date(r.end).getTimezoneOffset()*60000).toISOString().replace('T',' ').split('.')[0],
+                dur,
+                'duration': `${mm}:${ss}`,
+                tags: []
+            }
+
+        });
+        postDataRetrieval(records);
+    });
+};
 
 const toggleCloseButtons = () => {
     ['app-chart', 'record-section'].forEach((id) => {
@@ -165,6 +217,7 @@ const aggregateRecords = () => {
 
 const parseFile = (files) => {
     // //console.log(files);
+    document.getElementById('date-input').classList = 'data-loaded';
     window.api.send('toRead', files[0].path);
     window.api.receive('fromRead', (str) => {
         let csv = str[0];
@@ -197,69 +250,81 @@ const parseFile = (files) => {
                     'end': rec[4],
                     dur,
                     'duration': `${mm}:${ss}`,
-                    tags: []//[1, 0]
+                    tags: []
                 }
             });
-            globalRecords = records;
-            let apps = [...new Set(records.map(r => r.app))];
-            dataLoaded = true;
-
-            let recordSection = document.createElement('div');
-            recordSection.id = 'record-section';
-            document.getElementById('container').appendChild(recordSection);
-
-            createAppFilter(apps);
-            grabRecords(records);
-
-            // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
-            let filters = [/0[2-3]\d{6}\s?\-?/,/[A-Z]{3,7}\-\d+/,/[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/,/[J-j]ira/,/[S-s]alesforce /,/DRAFT \-/]
-            filters.forEach(filter => {
-                globalRecords.filter(r => filter.test(r.title)).forEach(row => {
-                    let title = row.title.match(filter)[0];
-                    if (title.match(/DRAFT \-/)) title = 'RCA';
-                    title = title.replace(/-$/,'').trim();
-                    if (title.match(/[P-p]ower [A-a]utomate/) || title.match(/\b[F-f]low[s]?\b/)) title = 'Automation';
-                    if (title.match(/jira/) || title.match(/salesforce/)) title = title[0].toUpperCase()+title.substring(1);
-                    tags.filter(tag => tag.name === title).length === 0 ? createNewTag(title, row.tags, row.id) : globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
-                });
-            })
-                
-            let downloadBttn = document.createElement('button');
-            downloadBttn.id = 'download-csv';
-            downloadBttn.addEventListener('click', (e) => {
-                let filteredResults = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked);
-                let exportVals = 'app,title,start,end,dur,duration,tags\n' + filteredResults.map(r => `${r.app},${r.title.replace(/,/g, ';')},${r.start},${r.end},${r.dur},${r.duration},${r.tags.map(id => tags.filter(t => t.id === id)[0].name+';').join('')}\n`).join('');
-                let subject = filteredResults[0].start.split(' ')[0].split('-')[1] + '-' + filteredResults[0].start.split(' ')[0].split('-')[2] + '_' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[1] + '-' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[2] + '_time_tracking';
-                window.api.send('write-csv', exportVals);
-                window.api.receive('return-csv', (data) => {
-                    if (data[0] === 'write complete') {
-                        let a = document.createElement('a');
-                        a.href = '../time.csv'; //local test
-                        // a.href = '../../../time.csv'; //desktop app test
-                        a.id = 'file-link';
-                        a.download = `${subject}.csv`;
-                        a.style.visibility = 'hidden';
-                        document.body.appendChild(a);
-                        document.getElementById('file-link').click();
-                        document.getElementById('file-link').remove();
-                        let downloadSuccess = document.createElement('p');
-                        downloadSuccess.innerText = 'CSV successfully downloaded to your desktop'
-                        downloadSuccess.id = 'download-success';
-                        document.body.appendChild(downloadSuccess);
-                        setTimeout(() => {
-                            downloadSuccess.remove();
-                        }, 2500);
-                    }
-                });
-            });
-            downloadBttn.style.position = 'fixed';
-            downloadBttn.style.top = '90vh';
-            downloadBttn.style.left = '20px';
-            downloadBttn.innerText = 'Download CSV';
-            document.body.appendChild(downloadBttn);
+            postDataRetrieval(records);
         }
     })
 };
+
+const postDataRetrieval = (records) => {
+    document.getElementById('date-input').value = records[0].start.split(' ')[0];
+    globalRecords = records;
+    let apps = [...new Set(records.map(r => r.app))];
+    dataLoaded = true;
+
+    if(!document.getElementById('record-section')) {
+        let recordSection = document.createElement('div');
+        recordSection.id = 'record-section';
+        document.getElementById('container').appendChild(recordSection);
+    }
+
+    // Populate most useful apps
+    apps.forEach(app => {
+        let prefApps = ['Slack', 'Chrome', 'Zoom', 'Excel', 'Outlook', 'OneDrive', 'Winword'];
+        if (prefApps.filter(a => a === app).length < 1) removedApps.push(app);
+    });
+    refreshedApps = true;
+
+    createAppFilter(apps);
+    grabRecords(records);
+
+    // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
+    let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/]
+    filters.forEach(filter => {
+        globalRecords.filter(r => filter.test(r.title)).forEach(row => {
+            let title = row.title.match(filter)[0];
+            if (title.match(/DRAFT \-/)) title = 'RCA';
+            title = title.replace(/-$/, '').trim();
+            if (title.match(/[P-p]ower [A-a]utomate/) || title.match(/\b[F-f]low[s]?\b/)) title = 'Automation';
+            if (title.match(/jira/) || title.match(/salesforce/)) title = title[0].toUpperCase() + title.substring(1);
+            tags.filter(tag => tag.name === title).length === 0 ? createNewTag(title, row.tags, row.id) : globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
+        });
+    })
+
+    let downloadBttn = document.createElement('button');
+    downloadBttn.id = 'download-csv';
+    downloadBttn.addEventListener('click', (e) => {
+        let filteredResults = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked);
+        let exportVals = 'app,title,start,end,dur,duration,tags\n' + filteredResults.map(r => `${r.app},${r.title.replace(/,/g, ';')},${r.start},${r.end},${r.dur},${r.duration},${r.tags.map(id => tags.filter(t => t.id === id)[0].name + ';').join('')}\n`).join('');
+        let subject = filteredResults[0].start.split(' ')[0].split('-')[1] + '-' + filteredResults[0].start.split(' ')[0].split('-')[2] + '_' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[1] + '-' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[2] + '_time_tracking';
+        window.api.send('write-csv', exportVals);
+        window.api.receive('return-csv', (data) => {
+            if (data[0] === 'write complete') {
+                let a = document.createElement('a');
+                a.href = '../time.csv'; //local test
+                // a.href = '../../../time.csv'; //desktop app test
+                a.id = 'file-link';
+                a.download = `${subject}.csv`;
+                a.style.visibility = 'hidden';
+                document.body.appendChild(a);
+                document.getElementById('file-link').click();
+                document.getElementById('file-link').remove();
+                let downloadSuccess = document.createElement('p');
+                downloadSuccess.innerText = 'CSV successfully downloaded to your desktop'
+                downloadSuccess.id = 'download-success';
+                document.body.appendChild(downloadSuccess);
+                setTimeout(() => {
+                    downloadSuccess.remove();
+                }, 2500);
+            }
+        });
+    });
+    downloadBttn.innerText = 'Download CSV';
+    document.body.appendChild(downloadBttn);
+
+}
 
 const cleanUpAppName = (app) => {
     let upperCase = /[A-Z]{4}/;
@@ -282,7 +347,7 @@ const searchTags = (e) => {
     let resultsDropdown = document.createElement('div');
     resultsDropdown.id = 'tags-dropdown';
     let rowTags = [...td.childNodes].filter(t => t.className.indexOf('tag-') > -1).map(t => parseInt(t.className.substring(t.className.indexOf('tag-') + 4)));
-    let sortedTags = tags.filter(t => !rowTags.includes(t.id)).filter((t, i) => i < 10).sort((a,b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0))
+    let sortedTags = tags.filter(t => !rowTags.includes(t.id)).filter((t, i) => i < 10).sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0))
 
     sortedTags.push({ 'id': -1, 'name': 'Add Tag' });
     for (let i = 0; i < sortedTags.length; i++) {
@@ -482,10 +547,10 @@ const grabRecords = (record) => {
                 tooltTip.innerText = val;
                 td.appendChild(tooltTip);
                 td.classList = 'title-col';
-                td.addEventListener('mouseover',(e) => {
+                td.addEventListener('mouseover', (e) => {
                     let coord = e.target.getBoundingClientRect();
-                    tooltTip.style.left = coord.x+'px';
-                    tooltTip.style.top = coord.y+.4+'px';
+                    tooltTip.style.left = coord.x + 'px';
+                    tooltTip.style.top = coord.y + .4 + 'px';
                 })
             }
             if (index >= 2 && index <= 4) td.classList = 'time-col';
@@ -529,8 +594,10 @@ const grabRecords = (record) => {
 
     // Draw tags after table is drawn
     document.getElementById('record-table').childNodes[1].childNodes.forEach(row => {
-        let val = globalRecords[row.id.substring(row.id.indexOf('-') + 1)].tags;
-        drawTag(val, row.id)
+        if (globalRecords[row.id.substring(row.id.indexOf('-') + 1)]) {
+            let val = globalRecords[row.id.substring(row.id.indexOf('-') + 1)].tags;
+            drawTag(val, row.id)
+        }
     })
 
     if (document.getElementById('page-controls') === null) { //document.getElementById('page-controls').remove();
@@ -735,6 +802,7 @@ const filterBoxRechecked = () => {
 }
 const createAppFilter = (apps) => {
     let container = document.getElementById('container');
+    if (document.getElementById('app-drawer')) document.getElementById('app-drawer').remove();
     let appDrawer = document.createElement('div');
     appDrawer.id = 'app-drawer';
     // create right border for app drawer
@@ -763,7 +831,8 @@ const createAppFilter = (apps) => {
         unselectAllLabel.classList = 'app-filter';
     }
 
-    apps = refreshedApps ? apps : apps.sort();
+    // apps = refreshedApps ? apps : apps.sort();
+    apps = apps.sort();
 
     apps.forEach(app => {
         let div = document.createElement('div');
