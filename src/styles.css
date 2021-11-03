@@ -2,6 +2,23 @@
     box-sizing: border-box;
 }
 
+#date-input.center {
+    position: absolute;
+    left: 45%;
+    top: 60%;
+}
+#date-input.data-loaded { 
+    position : fixed;
+    top : 85vh;
+    left : 20px;
+}
+
+#download-csv {
+    position : fixed;
+    top : 90vh;
+    left : 20px;
+}
+
 body {
     margin: 0;
     padding: 0 0 0 20px;
@@ -17,6 +34,7 @@ body {
 #app-chart {
     position: absolute;
     transform: scale(.3);
+    visibility: hidden;
 }
 
 #duration {
