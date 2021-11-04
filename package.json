@@ -4,12 +4,14 @@
   "description": "Parse the CSV export of open source app, Tockler.",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "package-win": "electron-packager . tockler-time-parser --overwrite --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --out=release-builds --version-string.CompanyName=CP --version-string.FileDescription=CP --version-string.ProductName=\"Tockler Time Parser\""
   },
   "author": "Chris Poche",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^13.6.1"
+    "electron": "^13.6.1",
+    "electron-packager": "^15.4.0"
   },
   "dependencies": {
     "chart.js": "^3.5.1",
