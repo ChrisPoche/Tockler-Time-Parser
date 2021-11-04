@@ -21,6 +21,21 @@ let sortByHeader = {
 let tags = [];
 let dWR = []; // Days With Records
 
+const dateInputHandler = (e) => {
+    // console.log(e.type);
+    if (e.type === 'blur') {
+        if (dWR.includes(e.target.value)) {
+            grabRecordsFromDatePicker(e.target.value)
+        };
+    }
+    if (e.type === 'keyup') {
+        if (e.key === 'Enter') {
+            document.getElementById('date-input').blur();
+        }
+    }
+}
+
+
 window.addEventListener('load', () => {
     createDragAndDropArea();
     let dateInput = document.getElementById('date-input');
@@ -31,19 +46,8 @@ window.addEventListener('load', () => {
         dateInput.max = dWR[dWR.length - 1];
         dateInput.value = dWR[dWR.length - 1];
     });
-
-    dateInput.addEventListener('blur', (e) => {
-        e.stopImmediatePropagation();
-        if (dWR.includes(e.target.value)) grabRecordsFromDatePicker(e.target.value);
-        // console.log('Blur: date picker changed',e.target.value);
-    });
-    dateInput.addEventListener('keyup', (e) => {
-        e.stopImmediatePropagation();
-        if (e.key === 'Enter') {
-            //console.log('Enter: date picker changed',e.target.value)
-            if (dWR.includes(e.target.value)) grabRecordsFromDatePicker(e.target.value);
-        }
-    });
+    dateInput.addEventListener('blur', dateInputHandler);
+    dateInput.addEventListener('keyup', dateInputHandler);
     dateInput.addEventListener('change', (e) => {
         if (!dWR.includes(e.target.value)) dateInput.style.color = 'red';
         else dateInput.style.removeProperty('color');
@@ -87,14 +91,14 @@ const grabRecordsFromDatePicker = (date) => {
             let dur = (r.end - r.start) / 1000;
             let mm = ((Math.floor(dur / 60) < 10) ? ("0" + Math.floor(dur / 60)) : Math.floor(dur / 60));
             let ss = ((Math.floor(dur % 60) < 10) ? ("0" + Math.floor(dur % 60)) : Math.floor(dur % 60));
-            
+
             return {
                 id,
                 'checked': true,
                 'app': cleanUpAppName(r.app),
                 'title': r.title.replace(/"/g, '').replace(/●/g, '').replace(/\%2f?F?/g, '/').trim(),
-                'start': new Date(new Date(r.start).getTime() - new Date(r.start).getTimezoneOffset()*60000).toISOString().replace('T',' ').split('.')[0],
-                'end': new Date(new Date(r.end).getTime() - new Date(r.end).getTimezoneOffset()*60000).toISOString().replace('T',' ').split('.')[0],
+                'start': new Date(new Date(r.start).getTime() - new Date(r.start).getTimezoneOffset() * 60000).toISOString().replace('T', ' ').split('.')[0],
+                'end': new Date(new Date(r.end).getTime() - new Date(r.end).getTimezoneOffset() * 60000).toISOString().replace('T', ' ').split('.')[0],
                 dur,
                 'duration': `${mm}:${ss}`,
                 tags: []
@@ -258,13 +262,20 @@ const parseFile = (files) => {
     })
 };
 
+const addTagsToZoomMeetings = (zoomOrigin, row) => {
+    // console.log(row.id, 'Zoom Origin', zoomOrigin)
+    if (zoomOrigin.tags.length > 0) zoomOrigin.tags.forEach(t => row.tags.push(t));
+    if (zoomOrigin.tags.length === 0) createNewTag(zoomOrigin.app === 'Slack' ? zoomOrigin.title.split('|')[1].trim() :zoomOrigin.title, row.tags, row.id);
+    createNewTag(`Zoom from: ${zoomOrigin.app}`,row.tags,row.id);
+}
+
 const postDataRetrieval = (records) => {
     document.getElementById('date-input').value = records[0].start.split(' ')[0];
     globalRecords = records;
     let apps = [...new Set(records.map(r => r.app))];
     dataLoaded = true;
 
-    if(!document.getElementById('record-section')) {
+    if (!document.getElementById('record-section')) {
         let recordSection = document.createElement('div');
         recordSection.id = 'record-section';
         document.getElementById('container').appendChild(recordSection);
@@ -281,48 +292,77 @@ const postDataRetrieval = (records) => {
     grabRecords(records);
 
     // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
-    let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/]
+    let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/, /\(?rca|RCA\)?/]
     filters.forEach(filter => {
         globalRecords.filter(r => filter.test(r.title)).forEach(row => {
             let title = row.title.match(filter)[0];
-            if (title.match(/DRAFT \-/)) title = 'RCA';
+            if (title.match(/DRAFT \-/) || title.match(/\(?rca|RCA\)?/)) title = 'RCA';
+            if (title.match(/relonemajorincidentmgrtransitions/)) title = 'Ticket Transition';
+            if (title.match(/[A-Z]{3,7}\-\d+/) && title.includes('UTF')) return;
             title = title.replace(/-$/, '').trim();
             if (title.match(/[P-p]ower [A-a]utomate/) || title.match(/\b[F-f]low[s]?\b/)) title = 'Automation';
             if (title.match(/jira/) || title.match(/salesforce/)) title = title[0].toUpperCase() + title.substring(1);
             tags.filter(tag => tag.name === title).length === 0 ? createNewTag(title, row.tags, row.id) : globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
         });
-    })
-
-    let downloadBttn = document.createElement('button');
-    downloadBttn.id = 'download-csv';
-    downloadBttn.addEventListener('click', (e) => {
-        let filteredResults = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked);
-        let exportVals = 'app,title,start,end,dur,duration,tags\n' + filteredResults.map(r => `${r.app},${r.title.replace(/,/g, ';')},${r.start},${r.end},${r.dur},${r.duration},${r.tags.map(id => tags.filter(t => t.id === id)[0].name + ';').join('')}\n`).join('');
-        let subject = filteredResults[0].start.split(' ')[0].split('-')[1] + '-' + filteredResults[0].start.split(' ')[0].split('-')[2] + '_' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[1] + '-' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[2] + '_time_tracking';
-        window.api.send('write-csv', exportVals);
-        window.api.receive('return-csv', (data) => {
-            if (data[0] === 'write complete') {
-                let a = document.createElement('a');
-                a.href = '../time.csv'; //local test
-                // a.href = '../../../time.csv'; //desktop app test
-                a.id = 'file-link';
-                a.download = `${subject}.csv`;
-                a.style.visibility = 'hidden';
-                document.body.appendChild(a);
-                document.getElementById('file-link').click();
-                document.getElementById('file-link').remove();
-                let downloadSuccess = document.createElement('p');
-                downloadSuccess.innerText = 'CSV successfully downloaded to your desktop'
-                downloadSuccess.id = 'download-success';
-                document.body.appendChild(downloadSuccess);
-                setTimeout(() => {
-                    downloadSuccess.remove();
-                }, 2500);
-            }
-        });
     });
-    downloadBttn.innerText = 'Download CSV';
-    document.body.appendChild(downloadBttn);
+    // Zoom Meeting Tags
+    let zoomOrigin;
+    globalRecords.filter(r => r.app === 'Zoom' || (['Chrome', 'Firefox', 'Msedge'].includes(r.app) && r.title.includes('Launch Meeting - Zoom'))).forEach(row => {
+        // console.log(row);
+        let zoomConnectionId;
+        if ((row.app === 'Zoom' && (row.title === 'Connecting…' || (row.title === 'Zoom Meeting' && !zoomOrigin))) || (row.app !== 'Zoom')) {
+            zoomConnectionId = row.id
+            for (let i = zoomConnectionId - 6; i < zoomConnectionId; i++) {
+                if (globalRecords[i].app === 'Outlook' || (globalRecords[i].app === 'Slack')) zoomOrigin = globalRecords[i];
+                // if (globalRecords[i].app === 'Outlook' || (globalRecords[i].app === 'Slack' && !globalRecords[i].title.includes('Threads'))) zoomOrigin = globalRecords[i];
+                // console.log('Row:', zoomConnectionId, globalRecords[i], 'Zoom Origin', zoomOrigin);
+            }
+            // console.log(zoomOrigin)
+            // if (zoomOrigin.id) {
+            //     // console.log(row);
+            //     addTagsToZoomMeetings(zoomOrigin, row)
+            // }
+        };
+        console.log(row.id,row.title,zoomOrigin);
+        if (zoomOrigin) {   
+            addTagsToZoomMeetings(zoomOrigin, row)
+            if (row.title === 'End Meeting or Leave Meeting?') zoomOrigin = null;
+        }
+    });
+
+    if (!document.getElementById('download-csv')) {
+
+        let downloadBttn = document.createElement('button');
+        downloadBttn.id = 'download-csv';
+        downloadBttn.addEventListener('click', (e) => {
+            let filteredResults = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked);
+            let exportVals = 'app,title,start,end,dur,duration,tags\n' + filteredResults.map(r => `${r.app},${r.title.replace(/,/g, ';')},${r.start},${r.end},${r.dur},${r.duration},${r.tags.map(id => tags.filter(t => t.id === id)[0].name + ';').join('')}\n`).join('');
+            let subject = filteredResults[0].start.split(' ')[0].split('-')[1] + '-' + filteredResults[0].start.split(' ')[0].split('-')[2] + '_' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[1] + '-' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[2] + '_time_tracking';
+            window.api.send('write-csv', exportVals);
+            window.api.receive('return-csv', (data) => {
+                if (data[0] === 'write complete') {
+                    let a = document.createElement('a');
+                    a.href = '../time.csv'; //local test
+                    // a.href = '../../../time.csv'; //desktop app test
+                    a.id = 'file-link';
+                    a.download = `${subject}.csv`;
+                    a.style.visibility = 'hidden';
+                    document.body.appendChild(a);
+                    document.getElementById('file-link').click();
+                    document.getElementById('file-link').remove();
+                    let downloadSuccess = document.createElement('p');
+                    downloadSuccess.innerText = 'CSV successfully downloaded to your desktop'
+                    downloadSuccess.id = 'download-success';
+                    document.body.appendChild(downloadSuccess);
+                    setTimeout(() => {
+                        downloadSuccess.remove();
+                    }, 2500);
+                }
+            });
+        });
+        downloadBttn.innerText = 'Download CSV';
+        document.body.appendChild(downloadBttn);
+    }
 
 }
 
