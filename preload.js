@@ -109,7 +109,11 @@ contextBridge.exposeInMainWorld(
     let validChannels = ['fromRead', 'return-csv', 'returnDates','return-events-by-date'];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
-      if(channel === 'return-events-by-date') ipcRenderer.on(channel, (event, ...args) => func(args)); 
+      if(channel === 'return-events-by-date') {
+        ipcRenderer.once(channel, (event, ...args) => {
+          return func(args)
+        })
+      } 
       else ipcRenderer.once(channel, (event, ...args) => func(args));
     }
   }
