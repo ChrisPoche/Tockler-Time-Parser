@@ -312,7 +312,7 @@ const postDataRetrieval = (records) => {
             if (title.match(/DRAFT \-/) || title.match(/\(?rca|RCA\)?/)) title = 'RCA';
             if (title.match(/relonemajorincidentmgrtransitions/) || title.match(/ [T-t]ransition/)) title = 'Ticket Transition';
             if (title.match(/[A-Z]{3,7}\-\d+/)) {
-                let months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+                let months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
                 if (title.includes('UTF')) return;
                 if (months.includes(title.split('-')[0].toLowerCase())) return;
             }
@@ -574,6 +574,7 @@ const grabRecords = (record) => {
         if (len > 1) visibleRecords.push(filteredRecord[i].id);
         tr.classList = 'record-row';
         let firstCol = document.createElement('td');
+        firstCol.classList = 'check-col';
         let checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = len > 1 ? filteredRecord[i].checked : false;
@@ -592,7 +593,20 @@ const grabRecords = (record) => {
                     let cb = document.getElementById(`check-record-${id}`);
                     globalRecords[id].checked = !cb.checked;
                     cb.checked = !cb.checked;
-                    //console.log(globalRecords[id]);
+                    let sAV = document.getElementById('select-all-visible');
+                    let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible').length;
+                    if (visibleChecked === showCount) {
+                        sAV.checked = true;
+                        sAV.indeterminate = false;
+                    }
+                    if (visibleChecked < showCount) {
+                        sAV.checked = false;
+                        sAV.indeterminate = true;
+                        if (visibleChecked === 0) {
+                            sAV.checked = false;
+                            sAV.indeterminate = false;
+                        }
+                    }
                     aggregateRecords();
                 }
             }
@@ -653,6 +667,30 @@ const grabRecords = (record) => {
         tbody.appendChild(tr);
     }
     table.appendChild(tbody);
+    let selectAllVisible = document.createElement('input');
+    selectAllVisible.id = 'select-all-visible';
+    selectAllVisible.type = 'checkbox';
+    let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible').length;
+    if (visibleChecked === showCount) {
+        selectAllVisible.checked = true;
+        selectAllVisible.indeterminate = false;
+    }
+    if (visibleChecked < showCount) {
+        selectAllVisible.checked = false;
+        selectAllVisible.indeterminate = true;
+        if (visibleChecked === 0) {
+            selectAllVisible.checked = false;
+            selectAllVisible.indeterminate = false;
+        }
+    }
+    selectAllVisible.addEventListener('change', (e) => {
+        let allCheckboxes = [...table.querySelectorAll('input[type="checkbox"]')].filter(c => c.id !== 'select-all-visible')
+        allCheckboxes.forEach(i => {
+            globalRecords[i.id.substring('check-record-'.length)].checked = selectAllVisible.checked;
+            i.checked = selectAllVisible.checked;
+        });
+    })
+    topLeftTH.appendChild(selectAllVisible)
     if (document.getElementById('record-table')) document.getElementById('record-table').remove();
     recordSection.prepend(table);
 
