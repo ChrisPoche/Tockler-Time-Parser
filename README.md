@@ -50,6 +50,4 @@ Local Storage
 
 - Page number input in table still has previous max page value
 
-- Adding new tag from text fails, but are successfully added if tag exists
-
 - Duplicate tags can be added to same record

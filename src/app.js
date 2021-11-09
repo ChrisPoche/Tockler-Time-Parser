@@ -323,7 +323,7 @@ const postDataRetrieval = (records) => {
             //     addTagsToZoomMeetings(zoomOrigin, row)
             // }
         };
-        console.log(row.id,row.title,zoomOrigin);
+        // console.log(row.id,row.title,zoomOrigin);
         if (zoomOrigin) {   
             addTagsToZoomMeetings(zoomOrigin, row)
             if (row.title === 'End Meeting or Leave Meeting?') zoomOrigin = null;
@@ -377,7 +377,14 @@ const createNewTag = (name, val, recordID) => {
     record.tags.push(tags.length);
     tags.push({ 'id': tags.length, name });
     let rowID = `record-${recordID}`;
-    if ([...document.getElementById('record-table').childNodes[1].childNodes].includes(rowID)) drawTag(val, rowID);
+    console.log('creating new tag:',name);
+    console.log('for:',recordID);
+    [...document.getElementById('record-table').childNodes[1].childNodes].forEach(row => {
+        if(row.id,row.id.includes(rowID)) {
+            console.log('moving to draw tag')
+            drawTag(val, rowID)
+        }
+    })
 }
 
 const searchTags = (e) => {
