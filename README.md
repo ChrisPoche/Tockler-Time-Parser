@@ -49,5 +49,3 @@ Local Storage
 ### Defects
 
 - Page number input in table still has previous max page value
-
-- Duplicate tags can be added to same record
