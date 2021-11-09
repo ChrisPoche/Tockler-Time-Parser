@@ -377,11 +377,8 @@ const createNewTag = (name, val, recordID) => {
     record.tags.push(tags.length);
     tags.push({ 'id': tags.length, name });
     let rowID = `record-${recordID}`;
-    console.log('creating new tag:',name);
-    console.log('for:',recordID);
     [...document.getElementById('record-table').childNodes[1].childNodes].forEach(row => {
-        if(row.id,row.id.includes(rowID)) {
-            console.log('moving to draw tag')
+        if(row.id.includes(rowID)) {
             drawTag(val, rowID)
         }
     })
