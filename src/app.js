@@ -20,6 +20,7 @@ let sortByHeader = {
 }
 let tags = [];
 let dWR = []; // Days With Records
+let visibleRecords;
 
 const dateInputHandler = (e) => {
     // console.log(e.type);
@@ -264,9 +265,21 @@ const parseFile = (files) => {
 
 const addTagsToZoomMeetings = (zoomOrigin, row) => {
     // console.log(row.id, 'Zoom Origin', zoomOrigin)
+    let title = `Zoom from: ${zoomOrigin.app}`;
     if (zoomOrigin.tags.length > 0) zoomOrigin.tags.forEach(t => row.tags.push(t));
-    if (zoomOrigin.tags.length === 0) createNewTag(zoomOrigin.app === 'Slack' ? zoomOrigin.title.split('|')[1].trim() :zoomOrigin.title, row.tags, row.id);
-    createNewTag(`Zoom from: ${zoomOrigin.app}`,row.tags,row.id);
+    if (zoomOrigin.tags.length === 0) {
+        let title = zoomOrigin.app === 'Slack' ? `${zoomOrigin.title.split('|')[0].trim()} - ${zoomOrigin.title.split('|')[1].trim()}` : zoomOrigin.title
+        if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title, row.tags, row.id)
+        else {
+            globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
+            if (visibleRecords.includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
+        }
+    }
+    if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title, row.tags, row.id)
+    if (tags.filter(tag => tag.name === title).length > 0 && !globalRecords[row.id].tags.includes(tags.filter(tag => tag.name === title)[0].id)) {
+        globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
+        if (visibleRecords.includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
+    }
 }
 
 const postDataRetrieval = (records) => {
@@ -292,13 +305,17 @@ const postDataRetrieval = (records) => {
     grabRecords(records);
 
     // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
-    let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/, /\(?rca|RCA\)?/]
+    let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/, / [T-t]ransition/, /\(?rca|RCA\)?/]
     filters.forEach(filter => {
         globalRecords.filter(r => filter.test(r.title)).forEach(row => {
             let title = row.title.match(filter)[0];
             if (title.match(/DRAFT \-/) || title.match(/\(?rca|RCA\)?/)) title = 'RCA';
-            if (title.match(/relonemajorincidentmgrtransitions/)) title = 'Ticket Transition';
-            if (title.match(/[A-Z]{3,7}\-\d+/) && title.includes('UTF')) return;
+            if (title.match(/relonemajorincidentmgrtransitions/) || title.match(/ [T-t]ransition/)) title = 'Ticket Transition';
+            if (title.match(/[A-Z]{3,7}\-\d+/)) {
+                let months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+                if (title.includes('UTF')) return;
+                if (months.includes(title.split('-')[0].toLowerCase())) return;
+            }
             title = title.replace(/-$/, '').trim();
             if (title.match(/[P-p]ower [A-a]utomate/) || title.match(/\b[F-f]low[s]?\b/)) title = 'Automation';
             if (title.match(/jira/) || title.match(/salesforce/)) title = title[0].toUpperCase() + title.substring(1);
@@ -324,7 +341,7 @@ const postDataRetrieval = (records) => {
             // }
         };
         // console.log(row.id,row.title,zoomOrigin);
-        if (zoomOrigin) {   
+        if (zoomOrigin) {
             addTagsToZoomMeetings(zoomOrigin, row)
             if (row.title === 'End Meeting or Leave Meeting?') zoomOrigin = null;
         }
@@ -378,7 +395,7 @@ const createNewTag = (name, val, recordID) => {
     tags.push({ 'id': tags.length, name });
     let rowID = `record-${recordID}`;
     [...document.getElementById('record-table').childNodes[1].childNodes].forEach(row => {
-        if(row.id.includes(rowID)) {
+        if (row.id.includes(rowID)) {
             drawTag(val, rowID)
         }
     })
@@ -549,9 +566,11 @@ const grabRecords = (record) => {
     Object.keys(sortByHeader).forEach(key => {
         if (sortByHeader[key].length > 0) filteredRecord = sortByHeader[key] === 'asc' ? filteredRecord.sort((a, b) => a[key] > b[key] ? 1 : -1) : filteredRecord.sort((a, b) => a[key] < b[key] ? 1 : -1);
     })
+    visibleRecords = [];
     for (let i = (goToPage - 1) * showCount; i < (goToPage * showCount) - (goToPage === pageCount ? showCount - (filteredRecord.length % showCount) : 0); i++) {
         let tr = document.createElement('tr');
         tr.id = len > 1 ? `record-${filteredRecord[i].id}` : 'no-row';
+        if (len > 1) visibleRecords.push(filteredRecord[i].id);
         tr.classList = 'record-row';
         let firstCol = document.createElement('td');
         let checkbox = document.createElement('input');
