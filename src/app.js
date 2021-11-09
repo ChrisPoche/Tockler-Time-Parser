@@ -478,6 +478,7 @@ const grabRecords = (record) => {
     pageCount = filteredRecord.length === 0 ? 1 : Math.ceil(filteredRecord.length / showCount);
     goToPage = goToPage > pageCount ? pageCount : goToPage;
     if (document.getElementById('go-to-page')) document.getElementById('go-to-page').value = goToPage;
+    if (document.getElementById('go-to-page')) document.getElementById('go-to-page').max = pageCount;
     if (document.getElementById('page-numbering')) document.getElementById('page-numbering').innerText = `Page ${goToPage} of ${pageCount}`;
     if (document.getElementsByClassName('page-arrows').length > 0) {
         [...document.getElementsByClassName('left')].forEach(arrow => {
@@ -677,8 +678,8 @@ const grabRecords = (record) => {
         goToPageInput.max = pageCount;
         goToPageInput.addEventListener('change', (e) => {
             goToPage = e.target.value > pageCount ? parseInt(pageCount) : parseInt(e.target.value);
-            document.getElementById('go-to-page').value = goToPage;
-            if (goToPage < 1) {
+            if (!isNaN(goToPage)) document.getElementById('go-to-page').value = goToPage;
+            if (goToPage < 1 || isNaN(goToPage)) {
                 goToPage = 1;
                 document.getElementById('go-to-page').value = 1;
             }
@@ -886,7 +887,6 @@ const createAppFilter = (apps) => {
         unselectAllInput.id = 'unselect-all-apps';
         unselectAllInput.value = 'Unselect All';
         unselectAllInput.name = 'Unselect All';
-        // unselectAllDiv.appendChild(unselectAllInput);
 
         unselectAllLabel = document.createElement('label');
         unselectAllLabel.for = 'Unselect All';

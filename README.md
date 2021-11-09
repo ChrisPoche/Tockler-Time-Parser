@@ -47,5 +47,3 @@ Local Storage
 - Extend existing Tockler sqlite database with tables for user preference and settings in this app
 
 ### Defects
-
-- Page number input in table still has previous max page value
