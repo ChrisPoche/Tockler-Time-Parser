@@ -415,7 +415,7 @@ thead {
     margin: 0;
 }
 
-.tag-search-result:hover {
+.tag-search-result:hover, .key-focus {
     background-color: darkgray;
 }
 

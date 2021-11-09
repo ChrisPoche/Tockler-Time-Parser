@@ -401,15 +401,16 @@ const createNewTag = (name, val, recordID) => {
     })
 }
 
+let hover = -1;
 const searchTags = (e) => {
+    if (e.type === 'focus') hover = -1;
     let addTagDiv = document.getElementById('tag-search').parentNode;
     let td = addTagDiv.parentNode;
     let searchInput = document.getElementById('tag-search').value.toLowerCase();
     let resultsDropdown = document.createElement('div');
     resultsDropdown.id = 'tags-dropdown';
     let rowTags = [...td.childNodes].filter(t => t.className.indexOf('tag-') > -1).map(t => parseInt(t.className.substring(t.className.indexOf('tag-') + 4)));
-    let sortedTags = tags.filter(t => !rowTags.includes(t.id)).filter((t, i) => i < 10).sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0))
-
+    let sortedTags = tags.filter(t => !rowTags.includes(t.id)).filter(t => t.name.toLowerCase().includes(searchInput)).filter((t, i) => i < 10).sort((a, b) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0))
     sortedTags.push({ 'id': -1, 'name': 'Add Tag' });
     for (let i = 0; i < sortedTags.length; i++) {
         let result = document.createElement('p');
@@ -422,19 +423,49 @@ const searchTags = (e) => {
                     record.tags.push(tags.filter(tag => tag.name === e.target.innerText)[0].id);
                     drawTag(record.tags, `record-${record.id}`);
                 }
-                if (sortedTags[i].name === 'Add Tag' && document.getElementById('tag-search').value.length > 0 && document.getElementById('tag-search').value.toLowerCase() !== 'add tag') createNewTag(document.getElementById('tag-search').value, record.tags, record.id);
+                if (sortedTags[i].name === 'Add Tag' && document.getElementById('tag-search').value.length > 0 && document.getElementById('tag-search').value.toLowerCase() !== 'add tag' && tags.filter(tag => tag.name === document.getElementById('tag-search').value.trim().toLowerCase()).length === 0) handleAddTag(td);
             });
             resultsDropdown.appendChild(result);
         }
     }
     if (document.getElementById('tags-dropdown')) document.getElementById('tags-dropdown').remove();
     if (resultsDropdown.childNodes.length > 0) addTagDiv.appendChild(resultsDropdown);
-    if (e.type === 'keyup' && e.key === 'Enter' && document.getElementById('tag-search').value.length > 0) {
-        let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
-        createNewTag(document.getElementById('tag-search').value, record.tags, record.id);
-        if (document.getElementById('tag-search')) document.getElementById('tag-search').blur();
+    document.querySelectorAll('.tag-search-result').forEach(t => t.addEventListener('mouseenter', (e) => {
+        hover = -1;
+        if(document.querySelector('.key-focus')) document.querySelector('.key-focus').classList.remove('key-focus');
+    }))
+    if (e.type === 'keyup' && e.key === 'Enter' && document.getElementById('tag-search').value.length > 0 && hover < 0) handleAddTag(td);
+    if (e.type === 'keyup' && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+        if (hover === -1 && e.key === 'ArrowDown') {
+            document.querySelector('.tag-search-result').classList.add('key-focus');
+            hover ++;
+        }
+        else if (hover === 0 && e.key === 'ArrowUp') {
+            document.getElementById('tag-search').focus();
+            hover = -1;
+        }
+        else if (hover >= 0 && hover < document.querySelectorAll('.tag-search-result').length) {
+            hover += e.key === 'ArrowUp' ? -1 : 1
+            document.querySelectorAll('.tag-search-result')[hover].classList.add('key-focus');
+        }
     }
+    if (e.type === 'keyup' && e.key === 'Enter' && hover >= 0) handleAddTag(td);
 };
+
+const handleAddTag = (td) => {
+    let searchVal = hover >= 0 && document.querySelectorAll('.tag-search-result').length > 0 && document.querySelectorAll('.tag-search-result')[hover].innerText.toLowerCase() !== 'add tag' ? document.querySelectorAll('.tag-search-result')[hover].innerText :  document.getElementById('tag-search').value.trim();
+    let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
+        let existingTag = tags.filter(tag => tag.name.toLowerCase() === searchVal.toLowerCase());
+        if (existingTag.length === 0) createNewTag(searchVal, record.tags, record.id) 
+        if (existingTag.length > 0) {
+            let tagID = existingTag[0].id;
+            if (globalRecords[record.id].tags.filter(t => t === tagID).length === 0) {
+                globalRecords[record.id].tags.push(tagID);
+                drawTag(globalRecords[record.id].tags, `record-${record.id}`);
+            }
+        }
+        if (document.getElementById('tag-search')) document.getElementById('tag-search').blur();
+}
 
 const removeSearchTagsDropdown = () => {
     document.getElementById('tag-search').parentNode.remove();
