@@ -620,7 +620,7 @@ const grabRecords = (record) => {
         tr.addEventListener('click', (e) => {
             if (e.target.tagName !== 'INPUT') {
                 if (![...e.target.classList][0].includes('tag')) {
-                    let id = e.target.parentElement.id.substring('record-'.length);
+                    let id = [...e.target.classList][0].includes('tool') ? e.target.parentElement.parentElement.id.substring('record-'.length) : e.target.parentElement.id.substring('record-'.length);
                     let cb = document.getElementById(`check-record-${id}`);
                     globalRecords[id].checked = !cb.checked;
                     cb.checked = !cb.checked;
