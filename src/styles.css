@@ -130,7 +130,7 @@ body {
     margin-top: 5vh;
 }
 
-#record-section {
+#record-section, #tag-section {
     /* margin: 40px 0 0; */
     max-height: 90vh;
     overflow-y: auto;
@@ -163,7 +163,7 @@ tr {
     height: 2em;
 }
 
-.record-row:hover {
+.record-row:hover, .tag-row:hover {
     background-color: gray;
     border: 1px solid black;
 }
@@ -234,7 +234,7 @@ thead {
     white-space: nowrap;
 }
 
-#page-controls {
+#page-controls, #tag-page-controls {
     display: block;
     height: 29.78px;
     text-align: center;
@@ -281,21 +281,21 @@ thead {
     justify-content: flex-end;
 }
 
-#go-to-page, #page-numbering {
+#go-to-page, #page-numbering, #go-to-page-tags, #page-numbering-tags {
     width: 39px;
     margin-right: 20px;
 }
 
-#go-to-page::-webkit-outer-spin-button, #go-to-page::-webkit-inner-spin-button {
+#go-to-page::-webkit-outer-spin-button, #go-to-page::-webkit-inner-spin-button, #go-to-page-tags::-webkit-outer-spin-button, #go-to-page-tags::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-#go-to-page[type=number] {
+#go-to-page[type=number], #go-to-page-tags[type=number] {
     -moz-appearance: textfield;
 }
 
-#go-to-page, select {
+#go-to-page, #go-to-page-tags, select {
     background-color: lightgrey;
     outline: none;
     border: none;
@@ -307,7 +307,7 @@ thead {
     margin: 0 10px;
 }
 
-#right-arrows, #left-arrows {
+#right-arrows, #left-arrows, #right-arrows-tags, #left-arrows-tags {
     position: absolute;
     /* bottom: 9px; */
     margin-top: -24px;
@@ -315,16 +315,13 @@ thead {
     display: flex;
 }
 
-#left-arrows {
-    margin-top: 1px;
-}
-
-#right-arrows {
+#right-arrows, #right-arrows-tags {
     right: 0;
     justify-content: flex-end;
 }
 
-#left-arrows {
+#left-arrows, #left-arrows-tags {
+    margin-top: 1px;
     left: 0;
     justify-content: flex-start;
 }
