@@ -47,3 +47,5 @@ Local Storage
 - Extend existing Tockler sqlite database with tables for user preference and settings in this app
 
 ### Defects
+
+- Un/checking box on Tag or Record table should propagate status on the other table with re-draw.
