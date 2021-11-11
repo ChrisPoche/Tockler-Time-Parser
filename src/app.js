@@ -158,7 +158,7 @@ const toggleCloseButtons = () => {
 };
 
 const aggregateRecords = () => {
-    if (document.getElementsByClassName('close-button')[0]) document.getElementsByClassName('close-button')[0].remove();
+    if (document.getElementsByClassName('close-button')[0] && document.getElementsByClassName('close-button')[0].id !== 'close-tag-section') document.getElementsByClassName('close-button')[0].remove();
     let apps = [...new Set(globalRecords.filter(r => r.checked && !removedApps.includes(r.app)).map(r => r.app))].sort();
     let appAgg = [];
     apps.forEach((app, index) => {
@@ -224,15 +224,18 @@ const aggregateRecords = () => {
     let all = globalRecords.map(r => r.dur).reduce((a, b) => a + b);
     let active = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked).map(r => r.dur);
     active = active.length > 0 ? active.reduce((a, b) => a + b) : 0;
-    let durationVals = [active, all].map(dur => {
+    let tag = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked && r.tags.includes(parseInt(tagID))).map(r => r.dur);
+    tag = tag.length > 0 ? tag.reduce((a, b) => a + b) : 0;
+    let durationVals = [active, all, tag].map(dur => {
         let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
         let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
         let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
         return `${hh}:${mm}:${ss}`;
     });
 
+    let tagDur = document.getElementById('tag-section') ? `&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;${tags.filter(tag => tag.id === parseInt(tagID)).map(tag => tag.name)[0]}: ${durationVals[2]}` : '';
     let durationDiv = document.getElementById('duration');
-    durationDiv.innerText = chartIncludeRemoved ? `Duration (hh:mm:ss): ${durationVals[0]} / ${durationVals[1]}` : `Duration (hh:mm:ss): ${durationVals[0]}`;
+    durationDiv.innerHTML = chartIncludeRemoved ? `Duration (hh:mm:ss): ${durationVals[0]} / ${durationVals[1]}` + tagDur : `Duration (hh:mm:ss): ${durationVals[0]}` + tagDur;
 }
 
 const parseFile = (files) => {
@@ -320,7 +323,7 @@ const postDataRetrieval = (records) => {
     grabRecords(records);
 
     // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
-    let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/, / [T-t]ransition/, /\(?rca|RCA\)?/,/[P-p]ager[D-d]uty/]
+    let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/, / [T-t]ransition/, /\(?rca|RCA\)?/, /[P-p]ager[D-d]uty/]
     filters.forEach(filter => {
         globalRecords.filter(r => filter.test(r.title)).forEach(row => {
             let title = row.title.match(filter)[0];
@@ -515,7 +518,6 @@ const drawTag = (val, rowID) => {
             })
             tag.addEventListener('click', (e) => {
                 tagID = [...e.target.classList].filter(t => t.includes('tag-'))[0].split('-')[1];
-                // console.log(tagID)
                 createTagTable();
             })
             td.appendChild(tag);
@@ -612,7 +614,8 @@ const createTagTable = () => {
             closeButton.style.removeProperty('left');
             closeButton.addEventListener('click', (e) => {
                 e.stopImmediatePropagation();
-                document.getElementById('tag-section').remove()
+                document.getElementById('tag-section').remove();
+                aggregateRecords();
             });
             th.appendChild(closeButton);
         }
@@ -645,7 +648,7 @@ const createTagTable = () => {
             e.stopImmediatePropagation();
             let id = e.target.id.substring('check-tag-'.length);
             globalRecords[id].checked = e.target.checked;
-            // aggregateRecords();
+            aggregateRecords();
         });
         tr.addEventListener('click', (e) => {
             if (e.target.tagName !== 'INPUT') {
@@ -677,7 +680,7 @@ const createTagTable = () => {
                             }
                         }
                     })
-                    // aggregateRecords();
+                    aggregateRecords();
                 }
             }
         });
@@ -760,6 +763,8 @@ const createTagTable = () => {
     topLeftTH.appendChild(selectAllVisible)
     if (document.getElementById('tag-table')) document.getElementById('tag-table').remove();
     tagSection.prepend(table);
+
+    aggregateRecords();
 
     // Draw tags after table is drawn
     document.getElementById('tag-table').childNodes[1].childNodes.forEach(row => {
@@ -874,6 +879,7 @@ const createTagTable = () => {
         pageControlBar.appendChild(rightArrowBox);
         tagSection.appendChild(pageControlBar);
     }
+    // aggregateRecords();
 };
 
 const grabRecords = (record) => {
