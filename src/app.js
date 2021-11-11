@@ -21,6 +21,11 @@ let sortByHeader = {
     end: '',
     duration: '',
 }
+let sortByHeaderTags = {
+    app: '',
+    title: '',
+    duration: '',
+}
 let tags = [];
 let dWR = []; // Days With Records
 let visibleRecords, tagVisibleRecords;
@@ -583,8 +588,16 @@ const createTagTable = () => {
     let header = ['app', 'title', 'duration', 'tags'];
     header.forEach(h => {
         let th = document.createElement('th');
-        th.innerHTML = h.replace(h[0], h[0].toUpperCase());
+        th.innerHTML = `${h.replace(h[0], h[0].toUpperCase())}<span style="line-height: 1.2">${sortByHeaderTags[h] === 'asc' ? ' &#129041;' : sortByHeaderTags[h] === 'desc' ? ' &#129043;' : ''}</span>`;
         th.id = `tag-header-${h}`;
+        th.addEventListener('click', (e) => {
+            let val = e.target.id.split('-')[2];
+            if (val !== 'search' && val) {
+                sortByHeaderTags[val] = sortByHeaderTags[val] === '' ? 'asc' : sortByHeaderTags[val] === 'asc' ? 'desc' : '';
+                goToPageTags = 1;
+                createTagTable();
+            }
+        });
         hr.appendChild(th);
     });
     thead.appendChild(hr);
@@ -592,6 +605,10 @@ const createTagTable = () => {
     let tbody = document.createElement('tbody');
 
     let len = filteredRecordTags.length === 0 ? 1 : filteredRecordTags.length > showCountTags ? showCountTags : filteredRecordTags.length;
+
+    Object.keys(sortByHeaderTags).forEach(key => {
+        if (sortByHeaderTags[key].length > 0) filteredRecordTags = sortByHeaderTags[key] === 'asc' ? filteredRecordTags.sort((a, b) => a[key] > b[key] ? 1 : -1) : filteredRecordTags.sort((a, b) => a[key] < b[key] ? 1 : -1);
+    })
 
     tagVisibleRecords = [];
     for (let i = (goToPageTags - 1) * showCountTags; i < (goToPageTags * showCountTags) - (goToPageTags === pageCountTags ? showCountTags - (filteredRecordTags.length % showCountTags) : 0); i++) {
