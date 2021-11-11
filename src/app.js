@@ -59,8 +59,14 @@ window.addEventListener('load', () => {
     dateInput.addEventListener('blur', dateInputHandler);
     dateInput.addEventListener('keyup', dateInputHandler);
     dateInput.addEventListener('change', (e) => {
-        if (!dWR.includes(e.target.value)) dateInput.style.color = 'red';
-        else dateInput.style.removeProperty('color');
+        if (!dWR.includes(e.target.value)) {
+            dateInput.style.color = 'red';
+            dateInput.style.fontWeight = '900';
+        }
+        else {
+            dateInput.style.removeProperty('color');
+            dateInput.style.removeProperty('font-weight');
+        }
     });
     document.getElementById('csv-input').addEventListener('change', (e) => {
         if (document.getElementById('container').childElementCount > 1) document.getElementById('error-invalid').remove();
