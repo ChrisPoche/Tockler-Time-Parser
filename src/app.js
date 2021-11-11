@@ -624,7 +624,8 @@ const createTagTable = () => {
                     ['tag-table', 'record-table'].forEach(tbl => {
                         if (document.getElementById(tbl)) {
                             let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                            let visibleCount = tbl === 'tag-table' ? showCountTags : showCount;
+                            let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length-1;
+                            console.log(visibleCount);
                             let selectAllVisible = document.getElementById(selectAllVisibleID);
                             let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
                             if (visibleChecked === visibleCount) {
@@ -679,11 +680,12 @@ const createTagTable = () => {
     selectAllVisible.id = 'select-all-visible-tags';
     selectAllVisible.type = 'checkbox';
     let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible-tags').length;
-    if (visibleChecked === showCount) {
+    let visibleCount = [...table.querySelectorAll('tr')].length-1;
+    if (visibleChecked === visibleCount) {
         selectAllVisible.checked = true;
         selectAllVisible.indeterminate = false;
     }
-    if (visibleChecked < showCount) {
+    if (visibleChecked < visibleCount) {
         selectAllVisible.checked = false;
         selectAllVisible.indeterminate = true;
         if (visibleChecked === 0) {
@@ -702,7 +704,7 @@ const createTagTable = () => {
         ['tag-table', 'record-table'].forEach(tbl => {
             if (document.getElementById(tbl)) {
                 let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                let visibleCount = tbl === 'tag-table' ? showCountTags : showCount;
+                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length-1;
                 let selectAllVisible = document.getElementById(selectAllVisibleID);
                 let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
                 if (visibleChecked === visibleCount) {
@@ -965,7 +967,7 @@ const grabRecords = (record) => {
                     ['tag-table', 'record-table'].forEach(tbl => {
                         if (document.getElementById(tbl)) {
                             let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                            let visibleCount = tbl === 'tag-table' ? showCountTags : showCount;
+                            let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length-1;
                             let selectAllVisible = document.getElementById(selectAllVisibleID);
                             let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
                             if (visibleChecked === visibleCount) {
@@ -1046,11 +1048,12 @@ const grabRecords = (record) => {
     selectAllVisible.id = 'select-all-visible';
     selectAllVisible.type = 'checkbox';
     let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible').length;
-    if (visibleChecked === showCount) {
+    let visibleCount = [...table.querySelectorAll('tr')].length-1;
+    if (visibleChecked === visibleCount) {
         selectAllVisible.checked = true;
         selectAllVisible.indeterminate = false;
     }
-    if (visibleChecked < showCount) {
+    if (visibleChecked < visibleCount) {
         selectAllVisible.checked = false;
         selectAllVisible.indeterminate = true;
         if (visibleChecked === 0) {
@@ -1069,7 +1072,7 @@ const grabRecords = (record) => {
         ['tag-table', 'record-table'].forEach(tbl => {
             if (document.getElementById(tbl)) {
                 let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                let visibleCount = tbl === 'tag-table' ? showCountTags : showCount;
+                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length-1;
                 let selectAllVisible = document.getElementById(selectAllVisibleID);
                 let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
                 if (visibleChecked === visibleCount) {
