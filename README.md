@@ -22,15 +22,8 @@ Tagging
   - This will update the tags object, and trigger a redraw of the table with the new values
 - Enable user to create custom auto tag filters
   - Prioritize after implementing local storage / database to allow preferences to persist
-
-Calculated / Tag Section
-
-- Create a table of tagged records to see them at a glance
-  - Auto tagging pulls tangential events together. If Slack event (from channel, no direct message) is followed by a browser event, pair those together
-    - Zoom events are tagged by Slack or Outlook events that precede browser connection event. Stop tagging when 'End / Leave' event is logged.
-- Dropdown of related child rows based on tag
-  - Click event on tag to filter Tag Section to results
 - Ability to toggle chart from displaying results by Apps to Tags
+- Table of top tags by duration
 
 Styling
 
