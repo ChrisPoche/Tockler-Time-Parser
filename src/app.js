@@ -663,7 +663,6 @@ const createTagTable = () => {
                         if (document.getElementById(tbl)) {
                             let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
                             let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
-                            console.log(visibleCount);
                             let selectAllVisible = document.getElementById(selectAllVisibleID);
                             let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
                             if (visibleChecked === visibleCount) {
