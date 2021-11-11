@@ -598,12 +598,24 @@ const createTagTable = () => {
         th.id = `tag-header-${h}`;
         th.addEventListener('click', (e) => {
             let val = e.target.id.split('-')[2];
-            if (val !== 'search' && val) {
+            if (val !== 'section' && val) {
                 sortByHeaderTags[val] = sortByHeaderTags[val] === '' ? 'asc' : sortByHeaderTags[val] === 'asc' ? 'desc' : '';
                 goToPageTags = 1;
                 createTagTable();
             }
         });
+        if (h === 'tags') {
+            let closeButton = document.createElement('div');
+            closeButton.id = `close-tag-section`;
+            closeButton.innerText = 'X';
+            closeButton.classList = 'close-button close-tags';
+            closeButton.style.removeProperty('left');
+            closeButton.addEventListener('click', (e) => {
+                e.stopImmediatePropagation();
+                document.getElementById('tag-section').remove()
+            });
+            th.appendChild(closeButton);
+        }
         hr.appendChild(th);
     });
     thead.appendChild(hr);
@@ -647,7 +659,7 @@ const createTagTable = () => {
                     ['tag-table', 'record-table'].forEach(tbl => {
                         if (document.getElementById(tbl)) {
                             let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                            let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length-1;
+                            let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
                             console.log(visibleCount);
                             let selectAllVisible = document.getElementById(selectAllVisibleID);
                             let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
@@ -703,7 +715,7 @@ const createTagTable = () => {
     selectAllVisible.id = 'select-all-visible-tags';
     selectAllVisible.type = 'checkbox';
     let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible-tags').length;
-    let visibleCount = [...table.querySelectorAll('tr')].length-1;
+    let visibleCount = [...table.querySelectorAll('tr')].length - 1;
     if (visibleChecked === visibleCount) {
         selectAllVisible.checked = true;
         selectAllVisible.indeterminate = false;
@@ -727,7 +739,7 @@ const createTagTable = () => {
         ['tag-table', 'record-table'].forEach(tbl => {
             if (document.getElementById(tbl)) {
                 let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length-1;
+                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
                 let selectAllVisible = document.getElementById(selectAllVisibleID);
                 let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
                 if (visibleChecked === visibleCount) {
@@ -990,7 +1002,7 @@ const grabRecords = (record) => {
                     ['tag-table', 'record-table'].forEach(tbl => {
                         if (document.getElementById(tbl)) {
                             let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                            let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length-1;
+                            let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
                             let selectAllVisible = document.getElementById(selectAllVisibleID);
                             let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
                             if (visibleChecked === visibleCount) {
@@ -1071,7 +1083,7 @@ const grabRecords = (record) => {
     selectAllVisible.id = 'select-all-visible';
     selectAllVisible.type = 'checkbox';
     let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible').length;
-    let visibleCount = [...table.querySelectorAll('tr')].length-1;
+    let visibleCount = [...table.querySelectorAll('tr')].length - 1;
     if (visibleChecked === visibleCount) {
         selectAllVisible.checked = true;
         selectAllVisible.indeterminate = false;
@@ -1095,7 +1107,7 @@ const grabRecords = (record) => {
         ['tag-table', 'record-table'].forEach(tbl => {
             if (document.getElementById(tbl)) {
                 let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length-1;
+                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
                 let selectAllVisible = document.getElementById(selectAllVisibleID);
                 let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
                 if (visibleChecked === visibleCount) {

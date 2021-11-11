@@ -258,8 +258,17 @@ thead {
     z-index: 2;
     background-color: darkgray;
     color: white;
-    left: 0;
+    right: 0;
     top: 0;
+}
+
+.close-tags {
+    right: 4px;
+    top: 4px;
+    background-color: gray;
+    width: 28px;
+    height:28px;
+    line-height: 2.1;
 }
 
 #chart-tab, #table-tab {
