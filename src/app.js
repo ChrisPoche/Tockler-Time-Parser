@@ -343,22 +343,14 @@ const postDataRetrieval = (records) => {
     // Zoom Meeting Tags
     let zoomOrigin;
     globalRecords.filter(r => r.app === 'Zoom' || (['Chrome', 'Firefox', 'Msedge'].includes(r.app) && r.title.includes('Launch Meeting - Zoom'))).forEach(row => {
-        // console.log(row);
         let zoomConnectionId;
         if ((row.app === 'Zoom' && (row.title === 'Connecting…' || (row.title === 'Zoom Meeting' && !zoomOrigin))) || (row.app !== 'Zoom')) {
             zoomConnectionId = row.id
-            for (let i = zoomConnectionId - 6; i < zoomConnectionId; i++) {
+            for (let i = zoomConnectionId > 5 ? zoomConnectionId - 6 : 0; i < zoomConnectionId; i++) {
                 if (globalRecords[i].app === 'Outlook' || (globalRecords[i].app === 'Slack')) zoomOrigin = globalRecords[i];
-                // if (globalRecords[i].app === 'Outlook' || (globalRecords[i].app === 'Slack' && !globalRecords[i].title.includes('Threads'))) zoomOrigin = globalRecords[i];
-                // console.log('Row:', zoomConnectionId, globalRecords[i], 'Zoom Origin', zoomOrigin);
             }
             // console.log(zoomOrigin)
-            // if (zoomOrigin.id) {
-            //     // console.log(row);
-            //     addTagsToZoomMeetings(zoomOrigin, row)
-            // }
         };
-        // console.log(row.id,row.title,zoomOrigin);
         if (zoomOrigin) {
             addTagsToZoomMeetings(zoomOrigin, row)
             if (row.title === 'End Meeting or Leave Meeting?') zoomOrigin = null;
