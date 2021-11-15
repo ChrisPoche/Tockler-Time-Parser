@@ -24,6 +24,7 @@ Tagging
   - Prioritize after implementing local storage / database to allow preferences to persist
 - Ability to toggle chart from displaying results by Apps to Tags
 - Table of top tags by duration
+- Redraw tag table when tag is deleted from record table. Remove ability to delete tags tag table
 
 Styling
 
@@ -44,3 +45,6 @@ Table Creation
 - Dry out code for record and tag table creation
 
 ### Defects
+
+- Tag doesn't draw in tag table when only one record is present and doesn't respect checked value
+  - Row id equals 'no-row' used for handling empty page returns
