@@ -45,6 +45,3 @@ Table Creation
 - Dry out code for record and tag table creation
 
 ### Defects
-
-- Tag doesn't draw in tag table when only one record is present and doesn't respect checked value
-  - Row id equals 'no-row' used for handling empty page returns

@@ -627,7 +627,7 @@ const createTagTable = () => {
     tagVisibleRecords = [];
     for (let i = (goToPageTags - 1) * showCountTags; i < (goToPageTags * showCountTags) - (goToPageTags === pageCountTags ? showCountTags - (filteredRecordTags.length % showCountTags) : 0); i++) {
         let tr = document.createElement('tr');
-        tr.id = len > 1 ? `tag-${filteredRecordTags[i].id}` : 'no-row';
+        tr.id = `tag-${filteredRecordTags[i].id}`;
         // if (len > 1) tagVisibleRecords.push(filteredRecordTags[i].id);
         tr.classList = 'tag-row';
         let firstCol = document.createElement('td');
