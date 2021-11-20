@@ -495,6 +495,7 @@ const drawTag = (val, rowID) => {
                 x.innerText = 'x'
                 tag.appendChild(x);
                 x.addEventListener('click', (e) => {
+                    e.stopImmediatePropagation();
                     let idToRemove = parseInt(e.target.parentNode.classList[1].split('-')[1]);
                     if (/^\d+$/.test(idToRemove)) {
                         let id = e.target.parentNode.parentNode.parentNode.id.substring('record-'.length);
