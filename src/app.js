@@ -634,8 +634,8 @@ const createTagTable = () => {
         firstCol.classList = 'check-col';
         let checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
-        checkbox.checked = len > 1 ? filteredRecordTags[i].checked : false;
-        checkbox.id = len > 1 ? `check-tag-${filteredRecordTags[i].id}` : 'no-record';
+        checkbox.checked = filteredRecordTags[i].checked;
+        checkbox.id = `check-tag-${filteredRecordTags[i].id}`;
         // CREATE EVENT LISTENER WHEN CHECKBOX IS CHANGED OR ROW IS CLICKED ON TO UPDATE CHECKED STATUS OF THE GLOBAL RECORD
         checkbox.addEventListener('change', (e) => {
             e.stopImmediatePropagation();
