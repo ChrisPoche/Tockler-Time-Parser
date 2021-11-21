@@ -348,7 +348,7 @@ const postDataRetrieval = (records) => {
         if ((row.app === 'Zoom' && (row.title === 'Connecting…' || (row.title === 'Zoom Meeting' && !zoomOrigin))) || (row.app !== 'Zoom')) {
             zoomConnectionId = row.id
             for (let i = zoomConnectionId > 5 ? zoomConnectionId - 6 : 0; i < zoomConnectionId; i++) {
-                if (globalRecords[i].app === 'Outlook' || (globalRecords[i].app === 'Slack')) zoomOrigin = globalRecords[i];
+                if ((globalRecords[i].app === 'Outlook' && !globalRecords[i].title.match(/Reminder\(s\)/)) || (globalRecords[i].app === 'Slack')) zoomOrigin = globalRecords[i];
             }
             // console.log(zoomOrigin)
         };
