@@ -7,16 +7,17 @@
     left: 45%;
     top: 60%;
 }
-#date-input.data-loaded { 
-    position : fixed;
-    top : 85vh;
-    left : 20px;
+
+#date-input.data-loaded {
+    position: fixed;
+    top: 85vh;
+    left: 20px;
 }
 
 #download-csv {
-    position : fixed;
-    top : 90vh;
-    left : 20px;
+    position: fixed;
+    top: 90vh;
+    left: 20px;
 }
 
 body {
@@ -225,7 +226,7 @@ thead {
     margin-left: 1em;
 }
 
-#title-search-bar:focus {
+#title-search-bar:focus, #merge-tag-input input:focus {
     outline: none;
 }
 
@@ -267,7 +268,7 @@ thead {
     top: 4px;
     background-color: gray;
     width: 28px;
-    height:28px;
+    height: 28px;
     line-height: 2.1;
 }
 
@@ -335,7 +336,7 @@ thead {
     justify-content: flex-start;
 }
 
-#download-success {
+#download-success, #tag-exists-error {
     position: fixed;
     width: 200px;
     top: 92vh;
@@ -347,16 +348,24 @@ thead {
     animation: softFadeInOut 2.5s;
 }
 
+#tag-exists-error {
+    width: fit-content;
+    font-weight: bold;
+}
+
 @keyframes softFadeInOut {
     0% {
         opacity: 0;
     }
+
     25% {
         opacity: 1;
     }
+
     75% {
         opacity: 1;
     }
+
     100% {
         opacity: 0;
     }
@@ -366,12 +375,15 @@ thead {
     0% {
         opacity: 0;
     }
+
     25% {
         opacity: 1;
     }
+
     75% {
         opacity: 1;
     }
+
     100% {
         opacity: 0;
     }
@@ -449,4 +461,81 @@ thead {
 .title-col:hover .tool-tip {
     visibility: visible;
     opacity: 1;
+}
+
+#modal-background {
+    backdrop-filter: blur(10px);
+    width: 100vw;
+    height: 100vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+}
+
+#merge-tag-modal {
+    background-color: rgb(199, 199, 199);
+    position: absolute;
+    border-radius: .75vw;
+    display: flex;
+    flex-direction: column;
+    align-content: center;
+    justify-content: center;
+    text-align: center;
+}
+
+#merge-tag-modal div {
+    text-align: left;
+    padding: 2%;
+    border-radius: .6rem;
+}
+
+#merge-tag-modal div h3 {
+    color: rgb(77, 77, 77)
+}
+
+#merge-tag-modal div.tag-option:hover {
+    background-color: gray;
+}
+
+.hide-option {
+    -webkit-animation: optionFadeOut .8s;
+    animation: optionFadeOut .8s;
+}
+
+#merge-tag-input, #merge-tag-input input {
+    padding: 2%;
+    margin: 1vw 0 0;
+    font-size: large;
+}
+
+#merge-tag-input label {
+    margin-right: .8rem;
+}
+
+@keyframes optionFadeOut {
+    0% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+@-webkit-keyframes optionFadeOut {
+    0% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
+
+#merge-button {
+    display : inline-block;
+    width : fit-content;
+    padding : .4rem;
+    border-radius : .4rem;
+    font-size: large;
 }

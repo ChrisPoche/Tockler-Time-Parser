@@ -10,21 +10,17 @@ In the project directory, you can run:
 
 Initializes a new Electron browser window.
 
-### Considerations
-
-At this time, I've not included a application distribution tool in the package.json. Here are the suggestions made by [Electron](https://www.electronjs.org/docs/tutorial/application-distribution).
-
 ### Planned features
 
 Tagging
 
-- Ability to combine tags - Drag and Drop: when overlapping pops up modal to ask if user wants to merge or create parent-child with element
-  - This will update the tags object, and trigger a redraw of the table with the new values
+- Ability to combine tags: merge (complete) & parent-child
+  - Parent-child: need to insert tag values as objects to nest children
+    - May need to include parent ID to allow easier traversing on merges or subsequent nesting
 - Enable user to create custom auto tag filters
   - Prioritize after implementing local storage / database to allow preferences to persist
 - Ability to toggle chart from displaying results by Apps to Tags
 - Table of top tags by duration
-- Redraw tag table when tag is deleted from record table. Remove ability to delete tags tag table
 
 Styling
 
@@ -43,5 +39,7 @@ Local Storage
 Table Creation
 
 - Dry out code for record and tag table creation
+
+### To Do List
 
 ### Defects

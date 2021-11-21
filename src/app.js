@@ -30,6 +30,7 @@ let tags = [];
 let dWR = []; // Days With Records
 let visibleRecords, tagVisibleRecords;
 let tagID;
+let dragTag, dropTag;
 
 const dateInputHandler = (e) => {
     // console.log(e.type);
@@ -382,9 +383,7 @@ const postDataRetrieval = (records) => {
                     downloadSuccess.innerText = 'CSV successfully downloaded to your desktop'
                     downloadSuccess.id = 'download-success';
                     document.body.appendChild(downloadSuccess);
-                    setTimeout(() => {
-                        downloadSuccess.remove();
-                    }, 2500);
+                    downloadSuccess.addEventListener('animationend', () => downloadSuccess.remove());
                 }
             });
         });
@@ -400,16 +399,18 @@ const cleanUpAppName = (app) => {
     return app.replace('.exe', '').replace('.EXE', '');
 }
 
-const createNewTag = (name, val, recordID) => {
-    let record = globalRecords[recordID];
-    record.tags.push(tags.length);
+const createNewTag = (name, val = null, recordID = null) => {
     tags.push({ 'id': tags.length, name });
-    let rowID = `record-${recordID}`;
-    [...document.getElementById('record-table').childNodes[1].childNodes].forEach(row => {
-        if (row.id.includes(rowID)) {
-            drawTag(val, rowID)
-        }
-    })
+    if (recordID && val) {
+        let record = globalRecords[recordID];
+        record.tags.push(tags.length - 1);
+        let rowID = `record-${recordID}`;
+        [...document.getElementById('record-table').childNodes[1].childNodes].forEach(row => {
+            if (row.id.includes(rowID)) {
+                drawTag(val, rowID)
+            }
+        })
+    }
 }
 
 let hover = -1;
@@ -524,9 +525,127 @@ const drawTag = (val, rowID) => {
                 tagID = [...e.target.classList].filter(t => t.includes('tag-'))[0].split('-')[1];
                 createTagTable();
             })
+            tag.draggable = true;
+            tag.addEventListener('drag', (e) => {
+                dragTag = [...e.target.classList][1];
+                dropTag = null;
+            });
+            tag.addEventListener('dragend', (e) => {
+                if (!dropTag || dragTag === dropTag) dragTag = null; // drop isn't on another tag, clear value
+            })
+            tag.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            })
+            tag.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropTag = e.target.classList[1];
+                if (!dropTag || dragTag === dropTag) dragTag = null;
+                if (dragTag && dropTag) mergeTagModal();
+            })
             td.appendChild(tag);
         }
     })
+}
+
+const mergeTagModal = () => {
+    let modalBackground = document.createElement('div');
+    modalBackground.id = 'modal-background';
+    modalBackground.addEventListener('click', () => {
+        modalBackground.remove();
+        if (document.getElementById('merge-tag-modal')) document.getElementById('merge-tag-modal').remove();
+    })
+    document.body.appendChild(modalBackground);
+    let modal = document.createElement('div');
+    modal.id = 'merge-tag-modal';
+    let winWidth = window.innerWidth - 240;
+    let width = winWidth * .6 > 800 ? 800 : winWidth * .6;
+    let height = width * .66;
+    modal.style.width = width + 'px';
+    modal.style.height = height + 'px';
+    modal.style.left = `${(window.innerWidth / 2) - (width / 2) + 240}px`;
+    modal.style.top = `${(window.innerHeight / 2) - (height / 2)}px`;
+    let text = document.createElement('h1');
+    text.innerText = 'What would you like to do?';
+    text.style.marginBottom = `${height * .1}px`;
+    modal.appendChild(text);
+    let tagOptions = ['merge', 'parent-child'];
+    tagOptions.forEach(id => {
+        let p = document.createElement('div');
+        p.style.width = `${width * .8}px`;
+        p.style.marginLeft = `${width * .1}px`;
+        p.id = id;
+        p.classList = 'tag-option'
+        p.innerHTML = id === 'merge' ? `<h2>Merge tags: combine tags with the option to rename</h2> <h3>${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name} &#8594;&#8592; ${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}</h3>` : `<span style='color:darkgray;'><h2>Parent-child tagging: Coming Soon</h2> <h3 style='color:darkgray;'>${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name} <br><span style='line-height:1.5;margin-left:${width * .04}px;'>&#8627; ${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}</span></h3></span>`;
+        modal.appendChild(p);
+        p.addEventListener('click', (e) => {
+            let id = e.target.parentNode.id === 'merge-tag-modal' ? e.target.id : e.target.parentNode.id ? e.target.parentNode.id : e.target.parentNode.parentNode.id ? e.target.parentNode.parentNode.id : e.target.parentNode.parentNode.parentNode.id;
+            if (id === 'merge') {
+                document.getElementById(id).style.backgroundColor = 'gray';
+                tagOptions.filter(o => o !== id).forEach(o => {
+                    document.getElementById(o).addEventListener('animationend', () => {
+                        document.getElementById(o).style.visibility = 'hidden';
+                        let tagName = document.createElement('input');
+                        tagName.type = 'text';
+                        tagName.style.width = `${width * .56}px`;
+                        tagName.placeholder = `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}`;
+                        const newTagName = () => {
+                            let input = modal.querySelector('input');
+                            let title = input.value.length === 0 ? input.placeholder : input.value;
+                            if (tags.filter(tag => tag.name === title).length === 0) {
+                                createNewTag(title);
+                                replaceTags(tags.filter(tag => tag.name === title)[0].id,[parseInt(dropTag.split('-')[1]),parseInt(dragTag.split('-')[1])]);
+                                modalBackground.click();
+                            }
+                            else {
+                                let modalBoundary = modal.getBoundingClientRect();
+                                let error = document.createElement('p');
+                                error.id = 'tag-exists-error';
+                                error.innerText = `A tag named "${title}" already exists`;
+                                error.addEventListener('animationend', () => error.remove());
+                                error.style.top = `${modalBoundary.bottom-130}px`;
+                                error.style.left = `${modalBoundary.left + (width*.325)}px`;
+                                modal.appendChild(error);
+                            }
+                        }
+                        tagName.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') newTagName();
+                        })
+                        let tagLabel = document.createElement('label');
+                        tagLabel.innerText = 'Merged tag name:'
+                        let tagDiv = document.createElement('div');
+                        tagDiv.id = 'merge-tag-input';
+                        tagDiv.appendChild(tagLabel);
+                        tagDiv.appendChild(tagName);
+                        tagDiv.style.width = `${width * .8}px`;
+                        tagDiv.style.marginLeft = `${width * .1}px`;
+                        document.getElementById(o).remove();
+                        modal.appendChild(tagDiv);
+                        tagName.focus();
+                        let button = document.createElement('button');
+                        button.innerText = 'Merge';
+                        button.id = 'merge-button';
+                        button.style.margin = `${width * .05}px 0 0 ${width * .87}px`;
+                        button.addEventListener('click', newTagName)
+                        modal.appendChild(button);
+                    })
+                    document.getElementById(o).classList.add('hide-option');
+                })
+            }
+        })
+    })
+    document.body.appendChild(modal);
+};
+
+const replaceTags = (mergedID,oldTagIDs) => {
+    let records = globalRecords.filter(r => r.tags.includes(oldTagIDs[0]) || r.tags.includes(oldTagIDs[1]))
+    records.forEach(r => {
+        globalRecords[r.id].tags = [...globalRecords[r.id].tags,mergedID].filter(tag => tag !== oldTagIDs[0] && tag !== oldTagIDs[1]);
+    });
+    grabRecords(globalRecords);
+    if (document.getElementById('tag-section')) {
+        tagID = mergedID;
+        createTagTable();
+    }
 }
 
 const createTagTable = () => {
