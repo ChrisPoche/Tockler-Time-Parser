@@ -1085,7 +1085,8 @@ const grabRecords = (record) => {
             input.value = filterTitle || '';
             input.addEventListener('change', (e) => {
                 filterTitle = e.target.value;
-                grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+                let relatedTags = tags.filter(t => t.name.toLowerCase().includes(filterTitle.toLowerCase())).map(t => t.id);
+                grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase()) || r.tags.some(t => relatedTags.includes(t))) : globalRecords);
                 document.getElementById('go-to-page').max = pageCount;
             })
             th.appendChild(input);
