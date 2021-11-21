@@ -43,3 +43,8 @@ Table Creation
 ### To Do List
 
 ### Defects
+
+- Tag Table page arrows are incorrectly grayed out
+- Tags fail to draw on Record table if only one row
+  - Likely the same no-row issue as Tag table
+  
