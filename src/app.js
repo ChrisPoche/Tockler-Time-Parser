@@ -498,9 +498,19 @@ const drawTag = (val, rowID) => {
                     e.stopImmediatePropagation();
                     let idToRemove = parseInt(e.target.parentNode.classList[1].split('-')[1]);
                     if (/^\d+$/.test(idToRemove)) {
-                        let id = e.target.parentNode.parentNode.parentNode.id.substring('record-'.length);
+                        let id = e.target.parentNode.parentNode.parentNode.id;
+                        let fromTag = e.target.parentNode.parentNode.parentNode.id.includes('tag') ? true : false;
+                        id = id.substring(id.indexOf('-') + 1);
                         globalRecords[id].tags = globalRecords[id].tags.filter(t => t !== idToRemove);
                         tag.remove();
+                        if (fromTag && visibleRecords.includes(parseInt(id))) {
+                            document.getElementById(`record-${id}`).childNodes[6].childNodes.forEach(t => {
+                                if ([...t.classList].includes(`tag-${idToRemove}`)) t.remove();
+                            })
+                        }
+                        if (tagVisibleRecords.includes(parseInt(id)) && parseInt(tagID) === idToRemove) {
+                            tagVisibleRecords.filter(r => r !== parseInt(id)).length > 0 ? createTagTable() : document.getElementById('tag-section').remove();
+                        };
                         if (document.getElementsByClassName('add-tag')[0]) document.getElementsByClassName('add-tag')[0].remove();
                     };
                 })
@@ -526,352 +536,353 @@ const createTagTable = () => {
     }
 
     let filteredRecordTags = globalRecords.filter(r => r.tags.includes(parseInt(tagID)));
+    if (filteredRecordTags.length > 0) {
+        pageCountTags = filteredRecordTags.length === 0 ? 1 : Math.ceil(filteredRecordTags.length / showCountTags);
+        goToPageTags = goToPageTags > pageCountTags ? pageCountTags : goToPageTags;
+        if (document.getElementById('go-to-page-tags')) document.getElementById('go-to-page-tags').value = goToPageTags;
+        if (document.getElementById('go-to-page-tags')) document.getElementById('go-to-page-tags').max = pageCountTags;
+        if (document.getElementById('page-numbering-tags')) document.getElementById('page-numbering-tags').innerText = `Page ${goToPageTags} of ${pageCountTags}`;
+        if (document.getElementsByClassName('page-arrows-tags').length > 0) {
+            [...document.getElementsByClassName('left')].forEach(arrow => {
+                arrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
+            });
+            [...document.getElementsByClassName('right')].forEach(arrow => {
+                arrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
+            });
+        }
 
-    pageCountTags = filteredRecordTags.length === 0 ? 1 : Math.ceil(filteredRecordTags.length / showCountTags);
-    goToPageTags = goToPageTags > pageCountTags ? pageCountTags : goToPageTags;
-    if (document.getElementById('go-to-page-tags')) document.getElementById('go-to-page-tags').value = goToPageTags;
-    if (document.getElementById('go-to-page-tags')) document.getElementById('go-to-page-tags').max = pageCountTags;
-    if (document.getElementById('page-numbering-tags')) document.getElementById('page-numbering-tags').innerText = `Page ${goToPageTags} of ${pageCountTags}`;
-    if (document.getElementsByClassName('page-arrows-tags').length > 0) {
-        [...document.getElementsByClassName('left')].forEach(arrow => {
-            arrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
+
+        let tagSection = document.getElementById('tag-section');
+        tagSection.style.position = 'absolute';
+        tagSection.style.top = tagTableTop || '41vh';
+        tagSection.style.left = tagTableLeft || '300px';
+        let table = document.createElement('table');
+        table.id = 'tag-table';
+        let thead = document.createElement('thead');
+        let hr = document.createElement('tr');
+        hr.id = 'tag-table-header';
+        let topLeftTH = document.createElement('th');
+        topLeftTH.id = 'tag-tl-th';
+        topLeftTH.style.cursor = 'move';
+        // Make Record Table Draggable
+        var clickX, clickY, dragX, dragY;
+        tagSection.addEventListener('mousedown', (e) => {
+            if (e.target.id === 'tag-tl-th') {
+                e = e || window.event;
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                clickX = e.clientX;
+                clickY = e.clientY;
+                document.addEventListener('mousemove', calcTableLoc)
+            }
         });
-        [...document.getElementsByClassName('right')].forEach(arrow => {
-            arrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
-        });
-    }
-
-
-    let tagSection = document.getElementById('tag-section');
-    tagSection.style.position = 'absolute';
-    tagSection.style.top = tagTableTop || '41vh';
-    tagSection.style.left = tagTableLeft || '300px';
-    let table = document.createElement('table');
-    table.id = 'tag-table';
-    let thead = document.createElement('thead');
-    let hr = document.createElement('tr');
-    hr.id = 'tag-table-header';
-    let topLeftTH = document.createElement('th');
-    topLeftTH.id = 'tag-tl-th';
-    topLeftTH.style.cursor = 'move';
-    // Make Record Table Draggable
-    var clickX, clickY, dragX, dragY;
-    tagSection.addEventListener('mousedown', (e) => {
-        if (e.target.id === 'tag-tl-th') {
+        const calcTableLoc = (e) => {
             e = e || window.event;
             e.preventDefault();
-            e.stopImmediatePropagation();
+            dragX = clickX - e.clientX;
+            dragY = clickY - e.clientY;
             clickX = e.clientX;
             clickY = e.clientY;
-            document.addEventListener('mousemove', calcTableLoc)
+            tagTableTop = (tagSection.offsetTop - dragY) + 'px';
+            tagTableLeft = (tagSection.offsetLeft - dragX) + 'px';
+            tagSection.style.top = tagTableTop;
+            tagSection.style.left = tagTableLeft;
         }
-    });
-    const calcTableLoc = (e) => {
-        e = e || window.event;
-        e.preventDefault();
-        dragX = clickX - e.clientX;
-        dragY = clickY - e.clientY;
-        clickX = e.clientX;
-        clickY = e.clientY;
-        tagTableTop = (tagSection.offsetTop - dragY) + 'px';
-        tagTableLeft = (tagSection.offsetLeft - dragX) + 'px';
-        tagSection.style.top = tagTableTop;
-        tagSection.style.left = tagTableLeft;
-    }
-    tagSection.addEventListener('mouseup', (e) => {
-        document.removeEventListener('mousemove', calcTableLoc);
-        tagSection.removeEventListener('mouseup', calcTableLoc);
-        let maxHeight;
-        if (tagTableTop) maxHeight = window.innerHeight - parseInt(tagTableTop.replace('px', '')) - (window.innerHeight * .05)
-        tagSection.style.maxHeight = maxHeight + 'px';
-    });
-    hr.appendChild(topLeftTH);
-    let header = ['app', 'title', 'duration', 'tags'];
-    header.forEach(h => {
-        let th = document.createElement('th');
-        th.innerHTML = `${h.replace(h[0], h[0].toUpperCase())}<span style="line-height: 1.2">${sortByHeaderTags[h] === 'asc' ? ' &#129041;' : sortByHeaderTags[h] === 'desc' ? ' &#129043;' : ''}</span>`;
-        th.id = `tag-header-${h}`;
-        th.addEventListener('click', (e) => {
-            let val = e.target.id.split('-')[2];
-            if (val !== 'section' && val) {
-                sortByHeaderTags[val] = sortByHeaderTags[val] === '' ? 'asc' : sortByHeaderTags[val] === 'asc' ? 'desc' : '';
-                goToPageTags = 1;
-                createTagTable();
-            }
+        tagSection.addEventListener('mouseup', (e) => {
+            document.removeEventListener('mousemove', calcTableLoc);
+            tagSection.removeEventListener('mouseup', calcTableLoc);
+            let maxHeight;
+            if (tagTableTop) maxHeight = window.innerHeight - parseInt(tagTableTop.replace('px', '')) - (window.innerHeight * .05)
+            tagSection.style.maxHeight = maxHeight + 'px';
         });
-        if (h === 'tags') {
-            let closeButton = document.createElement('div');
-            closeButton.id = `close-tag-section`;
-            closeButton.innerText = 'X';
-            closeButton.classList = 'close-button close-tags';
-            closeButton.style.removeProperty('left');
-            closeButton.addEventListener('click', (e) => {
+        hr.appendChild(topLeftTH);
+        let header = ['app', 'title', 'duration', 'tags'];
+        header.forEach(h => {
+            let th = document.createElement('th');
+            th.innerHTML = `${h.replace(h[0], h[0].toUpperCase())}<span style="line-height: 1.2">${sortByHeaderTags[h] === 'asc' ? ' &#129041;' : sortByHeaderTags[h] === 'desc' ? ' &#129043;' : ''}</span>`;
+            th.id = `tag-header-${h}`;
+            th.addEventListener('click', (e) => {
+                let val = e.target.id.split('-')[2];
+                if (val !== 'section' && val) {
+                    sortByHeaderTags[val] = sortByHeaderTags[val] === '' ? 'asc' : sortByHeaderTags[val] === 'asc' ? 'desc' : '';
+                    goToPageTags = 1;
+                    createTagTable();
+                }
+            });
+            if (h === 'tags') {
+                let closeButton = document.createElement('div');
+                closeButton.id = `close-tag-section`;
+                closeButton.innerText = 'X';
+                closeButton.classList = 'close-button close-tags';
+                closeButton.style.removeProperty('left');
+                closeButton.addEventListener('click', (e) => {
+                    e.stopImmediatePropagation();
+                    document.getElementById('tag-section').remove();
+                    aggregateRecords();
+                });
+                th.appendChild(closeButton);
+            }
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+        let tbody = document.createElement('tbody');
+
+        let len = filteredRecordTags.length === 0 ? 1 : filteredRecordTags.length > showCountTags ? showCountTags : filteredRecordTags.length;
+
+        Object.keys(sortByHeaderTags).forEach(key => {
+            if (sortByHeaderTags[key].length > 0) filteredRecordTags = sortByHeaderTags[key] === 'asc' ? filteredRecordTags.sort((a, b) => a[key] > b[key] ? 1 : -1) : filteredRecordTags.sort((a, b) => a[key] < b[key] ? 1 : -1);
+        })
+
+        tagVisibleRecords = [];
+        for (let i = (goToPageTags - 1) * showCountTags; i < (goToPageTags * showCountTags) - (goToPageTags === pageCountTags ? showCountTags - (filteredRecordTags.length % showCountTags) : 0); i++) {
+            let tr = document.createElement('tr');
+            tr.id = `tag-${filteredRecordTags[i].id}`;
+            tagVisibleRecords.push(filteredRecordTags[i].id);
+            tr.classList = 'tag-row';
+            let firstCol = document.createElement('td');
+            firstCol.classList = 'check-col';
+            let checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = filteredRecordTags[i].checked;
+            checkbox.id = `check-tag-${filteredRecordTags[i].id}`;
+            // CREATE EVENT LISTENER WHEN CHECKBOX IS CHANGED OR ROW IS CLICKED ON TO UPDATE CHECKED STATUS OF THE GLOBAL RECORD
+            checkbox.addEventListener('change', (e) => {
                 e.stopImmediatePropagation();
-                document.getElementById('tag-section').remove();
+                let id = e.target.id.substring('check-tag-'.length);
+                globalRecords[id].checked = e.target.checked;
                 aggregateRecords();
             });
-            th.appendChild(closeButton);
-        }
-        hr.appendChild(th);
-    });
-    thead.appendChild(hr);
-    table.appendChild(thead);
-    let tbody = document.createElement('tbody');
-
-    let len = filteredRecordTags.length === 0 ? 1 : filteredRecordTags.length > showCountTags ? showCountTags : filteredRecordTags.length;
-
-    Object.keys(sortByHeaderTags).forEach(key => {
-        if (sortByHeaderTags[key].length > 0) filteredRecordTags = sortByHeaderTags[key] === 'asc' ? filteredRecordTags.sort((a, b) => a[key] > b[key] ? 1 : -1) : filteredRecordTags.sort((a, b) => a[key] < b[key] ? 1 : -1);
-    })
-
-    tagVisibleRecords = [];
-    for (let i = (goToPageTags - 1) * showCountTags; i < (goToPageTags * showCountTags) - (goToPageTags === pageCountTags ? showCountTags - (filteredRecordTags.length % showCountTags) : 0); i++) {
-        let tr = document.createElement('tr');
-        tr.id = `tag-${filteredRecordTags[i].id}`;
-        // if (len > 1) tagVisibleRecords.push(filteredRecordTags[i].id);
-        tr.classList = 'tag-row';
-        let firstCol = document.createElement('td');
-        firstCol.classList = 'check-col';
-        let checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = filteredRecordTags[i].checked;
-        checkbox.id = `check-tag-${filteredRecordTags[i].id}`;
-        // CREATE EVENT LISTENER WHEN CHECKBOX IS CHANGED OR ROW IS CLICKED ON TO UPDATE CHECKED STATUS OF THE GLOBAL RECORD
-        checkbox.addEventListener('change', (e) => {
-            e.stopImmediatePropagation();
-            let id = e.target.id.substring('check-tag-'.length);
-            globalRecords[id].checked = e.target.checked;
-            aggregateRecords();
-        });
-        tr.addEventListener('click', (e) => {
-            if (e.target.tagName !== 'INPUT') {
-                if (![...e.target.classList][0].includes('tag')) {
-                    let id = [...e.target.classList][0].includes('tool') ? e.target.parentElement.parentElement.id.substring('tag-'.length) : e.target.parentElement.id.substring('tag-'.length);
-                    let cb = document.getElementById(`check-tag-${id}`);
-                    globalRecords[id].checked = !cb.checked;
-                    // If visible toggle record table check
-                    if (document.querySelector(`#check-record-${id}`)) document.querySelector(`#check-record-${id}`).checked = !cb.checked;
-                    cb.checked = !cb.checked;
-                    ['tag-table', 'record-table'].forEach(tbl => {
-                        if (document.getElementById(tbl)) {
-                            let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                            let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
-                            let selectAllVisible = document.getElementById(selectAllVisibleID);
-                            let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
-                            if (visibleChecked === visibleCount) {
-                                selectAllVisible.checked = true;
-                                selectAllVisible.indeterminate = false;
-                            }
-                            if (visibleChecked < visibleCount) {
-                                selectAllVisible.checked = false;
-                                selectAllVisible.indeterminate = true;
-                                if (visibleChecked === 0) {
-                                    selectAllVisible.checked = false;
+            tr.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'INPUT') {
+                    if (![...e.target.classList][0].includes('tag')) {
+                        let id = [...e.target.classList][0].includes('tool') ? e.target.parentElement.parentElement.id.substring('tag-'.length) : e.target.parentElement.id.substring('tag-'.length);
+                        let cb = document.getElementById(`check-tag-${id}`);
+                        globalRecords[id].checked = !cb.checked;
+                        // If visible toggle record table check
+                        if (document.querySelector(`#check-record-${id}`)) document.querySelector(`#check-record-${id}`).checked = !cb.checked;
+                        cb.checked = !cb.checked;
+                        ['tag-table', 'record-table'].forEach(tbl => {
+                            if (document.getElementById(tbl)) {
+                                let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
+                                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
+                                let selectAllVisible = document.getElementById(selectAllVisibleID);
+                                let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
+                                if (visibleChecked === visibleCount) {
+                                    selectAllVisible.checked = true;
                                     selectAllVisible.indeterminate = false;
                                 }
+                                if (visibleChecked < visibleCount) {
+                                    selectAllVisible.checked = false;
+                                    selectAllVisible.indeterminate = true;
+                                    if (visibleChecked === 0) {
+                                        selectAllVisible.checked = false;
+                                        selectAllVisible.indeterminate = false;
+                                    }
+                                }
                             }
-                        }
-                    })
-                    aggregateRecords();
-                }
-            }
-        });
-        firstCol.appendChild(checkbox);
-        tr.appendChild(firstCol);
-        let row = [];
-        header.forEach(col => filteredRecordTags.length > 0 ? row.push(filteredRecordTags[i][col]) : row.push(''));
-        row.map((val, index) => {
-            let td = document.createElement('td');
-            td.innerText = val;
-            if (index === 0) td.classList = 'app-col';
-            if (index === 1) {
-                let tooltTip = document.createElement('span');
-                tooltTip.classList = 'tool-tip';
-                tooltTip.innerText = val;
-                td.appendChild(tooltTip);
-                td.classList = 'title-col';
-                td.addEventListener('mouseover', (e) => {
-                    let coord = e.target.getBoundingClientRect();
-                    tooltTip.style.left = coord.x + 'px';
-                    tooltTip.style.top = coord.y + .4 + 'px';
-                })
-            }
-            if (index === 2) td.classList = 'time-col';
-            if (index === 3) {
-                td.innerText = '';
-                td.classList = 'tags-col';
-            }
-            tr.appendChild(td);
-        })
-        tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    let selectAllVisible = document.createElement('input');
-    selectAllVisible.id = 'select-all-visible-tags';
-    selectAllVisible.type = 'checkbox';
-    let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible-tags').length;
-    let visibleCount = [...table.querySelectorAll('tr')].length - 1;
-    if (visibleChecked === visibleCount) {
-        selectAllVisible.checked = true;
-        selectAllVisible.indeterminate = false;
-    }
-    if (visibleChecked < visibleCount) {
-        selectAllVisible.checked = false;
-        selectAllVisible.indeterminate = true;
-        if (visibleChecked === 0) {
-            selectAllVisible.checked = false;
-            selectAllVisible.indeterminate = false;
-        }
-    }
-    selectAllVisible.addEventListener('change', (e) => {
-        let allCheckboxes = [...table.querySelectorAll('input[type="checkbox"]')].filter(c => c.id !== 'select-all-visible-tags')
-        allCheckboxes.forEach(i => {
-            let id = i.id.split('-')[2];
-            globalRecords[id].checked = selectAllVisible.checked;
-            if (document.querySelector(`#check-record-${id}`)) document.querySelector(`#check-record-${id}`).checked = selectAllVisible.checked;
-            i.checked = selectAllVisible.checked;
-        });
-        ['tag-table', 'record-table'].forEach(tbl => {
-            if (document.getElementById(tbl)) {
-                let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
-                let selectAllVisible = document.getElementById(selectAllVisibleID);
-                let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
-                if (visibleChecked === visibleCount) {
-                    selectAllVisible.checked = true;
-                    selectAllVisible.indeterminate = false;
-                }
-                if (visibleChecked < visibleCount) {
-                    selectAllVisible.checked = false;
-                    selectAllVisible.indeterminate = true;
-                    if (visibleChecked === 0) {
-                        selectAllVisible.checked = false;
-                        selectAllVisible.indeterminate = false;
+                        })
+                        aggregateRecords();
                     }
                 }
+            });
+            firstCol.appendChild(checkbox);
+            tr.appendChild(firstCol);
+            let row = [];
+            header.forEach(col => filteredRecordTags.length > 0 ? row.push(filteredRecordTags[i][col]) : row.push(''));
+            row.map((val, index) => {
+                let td = document.createElement('td');
+                td.innerText = val;
+                if (index === 0) td.classList = 'app-col';
+                if (index === 1) {
+                    let tooltTip = document.createElement('span');
+                    tooltTip.classList = 'tool-tip';
+                    tooltTip.innerText = val;
+                    td.appendChild(tooltTip);
+                    td.classList = 'title-col';
+                    td.addEventListener('mouseover', (e) => {
+                        let coord = e.target.getBoundingClientRect();
+                        tooltTip.style.left = coord.x + 'px';
+                        tooltTip.style.top = coord.y + .4 + 'px';
+                    })
+                }
+                if (index === 2) td.classList = 'time-col';
+                if (index === 3) {
+                    td.innerText = '';
+                    td.classList = 'tags-col';
+                }
+                tr.appendChild(td);
+            })
+            tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        let selectAllVisible = document.createElement('input');
+        selectAllVisible.id = 'select-all-visible-tags';
+        selectAllVisible.type = 'checkbox';
+        let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible-tags').length;
+        let visibleCount = [...table.querySelectorAll('tr')].length - 1;
+        if (visibleChecked === visibleCount) {
+            selectAllVisible.checked = true;
+            selectAllVisible.indeterminate = false;
+        }
+        if (visibleChecked < visibleCount) {
+            selectAllVisible.checked = false;
+            selectAllVisible.indeterminate = true;
+            if (visibleChecked === 0) {
+                selectAllVisible.checked = false;
+                selectAllVisible.indeterminate = false;
+            }
+        }
+        selectAllVisible.addEventListener('change', (e) => {
+            let allCheckboxes = [...table.querySelectorAll('input[type="checkbox"]')].filter(c => c.id !== 'select-all-visible-tags')
+            allCheckboxes.forEach(i => {
+                let id = i.id.split('-')[2];
+                globalRecords[id].checked = selectAllVisible.checked;
+                if (document.querySelector(`#check-record-${id}`)) document.querySelector(`#check-record-${id}`).checked = selectAllVisible.checked;
+                i.checked = selectAllVisible.checked;
+            });
+            ['tag-table', 'record-table'].forEach(tbl => {
+                if (document.getElementById(tbl)) {
+                    let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
+                    let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
+                    let selectAllVisible = document.getElementById(selectAllVisibleID);
+                    let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
+                    if (visibleChecked === visibleCount) {
+                        selectAllVisible.checked = true;
+                        selectAllVisible.indeterminate = false;
+                    }
+                    if (visibleChecked < visibleCount) {
+                        selectAllVisible.checked = false;
+                        selectAllVisible.indeterminate = true;
+                        if (visibleChecked === 0) {
+                            selectAllVisible.checked = false;
+                            selectAllVisible.indeterminate = false;
+                        }
+                    }
+                }
+            })
+        })
+        topLeftTH.appendChild(selectAllVisible)
+        if (document.getElementById('tag-table')) document.getElementById('tag-table').remove();
+        tagSection.prepend(table);
+
+        aggregateRecords();
+
+        // Draw tags after table is drawn
+        document.getElementById('tag-table').childNodes[1].childNodes.forEach(row => {
+            if (globalRecords[row.id.substring(row.id.indexOf('-') + 1)]) {
+                let val = globalRecords[row.id.substring(row.id.indexOf('-') + 1)].tags;
+                drawTag(val, row.id)
             }
         })
-    })
-    topLeftTH.appendChild(selectAllVisible)
-    if (document.getElementById('tag-table')) document.getElementById('tag-table').remove();
-    tagSection.prepend(table);
 
-    aggregateRecords();
+        if (document.getElementById('tag-page-controls') === null) { //document.getElementById('page-controls').remove();
+            let pageControlBar = document.createElement('div');
+            pageControlBar.id = 'tag-page-controls';
+            // Go to Page
+            let goToPageLabel = document.createElement('label');
+            let goToPageInput = document.createElement('input');
+            goToPageLabel.innerText = 'Go to Page:';
+            goToPageInput.type = 'number';
+            goToPageInput.id = 'go-to-page-tags';
+            goToPageInput.value = goToPageTags;
+            goToPageInput.min = 1;
+            goToPageInput.max = pageCountTags;
+            goToPageInput.addEventListener('change', (e) => {
+                goToPageTags = e.target.value > pageCountTags ? parseInt(pageCountTags) : parseInt(e.target.value);
+                if (!isNaN(goToPageTags)) document.getElementById('go-to-page-tags').value = goToPageTags;
+                if (goToPageTags < 1 || isNaN(goToPageTags)) {
+                    goToPageTags = 1;
+                    document.getElementById('go-to-page-tags').value = 1;
+                }
+                createTagTable();
+            });
+            pageControlBar.appendChild(goToPageLabel);
+            pageControlBar.appendChild(goToPageInput);
+            // Page # of #
+            let pageNumLabel = document.createElement('label');
+            pageNumLabel.innerText = `Page ${goToPageTags} of ${pageCountTags}`;
+            pageNumLabel.id = 'page-numbering-tags';
+            pageControlBar.prepend(pageNumLabel);
+            // Left Arrows
+            let leftArrowBox = document.createElement('div');
+            leftArrowBox.id = 'left-arrows-tags';
+            let leftSingleArrow = document.createElement('label');
+            leftSingleArrow.id = 'previous-page-arrow-tags';
+            leftSingleArrow.addEventListener('click', (e) => {
+                goToPageTags = goToPageTags !== 1 ? goToPageTags - 1 : 1;
+                document.getElementById('go-to-page-tags').value = goToPageTags;
+                createTagTable();
+            });
+            leftSingleArrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
+            leftSingleArrow.innerHTML = '&#8249;';
+            leftSingleArrow.classList = 'left page-arrows';
+            leftArrowBox.prepend(leftSingleArrow);
 
-    // Draw tags after table is drawn
-    document.getElementById('tag-table').childNodes[1].childNodes.forEach(row => {
-        if (globalRecords[row.id.substring(row.id.indexOf('-') + 1)]) {
-            let val = globalRecords[row.id.substring(row.id.indexOf('-') + 1)].tags;
-            drawTag(val, row.id)
-        }
-    })
-
-    if (document.getElementById('tag-page-controls') === null) { //document.getElementById('page-controls').remove();
-        let pageControlBar = document.createElement('div');
-        pageControlBar.id = 'tag-page-controls';
-        // Go to Page
-        let goToPageLabel = document.createElement('label');
-        let goToPageInput = document.createElement('input');
-        goToPageLabel.innerText = 'Go to Page:';
-        goToPageInput.type = 'number';
-        goToPageInput.id = 'go-to-page-tags';
-        goToPageInput.value = goToPageTags;
-        goToPageInput.min = 1;
-        goToPageInput.max = pageCountTags;
-        goToPageInput.addEventListener('change', (e) => {
-            goToPageTags = e.target.value > pageCountTags ? parseInt(pageCountTags) : parseInt(e.target.value);
-            if (!isNaN(goToPageTags)) document.getElementById('go-to-page-tags').value = goToPageTags;
-            if (goToPageTags < 1 || isNaN(goToPageTags)) {
+            let leftDoubleArrow = document.createElement('label');
+            leftDoubleArrow.id = 'first-page-arrow-tags';
+            leftDoubleArrow.addEventListener('click', (e) => {
                 goToPageTags = 1;
-                document.getElementById('go-to-page-tags').value = 1;
+                document.getElementById('go-to-page-tags').value = goToPageTags;
+                createTagTable();
+            });
+            leftDoubleArrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
+            leftDoubleArrow.innerHTML = '&#171;';
+            leftDoubleArrow.classList = 'left page-arrows';
+            leftArrowBox.prepend(leftDoubleArrow);
+            pageControlBar.prepend(leftArrowBox);
+            // Show # dropdown
+            let showDropdown = document.createElement('select');
+            showDropdown.id = 'show-record-count-tags';
+            showDropdown.value = showCountTags;
+            for (let i = 10; i <= 50; i += 10) {
+                let option = document.createElement('option');
+                option.value = i;
+                option.innerText = i;
+                option.id = `show-${i}`;
+                if (showCountTags === i) option.selected = 'selected';
+                showDropdown.appendChild(option);
             }
-            createTagTable();
-        });
-        pageControlBar.appendChild(goToPageLabel);
-        pageControlBar.appendChild(goToPageInput);
-        // Page # of #
-        let pageNumLabel = document.createElement('label');
-        pageNumLabel.innerText = `Page ${goToPageTags} of ${pageCountTags}`;
-        pageNumLabel.id = 'page-numbering-tags';
-        pageControlBar.prepend(pageNumLabel);
-        // Left Arrows
-        let leftArrowBox = document.createElement('div');
-        leftArrowBox.id = 'left-arrows-tags';
-        let leftSingleArrow = document.createElement('label');
-        leftSingleArrow.id = 'previous-page-arrow-tags';
-        leftSingleArrow.addEventListener('click', (e) => {
-            goToPageTags = goToPageTags !== 1 ? goToPageTags - 1 : 1;
-            document.getElementById('go-to-page-tags').value = goToPageTags;
-            createTagTable();
-        });
-        leftSingleArrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
-        leftSingleArrow.innerHTML = '&#8249;';
-        leftSingleArrow.classList = 'left page-arrows';
-        leftArrowBox.prepend(leftSingleArrow);
+            showDropdown.addEventListener('change', (e) => {
+                showCountTags = parseInt(e.target.value);
+                document.getElementById('go-to-page-tags').max = Math.ceil(filteredRecordTags.length / showCountTags);
+                createTagTable();
+            })
+            let showLabel = document.createElement('label');
+            showLabel.innerText = 'Show ';
+            pageControlBar.appendChild(showLabel);
+            pageControlBar.appendChild(showDropdown);
+            // Right Arrows
+            let rightArrowBox = document.createElement('div');
+            rightArrowBox.id = 'right-arrows-tags';
+            let rightSingleArrow = document.createElement('label');
+            rightSingleArrow.id = 'next-page-arrow-tags';
+            rightSingleArrow.addEventListener('click', (e) => {
+                goToPageTags = goToPageTags !== pageCountTags ? goToPageTags + 1 : pageCountTags;
+                document.getElementById('go-to-page-tags').value = goToPageTags;
+                createTagTable();
+            });
+            rightSingleArrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
+            rightSingleArrow.innerHTML = '&#8250;';
+            rightSingleArrow.classList = 'right page-arrows';
+            rightArrowBox.appendChild(rightSingleArrow);
 
-        let leftDoubleArrow = document.createElement('label');
-        leftDoubleArrow.id = 'first-page-arrow-tags';
-        leftDoubleArrow.addEventListener('click', (e) => {
-            goToPageTags = 1;
-            document.getElementById('go-to-page-tags').value = goToPageTags;
-            createTagTable();
-        });
-        leftDoubleArrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
-        leftDoubleArrow.innerHTML = '&#171;';
-        leftDoubleArrow.classList = 'left page-arrows';
-        leftArrowBox.prepend(leftDoubleArrow);
-        pageControlBar.prepend(leftArrowBox);
-        // Show # dropdown
-        let showDropdown = document.createElement('select');
-        showDropdown.id = 'show-record-count-tags';
-        showDropdown.value = showCountTags;
-        for (let i = 10; i <= 50; i += 10) {
-            let option = document.createElement('option');
-            option.value = i;
-            option.innerText = i;
-            option.id = `show-${i}`;
-            if (showCountTags === i) option.selected = 'selected';
-            showDropdown.appendChild(option);
+            let rightDoubleArrow = document.createElement('label');
+            rightDoubleArrow.id = 'last-page-arrow-tags';
+            rightDoubleArrow.addEventListener('click', (e) => {
+                goToPageTags = pageCountTags;
+                document.getElementById('go-to-page-tags').value = goToPageTags;
+                createTagTable();
+            });
+            rightDoubleArrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
+            rightDoubleArrow.innerHTML = '&#187;';
+            rightDoubleArrow.classList = 'right page-arrows';
+            rightArrowBox.appendChild(rightDoubleArrow);
+            pageControlBar.appendChild(rightArrowBox);
+            tagSection.appendChild(pageControlBar);
         }
-        showDropdown.addEventListener('change', (e) => {
-            showCountTags = parseInt(e.target.value);
-            document.getElementById('go-to-page-tags').max = Math.ceil(filteredRecordTags.length / showCountTags);
-            createTagTable();
-        })
-        let showLabel = document.createElement('label');
-        showLabel.innerText = 'Show ';
-        pageControlBar.appendChild(showLabel);
-        pageControlBar.appendChild(showDropdown);
-        // Right Arrows
-        let rightArrowBox = document.createElement('div');
-        rightArrowBox.id = 'right-arrows-tags';
-        let rightSingleArrow = document.createElement('label');
-        rightSingleArrow.id = 'next-page-arrow-tags';
-        rightSingleArrow.addEventListener('click', (e) => {
-            goToPageTags = goToPageTags !== pageCountTags ? goToPageTags + 1 : pageCountTags;
-            document.getElementById('go-to-page-tags').value = goToPageTags;
-            createTagTable();
-        });
-        rightSingleArrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
-        rightSingleArrow.innerHTML = '&#8250;';
-        rightSingleArrow.classList = 'right page-arrows';
-        rightArrowBox.appendChild(rightSingleArrow);
-
-        let rightDoubleArrow = document.createElement('label');
-        rightDoubleArrow.id = 'last-page-arrow-tags';
-        rightDoubleArrow.addEventListener('click', (e) => {
-            goToPageTags = pageCountTags;
-            document.getElementById('go-to-page-tags').value = goToPageTags;
-            createTagTable();
-        });
-        rightDoubleArrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
-        rightDoubleArrow.innerHTML = '&#187;';
-        rightDoubleArrow.classList = 'right page-arrows';
-        rightArrowBox.appendChild(rightDoubleArrow);
-        pageControlBar.appendChild(rightArrowBox);
-        tagSection.appendChild(pageControlBar);
+        // aggregateRecords();
     }
-    // aggregateRecords();
 };
 
 const grabRecords = (record) => {
