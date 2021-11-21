@@ -121,6 +121,7 @@ const grabRecordsFromDatePicker = (date) => {
             }
 
         });
+        tags = [];
         postDataRetrieval(records);
     });
 };
