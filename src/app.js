@@ -2,33 +2,62 @@ let dataLoaded = false;
 let refreshedApps = false;
 let removedApps = [];
 let globalRecords = [];
-// let filterBoxRechecked = false;
 let chartIncludeRemoved = true;
-let showCount = 10, goToPage = 1, pageCount = 1;
-let showCountTags = 10, goToPageTags = 1, pageCountTags = 1;
-let showCountZoom = 10, goToPageZoom = 1, pageCountZoom = 1;
-let tableTop, tableLeft, tagTableTop, tagTableLeft, zoomTableTop, zoomTableLeft;
 let tableTab = document.createElement('div');
 let filterTitle = '';
 let editMode = false;
-let sortByHeader = {
-    app: '',
-    title: '',
-    start: '',
-    end: '',
-    duration: '',
-}
-let sortByHeaderTags = {
-    app: '',
-    title: '',
-    duration: '',
-}
+// let showCount = 10, goToPage = 1, pageCount = 1;
+// let showCountTags = 10, goToPageTags = 1, pageCountTags = 1;
+// let showCountZoom = 10, goToPageZoom = 1, pageCountZoom = 1;
+// let sortByHeader = {
+//     app: '',
+//     title: '',
+//     start: '',
+//     end: '',
+//     duration: '',
+// }
+// let sortByHeaderTags = {
+//     app: '',
+//     title: '',
+//     duration: '',
+// }
+// let tableTop, tableLeft, tagTableTop, tagTableLeft, zoomTableTop, zoomTableLeft;
+// let filterBoxRechecked = false;
+// let visibleRecords, tagVisibleRecords, zoomVisibleRecords;
 let tags = [];
 let dWR = []; // Days With Records
-let visibleRecords, tagVisibleRecords, zoomVisibleRecords;
-let tagID;
 let dragTag, dropTag;
-let zoomTags = [];
+let filteredRecords = [], tagID, zoomTags = []; // Global table trackers
+
+
+let table = ['record', 'tag', 'zoom'].reduce((prev, t) => ({ ...prev, [`${t}-show`]: 10, [`${t}-go-to-page`]: 1, [`${t}-page-count`]: 1, [`${t}-top`]: '', [`${t}-left`]: '' }), {});
+let sortByHeader = {
+    'record': {
+        'app': '',
+        'title': '',
+        'start': '',
+        'end': '',
+        'duration': ''
+    },
+    'tag': {
+        'app': '',
+        'title': '',
+        'duration': ''
+    },
+    'zoom': {
+        'tags': '',
+        'duration': '',
+        'start': '',
+        'end': ''
+    }
+}
+let visibleRecords = {
+    'record': [],
+    'tag': [],
+    'zoom': []
+};
+
+
 
 const dateInputHandler = (e) => {
     // console.log(e.type);
@@ -291,275 +320,750 @@ const addTagsToZoomMeetings = (zoomOrigin, row) => {
         if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title, row.tags, row.id)
         else {
             globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
-            if (visibleRecords.includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
+            // if (visibleRecords.includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
+            if (visibleRecords['record'].includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
         }
     }
     if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title, row.tags, row.id)
     if (tags.filter(tag => tag.name === title).length > 0 && !globalRecords[row.id].tags.includes(tags.filter(tag => tag.name === title)[0].id)) {
         globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
-        if (visibleRecords.includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
+        // if (visibleRecords.includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
+        if (visibleRecords['record'].includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
     }
 }
 
-const createZoomTable = () => {
-    if (!document.getElementById('zoom-section')) {
-        let zoomSection = document.createElement('div');
-        zoomSection.id = 'zoom-section';
-        document.getElementById('container').appendChild(zoomSection);
+const createTable = (type) => {
+    if (!document.getElementById(`${type}-section`)) {
+        let section = document.createElement('div');
+        section.id = `${type}-section`;
+        document.getElementById('container').appendChild(section);
     }
-
-    pageCountZoom = zoomTags.length === 0 ? 1 : Math.ceil(zoomTags.length / showCountZoom);
-    goToPageZoom = goToPageZoom > pageCountZoom ? pageCountZoom : goToPageZoom;
-    if (document.getElementById('go-to-page-zoom')) document.getElementById('go-to-page-zoom').value = goToPageZoom;
-    if (document.getElementById('go-to-page-zoom')) document.getElementById('go-to-page-zoom').max = pageCountZoom;
-    if (document.getElementById('page-numbering-zoom')) document.getElementById('page-numbering-zoom').innerText = `Page ${goToPageZoom} of ${pageCountZoom}`;
-    if (document.getElementsByClassName('page-arrows-zoom').length > 0) {
-        [...document.getElementsByClassName('left')].forEach(arrow => {
-            arrow.style.color = goToPageZoom === 1 ? 'gray' : 'black';
-        });
-        [...document.getElementsByClassName('right')].forEach(arrow => {
-            arrow.style.color = goToPageZoom === pageCountZoom ? 'gray' : 'black';
-        });
-    }
-
-    let zoomSection = document.getElementById('zoom-section');
-    zoomSection.style.position = 'absolute';
-    zoomSection.style.top = zoomTableTop || '41vh';
-    zoomSection.style.left = zoomTableLeft || '800px';
-    let table = document.createElement('table');
-    table.id = 'zoom-table';
-    let thead = document.createElement('thead');
-    let hr = document.createElement('tr');
-    hr.id = 'zoom-table-header';
-    let header = ['tags', 'duration', 'start', 'end'];
-    header.forEach(h => {
-        let th = document.createElement('th');
-        th.innerHTML = `${h.replace(h[0], h[0].toUpperCase())}`;
-        th.id = `zoom-header-${h}`;
-        if (h === 'tags') {
-            th.id = 'zoom-tl-th';
-            th.style.cursor = 'move';
-            // Make Record Table Draggable
-            var clickX, clickY, dragX, dragY;
-            zoomSection.addEventListener('mousedown', (e) => {
-                if (e.target.id === 'zoom-tl-th') {
-                    e = e || window.event;
-                    e.preventDefault();
-                    e.stopImmediatePropagation();
-                    clickX = e.clientX;
-                    clickY = e.clientY;
-                    document.addEventListener('mousemove', calcTableLoc)
-                }
+    
+    let results;
+    if (type === 'record') results = filteredRecords.filter(r => !removedApps.includes(r.app));
+    if (type === 'tag') results = globalRecords.filter(r => r.tags.includes(parseInt(tagID)));
+    if (type === 'zoom') results = zoomTags;
+    if (results.length > 0) {
+        table[`${type}-page-count`] = results.length === 0 ? 1 : Math.ceil(results.length / table[`${type}-show`])
+        table[`${type}-go-to-page`] = table[`${type}-go-to-page`] > table[`${type}-page-count`] ? table[`${type}-page-count`] : table[`${type}-go-to-page`];
+        if (document.getElementById(`${type}-go-to-page`)) document.getElementById(`${type}-go-to-page`).value = table[`${type}-go-to-page`];
+        if (document.getElementById(`${type}-go-to-page`)) document.getElementById(`${type}-go-to-page`).max = table[`${type}-page-count`];
+        if (document.getElementById(`${type}-page-numbering`)) document.getElementById(`${type}-page-numbering`).innerText = `Page ${table[`${type}-go-to-page`]} of ${table[`${type}-page-count`]}`;
+        if (document.getElementsByClassName(`${type}-page-arrows`).length > 0) {
+            [...document.getElementsByClassName('left')].forEach(arrow => {
+                // arrow.style.color = goToPage === 1 ? 'gray' : 'black';
+                arrow.style.color = table[`${type}-go-to-page`] === 1 ? 'gray' : 'black';
             });
-            const calcTableLoc = (e) => {
-                e = e || window.event;
-                e.preventDefault();
-                dragX = clickX - e.clientX;
-                dragY = clickY - e.clientY;
-                clickX = e.clientX;
-                clickY = e.clientY;
-                zoomTableTop = (zoomSection.offsetTop - dragY) + 'px';
-                zoomTableLeft = (zoomSection.offsetLeft - dragX) + 'px';
-                zoomSection.style.top = zoomTableTop;
-                zoomSection.style.left = zoomTableLeft;
+            [...document.getElementsByClassName('right')].forEach(arrow => {
+                // arrow.style.color = goToPage === pageCount ? 'gray' : 'black';
+                arrow.style.color = table[`${type}-go-to-page`] === table[`${type}-page-count`] ? 'gray' : 'black';
+            });
+            if (document.getElementsByClassName(`${type}-page-arrows`).length > 0) {
+                [...document.getElementsByClassName('left')].forEach(arrow => {
+                    // arrow.style.color = goToPage === 1 ? 'gray' : 'black';
+                    arrow.style.color = table[`${type}-go-to-page`] === 1 ? 'gray' : 'black';
+                });
+                [...document.getElementsByClassName('right')].forEach(arrow => {
+                    // arrow.style.color = goToPage === pageCount ? 'gray' : 'black';
+                    arrow.style.color = table[`${type}-go-to-page`] === table[`${type}-page-count`] ? 'gray' : 'black';
+                });
             }
-            zoomSection.addEventListener('mouseup', (e) => {
-                document.removeEventListener('mousemove', calcTableLoc);
-                zoomSection.removeEventListener('mouseup', calcTableLoc);
-                let maxHeight;
-                if (zoomTableTop) maxHeight = window.innerHeight - parseInt(zoomTableTop.replace('px', '')) - (window.innerHeight * .05)
-                zoomSection.style.maxHeight = maxHeight + 'px';
-            });
         }
-        if (h === 'end') {
-            let closeButton = document.createElement('div');
-            closeButton.id = `close-zoom-section`;
-            closeButton.innerText = 'X';
-            closeButton.classList = 'close-button close-zooms';
-            closeButton.style.removeProperty('left');
-            closeButton.addEventListener('click', (e) => {
-                e.stopImmediatePropagation();
-                document.getElementById('zoom-section').remove();
-            });
-            th.appendChild(closeButton);
-        }
-        hr.appendChild(th);
-    });
-    thead.appendChild(hr);
-    table.appendChild(thead);
-    let tbody = document.createElement('tbody');
-
-    zoomVisibleRecords = [];
-    for (let i = (goToPageZoom - 1) * showCountZoom; i < (goToPageZoom * showCountZoom) - (goToPageZoom === pageCountZoom ? showCountZoom - (zoomTags.length % showCountZoom) : 0); i++) {
-        let tr = document.createElement('tr');
-        tr.id = `zoom-${zoomTags[i].start}`;
-        zoomVisibleRecords.push(zoomTags[i].start);
-        tr.classList = 'zoom-row';
-        header.forEach((val, index) => {
-
-            let td = document.createElement('td');
-            if (index === 0) { // Tags
-                td.classList = 'tags-col';
-                td.addEventListener('mouseenter', (e) => {
-                    if (!document.getElementById('tag-search')) {
-                        let addTag = document.createElement('span');
-                        addTag.classList = 'add-tag';
-                        addTag.innerText = '+';
-                        td.appendChild(addTag);
-                        addTag.addEventListener('click', (e) => {
-                            let addTagDiv = document.createElement('div');
-                            addTagDiv.style.display = 'inline-block';
-                            let tagSearch = document.createElement('input');
-                            tagSearch.id = 'tag-search';
-                            tagSearch.type = 'text';
-                            tagSearch.addEventListener('focus', searchTags);
-                            tagSearch.addEventListener('keyup', searchTags);
-                            tagSearch.addEventListener('blur', removeSearchTagsDropdown);
-                            addTagDiv.appendChild(tagSearch);
-                            td.appendChild(addTagDiv);
-                            document.getElementById('tag-search').focus();
-                            addTag.remove();
-                        });
+        let section = document.getElementById(`${type}-section`);
+        section.style.position = 'absolute';
+        let top = {
+            'record': '5vh',
+            'tag': '41vh',
+            'zoom': '41vh'
+        };
+        let left = {
+            'record': '300px',
+            'tag': '300px',
+            'zoom': '800px'
+        };
+        section.style.top = table[`${type}-top`] || top[type];
+        section.style.left = table[`${type}-left`] || left[type];
+        let tableTag = document.createElement('table');
+        tableTag.id = `${type}-table`
+        let thead = document.createElement('thead');
+        let hr = document.createElement('tr');
+        hr.id = `${type}-table-header`;
+        let header = {
+            // 'record': [`${type}-tl-th`, ...Object.keys(sortByHeader['record'])],
+            // 'tag': [`${type}-tl-th`, ...Object.keys(sortByHeader['tag'])],
+            // 'zoom': [...Object.keys(sortByHeader['zoom'])]
+            'record': [`${type}-tl-th`, 'app', 'title', 'start', 'end', 'duration', 'tags'],
+            'tag': [`${type}-tl-th`, 'app', 'title', 'duration', 'tags'],
+            'zoom': ['tags','duration','start','end']
+        };
+        header[type].forEach((h, index) => {
+            let th = document.createElement('th');
+            let thText = {
+                'record': `${h}<span style="line-height: 1.2">${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>`,
+                'tag': `${h.replace(h[0], h[0].toUpperCase())}<span style="line-height: 1.2">${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>`,
+                'zoom': `${h.replace(h[0], h[0].toUpperCase())}`
+            }
+            th.innerHTML = thText[type];
+            th.id = `${type}-header-${h}`;
+            if (index === header[type].length-2) { // Close Button Tag and Zoom
+                let closeButton = document.createElement('div');
+                closeButton.id = `close-${type}-section`;
+                closeButton.innerText = 'X';
+                closeButton.classList = `close-button close-${type}`;
+                closeButton.style.removeProperty('left');
+                closeButton.addEventListener('click', (e) => {
+                    e.stopImmediatePropagation();
+                    document.getElementById(`${type}-section`).remove();
+                    aggregateRecords();
+                });
+                th.appendChild(closeButton);
+            }
+            if (index === 0) {
+                th.id = `${type}-tl-th`;
+                th.innerText = '';
+                th.style.cursor = 'move';
+                // Make table draggable
+                var clickX, clickY, dragX, dragY;
+                section.addEventListener('mousedown', (e) => {
+                    if (e.target.id === `${type}-tl-th`) {
+                        e = e || window.event;
+                        e.preventDefault();
+                        e.stopImmediatePropagation();
+                        clickX = e.clientX;
+                        clickY = e.clientY;
+                        document.addEventListener('mousemove', calcTableLoc)
                     }
                 });
-                td.addEventListener('mouseleave', (e) => {
-                    let addTag = document.getElementsByClassName('add-tag')[0];
-                    if (addTag) addTag.remove();
+                const calcTableLoc = (e) => {
+                    e = e || window.event;
+                    e.preventDefault();
+                    dragX = clickX - e.clientX;
+                    dragY = clickY - e.clientY;
+                    clickX = e.clientX;
+                    clickY = e.clientY;
+                    // tableTop = (recordSection.offsetTop - dragY) + 'px';
+                    table[`${type}-top`] = (section.offsetTop - dragY) + 'px';
+                    // tableLeft = (recordSection.offsetLeft - dragX) + 'px';
+                    table[`${type}-left`] = (section.offsetLeft - dragX) + 'px';
+                    // recordSection.style.top = tableTop;
+                    section.style.top = table[`${type}-top`];
+                    // recordSection.style.left = tableLeft;
+                    section.style.left = table[`${type}-left`];
+                }
+                section.addEventListener('mouseup', (e) => {
+                    document.removeEventListener('mousemove', calcTableLoc);
+                    section.removeEventListener('mouseup', calcTableLoc);
+                    let maxHeight;
+                    if (top[type]) maxHeight = window.innerHeight - parseInt(top[type].replace('px', '')) - (window.innerHeight * .05)
+                    section.style.maxHeight = maxHeight + 'px';
                 });
             }
-            if (index === 1) { // Duration
-                let dur = (Date.parse(globalRecords[zoomTags[i].end].end) - Date.parse(globalRecords[zoomTags[i].start].start)) / 1000;
-                let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
-                let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
-                let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
-                td.innerText = `${hh}:${mm}:${ss}`;
+            hr.appendChild(th);
+            if (type === 'record' && h === 'title') {
+                let input = document.createElement('input');
+                input.id = 'title-search-bar';
+                input.value = filterTitle || '';
+                input.addEventListener('change', (e) => {
+                    filterTitle = e.target.value;
+                    let relatedTags = tags.filter(t => t.name.toLowerCase().includes(filterTitle.toLowerCase())).map(t => t.id);
+                    filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase()) || r.tags.some(t => relatedTags.includes(t))) : globalRecords;
+                    createTable('record');
+                    document.getElementById(`${type}-go-to-page`).max = table[`${type}-page-count`];
+                })
+                th.appendChild(input);
             }
-            if (index > 0) td.classList = 'time-col';
-            if (index === 2) td.innerText = globalRecords[zoomTags[i].start].start;
-            if (index === 3) td.innerText = globalRecords[zoomTags[i].end].end;
-            tr.appendChild(td);
-        })
-        tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    if (document.getElementById('zoom-table')) document.getElementById('zoom-table').remove();
-    zoomSection.prepend(table);
-    // Draw tags after table is drawn
-    document.getElementById('zoom-table').childNodes[1].childNodes.forEach(row => {
-        let val = globalRecords[row.id.split('-')[1]].tags;
-        drawTag(val, row.id);
-    })
+        });
+        thead.appendChild(hr);
+        tableTag.appendChild(thead);
+        let tbody = document.createElement('tbody');
+        Object.keys(sortByHeader[type]).forEach(key => {
+            if (sortByHeader[type][key].length > 0) results = sortByHeader[type][key] === 'asc' ? results.sort((a, b) => a[key] > b[key] ? 1 : -1) : results.sort((a, b) => a[key] < b[key] ? 1 : -1);
+        });
+        visibleRecords[type] = [];
+        for (let i = (table[`${type}-go-to-page`] - 1) * table[`${type}-show`]; i < (table[`${type}-go-to-page`] * table[`${type}-show`]) - (table[`${type}-go-to-page`] === table[`${type}-page-count`] ? table[`${type}-show`] - (results.length % table[`${type}-show`]) : 0); i++) {
+            let tr = document.createElement('tr');
+            tr.id = `${type}-${results[i][type === 'zoom' ? 'start' : 'id']}`;
+            visibleRecords[type].push(results[i][type === 'zoom' ? 'start' : 'id']);
+            tr.classList = `${type}-row`;
+            if (type !== 'zoom') { // Checkboxes / Record and Tag
+                let firstCol = document.createElement('td');
+                firstCol.classList = 'check-col';
+                let checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = results[i].checked;
+                checkbox.id = `check-${type}-${results[i].id}`;
+                checkbox.addEventListener('change', (e) => {
+                    e.stopImmediatePropagation();
+                    let id = e.target.id.substring(`check-${type}-`.length);
+                    globalRecords[id].checked = e.target.checked;
+                    aggregateRecords();
+                });
+                tr.addEventListener('click', (e) => {
+                    if (e.target.tagName !== 'INPUT') {
+                        if (![...e.target.classList][0].includes('tag')) {
+                            let id = [...e.target.classList][0].includes('tool') ? e.target.parentElement.parentElement.id.substring(`${type}-`.length) : e.target.parentElement.id.substring(`${type}-`.length);
+                            let cb = document.getElementById(`check-${type}-${id}`);
+                            globalRecords[id].checked = !cb.checked;
+                            if (document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`)) document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`).checked = !cb.checked;
+                            cb.checked = !cb.checked;
+                            ['tag-table', 'record-table'].forEach(tbl => {
+                                if (document.getElementById(tbl)) {
+                                    let selectAllVisibleID = `select-all-visible-${type}`;
+                                    let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
+                                    let selectAllVisible = document.getElementById(selectAllVisibleID);
+                                    let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
+                                    if (visibleChecked === visibleCount) {
+                                        selectAllVisible.checked = true;
+                                        selectAllVisible.indeterminate = false;
+                                    }
+                                    if (visibleChecked < visibleCount) {
+                                        selectAllVisible.checked = false;
+                                        selectAllVisible.indeterminate = true;
+                                        if (visibleChecked === 0) {
+                                            selectAllVisible.checked = false;
+                                            selectAllVisible.indeterminate = false;
+                                        }
+                                    }
+                                }
+                            })
+                            aggregateRecords();
+                        }
+                    }
+                });
+                firstCol.appendChild(checkbox);
+                tr.appendChild(firstCol);
+                let row = [];
+                header[type].forEach((col, index) => index > 0 && results.length > 0 ? row.push(results[i][col]) : row.push(''));
+                row.shift(); // may need to remove this
+                row.map((val, index) => {
+                    let td = document.createElement('td');
+                    td.innerText = val;
+                    if (index === 0) td.classList = 'app-col';
+                    if (index === 1) {
+                        let tooltTip = document.createElement('span');
+                        tooltTip.classList = 'tool-tip';
+                        tooltTip.innerText = val;
+                        td.appendChild(tooltTip);
+                        td.classList = 'title-col';
+                        td.addEventListener('mouseover', (e) => {
+                            let coord = e.target.getBoundingClientRect();
+                            tooltTip.style.left = coord.x + 'px';
+                            tooltTip.style.top = coord.y + .4 + 'px';
+                        })
+                    }
+                    if (index === 2 || (type === 'record' && index === 3 || index === 4)) td.classList = 'time-col';
+                    if ((type === 'tag' && index === 3) || (type === 'record' && index === 5)) {
+                        td.innerText = '';
+                        td.classList = 'tags-col';
+                        td.addEventListener('mouseenter', () => {
+                            if (!document.getElementById('tag-search')) {
+                                let addTag = document.createElement('span');
+                                addTag.classList = 'add-tag';
+                                addTag.innerText = '+';
+                                td.appendChild(addTag);
+                                addTag.addEventListener('click', (e) => {
+                                    let addTagDiv = document.createElement('div');
+                                    addTagDiv.style.display = 'inline-block';
+                                    let tagSearch = document.createElement('input');
+                                    tagSearch.id = 'tag-search';
+                                    tagSearch.type = 'text';
+                                    tagSearch.addEventListener('focus', searchTags);
+                                    tagSearch.addEventListener('keyup', searchTags);
+                                    tagSearch.addEventListener('blur', removeSearchTagsDropdown);
+                                    addTagDiv.appendChild(tagSearch);
+                                    td.appendChild(addTagDiv);
+                                    document.getElementById('tag-search').focus();
+                                    addTag.remove();
+                                });
+                            }
+                        });
+                        td.addEventListener('mouseleave', (e) => {
+                            let addTag = document.getElementsByClassName('add-tag')[0];
+                            if (addTag) addTag.remove();
+                        });
+                    }
+                    tr.appendChild(td);
+                })
 
-    if (document.getElementById('zoom-page-controls') === null) {
-        let pageControlBar = document.createElement('div');
-        pageControlBar.id = 'zoom-page-controls';
-        // Go to Page
-        let goToPageLabel = document.createElement('label');
-        let goToPageInput = document.createElement('input');
-        goToPageLabel.innerText = 'Go to Page:';
-        goToPageInput.type = 'number';
-        goToPageInput.id = 'go-to-page-zoom';
-        goToPageInput.value = goToPageZoom;
-        goToPageInput.min = 1;
-        goToPageInput.max = pageCountZoom;
-        goToPageInput.addEventListener('change', (e) => {
-            goToPageZoom = e.target.value > pageCountZoom ? parseInt(pageCountZoom) : parseInt(e.target.value);
-            if (!isNaN(goToPageZoom)) document.getElementById('go-to-page-zoom').value = goToPageZoom;
-            if (goToPageZoom < 1 || isNaN(goToPageZoom)) {
-                goToPageZoom = 1;
-                document.getElementById('go-to-page-zoom').value = 1;
             }
-            createZoomTable();
-        });
-        pageControlBar.appendChild(goToPageLabel);
-        pageControlBar.appendChild(goToPageInput);
-        // Page # of #
-        let pageNumLabel = document.createElement('label');
-        pageNumLabel.innerText = `Page ${goToPageZoom} of ${pageCountZoom}`;
-        pageNumLabel.id = 'page-numbering-zoom';
-        pageControlBar.prepend(pageNumLabel);
-        // Left Arrows
-        let leftArrowBox = document.createElement('div');
-        leftArrowBox.id = 'left-arrows-zoom';
-        let leftSingleArrow = document.createElement('label');
-        leftSingleArrow.id = 'previous-page-arrow-zoom';
-        leftSingleArrow.addEventListener('click', (e) => {
-            goToPageZoom = goToPageZoom !== 1 ? goToPageZoom - 1 : 1;
-            document.getElementById('go-to-page-zoom').value = goToPageZoom;
-            createZoomTable();
-        });
-        leftSingleArrow.style.color = goToPageZoom === 1 ? 'gray' : 'black';
-        leftSingleArrow.innerHTML = '&#8249;';
-        leftSingleArrow.classList = 'left page-arrows';
-        leftArrowBox.prepend(leftSingleArrow);
-
-        let leftDoubleArrow = document.createElement('label');
-        leftDoubleArrow.id = 'first-page-arrow-zoom';
-        leftDoubleArrow.addEventListener('click', (e) => {
-            goToPageZoom = 1;
-            document.getElementById('go-to-page-zoom').value = goToPageZoom;
-            createZoomTable();
-        });
-        leftDoubleArrow.style.color = goToPageZoom === 1 ? 'gray' : 'black';
-        leftDoubleArrow.innerHTML = '&#171;';
-        leftDoubleArrow.classList = 'left page-arrows';
-        leftArrowBox.prepend(leftDoubleArrow);
-        pageControlBar.prepend(leftArrowBox);
-        // Show # dropdown
-        let showDropdown = document.createElement('select');
-        showDropdown.id = 'show-record-count-zoom';
-        showDropdown.value = showCountZoom;
-        for (let i = 10; i <= 50; i += 10) {
-            let option = document.createElement('option');
-            option.value = i;
-            option.innerText = i;
-            option.id = `show-${i}`;
-            if (showCountZoom === i) option.selected = 'selected';
-            showDropdown.appendChild(option);
+            if (type === 'zoom') {
+                header[type].forEach((val, index) => {
+                    let td = document.createElement('td');
+                    if (index === 0) { // Tags
+                        td.classList = 'tags-col';
+                        td.addEventListener('mouseenter', () => {
+                            if (!document.getElementById('tag-search')) {
+                                let addTag = document.createElement('span');
+                                addTag.classList = 'add-tag';
+                                addTag.innerText = '+';
+                                td.appendChild(addTag);
+                                addTag.addEventListener('click', (e) => {
+                                    let addTagDiv = document.createElement('div');
+                                    addTagDiv.style.display = 'inline-block';
+                                    let tagSearch = document.createElement('input');
+                                    tagSearch.id = 'tag-search';
+                                    tagSearch.type = 'text';
+                                    tagSearch.addEventListener('focus', searchTags);
+                                    tagSearch.addEventListener('keyup', searchTags);
+                                    tagSearch.addEventListener('blur', removeSearchTagsDropdown);
+                                    addTagDiv.appendChild(tagSearch);
+                                    td.appendChild(addTagDiv);
+                                    document.getElementById('tag-search').focus();
+                                    addTag.remove();
+                                });
+                            }
+                        });
+                        td.addEventListener('mouseleave', (e) => {
+                            let addTag = document.getElementsByClassName('add-tag')[0];
+                            if (addTag) addTag.remove();
+                        });
+                    }
+                    if (index === 1) { // Duration
+                        let dur = (Date.parse(globalRecords[results[i].end].end) - Date.parse(globalRecords[results[i].start].start)) / 1000;
+                        let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
+                        let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
+                        let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
+                        td.innerText = `${hh}:${mm}:${ss}`;
+                    }
+                    if (index > 0) td.classList = 'time-col';
+                    if (index === 2) td.innerText = globalRecords[results[i].start].start;
+                    if (index === 3) td.innerText = globalRecords[results[i].end].end;
+                    tr.appendChild(td);
+                })
+            }
+            tbody.appendChild(tr);
         }
-        showDropdown.addEventListener('change', (e) => {
-            showCountZoom = parseInt(e.target.value);
-            document.getElementById('go-to-page-zoom').max = Math.ceil(zoomTags.length / showCountZoom);
-            createZoomTable();
-        })
-        let showLabel = document.createElement('label');
-        showLabel.innerText = 'Show ';
-        pageControlBar.appendChild(showLabel);
-        pageControlBar.appendChild(showDropdown);
-        // Right Arrows
-        let rightArrowBox = document.createElement('div');
-        rightArrowBox.id = 'right-arrows-zoom';
-        let rightSingleArrow = document.createElement('label');
-        rightSingleArrow.id = 'next-page-arrow-zoom';
-        rightSingleArrow.addEventListener('click', (e) => {
-            goToPageZoom = goToPageZoom !== pageCountZoom ? goToPageZoom + 1 : pageCountZoom;
-            document.getElementById('go-to-page-zoom').value = goToPageZoom;
-            createZoomTable();
+        tableTag.appendChild(tbody);
+        if (type === 'record' || type === 'tag') {
+            let selectAllVisible = document.createElement('input');
+            selectAllVisible.id = `select-all-visible-${type}`;
+            selectAllVisible.type = 'checkbox';
+            let visibleChecked = [...tableTag.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== `select-all-visible-${type}`).length;
+            let visibleCount = [...tableTag.querySelectorAll('tr')].length - 1;
+            if (visibleChecked === visibleCount) {
+                selectAllVisible.checked = true;
+                selectAllVisible.indeterminate = false;
+            }
+            if (visibleChecked < visibleCount) {
+                selectAllVisible.checked = false;
+                selectAllVisible.indeterminate = true;
+                if (visibleChecked === 0) {
+                    selectAllVisible.checked = false;
+                    selectAllVisible.indeterminate = false;
+                }
+            }
+            selectAllVisible.addEventListener('change', (e) => {
+                let allCheckboxes = [...tableTag.querySelectorAll('input[type="checkbox"]')].filter(c => c.id !== `select-all-visible-${type}`)
+                allCheckboxes.forEach(i => {
+                    let id = i.id.split('-')[2];
+                    globalRecords[id].checked = selectAllVisible.checked;
+                    if (document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`)) document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`).checked = selectAllVisible.checked;
+                    i.checked = selectAllVisible.checked;
+                });
+                ['tag-table', 'record-table'].forEach(tbl => {
+                    if (document.getElementById(tbl)) {
+                        let selectAllVisibleID = `select-all-visible-${type}`;
+                        let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
+                        let selectAllVisible = document.getElementById(selectAllVisibleID);
+                        let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
+                        if (visibleChecked === visibleCount) {
+                            selectAllVisible.checked = true;
+                            selectAllVisible.indeterminate = false;
+                        }
+                        if (visibleChecked < visibleCount) {
+                            selectAllVisible.checked = false;
+                            selectAllVisible.indeterminate = true;
+                            if (visibleChecked === 0) {
+                                selectAllVisible.checked = false;
+                                selectAllVisible.indeterminate = false;
+                            }
+                        }
+                    }
+                })
+            })
+            hr.childNodes[0].appendChild(selectAllVisible)
+        }
+        if (document.getElementById(`${type}-table`)) document.getElementById(`${type}-table`).remove();
+        section.prepend(tableTag);
+        // aggregateRecords();
+        // Draw tags after table is drawn
+        document.getElementById(`${type}-table`).childNodes[1].childNodes.forEach(row => {
+            if (globalRecords[row.id.split('-')[1]]) {
+                let val = globalRecords[row.id.split('-')[1]].tags;
+                drawTag(val, row.id);
+            }
         });
-        rightSingleArrow.style.color = goToPageZoom === pageCountZoom ? 'gray' : 'black';
-        rightSingleArrow.innerHTML = '&#8250;';
-        rightSingleArrow.classList = 'right page-arrows';
-        rightArrowBox.appendChild(rightSingleArrow);
+        if (document.getElementById(`${type}-page-controls`) === null) {
+            let pageControlBar = document.createElement('div');
+            pageControlBar.id = (`${type}-page-controls`);
+            // Go to Page
+            let goToPageLabel = document.createElement('label');
+            let goToPageInput = document.createElement('input');
+            goToPageLabel.innerText = 'Go to Page:';
+            goToPageInput.type = 'number';
+            goToPageInput.id = `${type}-go-to-page`;
+            goToPageInput.value = table[`${type}-go-to-page`];
+            goToPageInput.min = 1;
+            goToPageInput.max = table[`${type}-page-count`];
+            goToPageInput.addEventListener('change', (e) => {
+                table[`${type}-go-to-page`] = e.target.value > table[`${type}-page-count`] ? parseInt(table[`${type}-page-count`]) : parseInt(e.target.value);
+                if (!isNaN(table[`${type}-go-to-page`])) document.getElementById(`${type}-go-to-page`).value = table[`${type}-go-to-page`];
+                if (table[`${type}-go-to-page`] < 1 || isNaN(table[`${type}-go-to-page`])) {
+                    table[`${type}-go-to-page`] = 1;
+                    document.getElementById(`${type}-go-to-page`).value = 1;
+                }
+                createTable(type);
+            });
+            pageControlBar.appendChild(goToPageLabel);
+            pageControlBar.appendChild(goToPageInput);
+            // Page # of #
+            let pageNumLabel = document.createElement('label');
+            pageNumLabel.innerText = `Page ${table[`${type}-go-to-page`]} of ${table[`${type}-page-count`]}`;
+            pageNumLabel.id = `${type}-page-numbering`;
+            pageControlBar.prepend(pageNumLabel);
+            // Left Arrows
+            let leftArrowBox = document.createElement('div');
+            leftArrowBox.id = `left-arrows-${type}`;
+            let leftSingleArrow = document.createElement('label');
+            leftSingleArrow.id = `previous-page-arrow-${type}`;
+            leftSingleArrow.addEventListener('click', (e) => {
+                table[`${type}-go-to-page`] = table[`${type}-go-to-page`] !== 1 ? table[`${type}-go-to-page`] - 1 : 1;
+                document.getElementById(`${type}-go-to-page`).value = table[`${type}-go-to-page`];
+                createTable(type);
+            });
+            leftSingleArrow.style.color = table[`${type}-go-to-page`] === 1 ? 'gray' : 'black';
+            leftSingleArrow.innerHTML = '&#8249;';
+            leftSingleArrow.classList = 'left page-arrows';
+            leftArrowBox.prepend(leftSingleArrow);
 
-        let rightDoubleArrow = document.createElement('label');
-        rightDoubleArrow.id = 'last-page-arrow-zoom';
-        rightDoubleArrow.addEventListener('click', (e) => {
-            goToPageZoom = pageCountZoom;
-            document.getElementById('go-to-page-zoom').value = goToPageZoom;
-            createZoomTable();
-        });
-        rightDoubleArrow.style.color = goToPageZoom === pageCountZoom ? 'gray' : 'black';
-        rightDoubleArrow.innerHTML = '&#187;';
-        rightDoubleArrow.classList = 'right page-arrows';
-        rightArrowBox.appendChild(rightDoubleArrow);
-        pageControlBar.appendChild(rightArrowBox);
-        zoomSection.appendChild(pageControlBar);
+            let leftDoubleArrow = document.createElement('label');
+            leftDoubleArrow.id = `first-page-arrow-${type}`;
+            leftDoubleArrow.addEventListener('click', (e) => {
+                table[`${type}-go-to-page`] = 1;
+                document.getElementById(`${type}-go-to-page`).value = table[`${type}-go-to-page`];
+                createTable();
+            });
+            leftDoubleArrow.style.color = table[`${type}-go-to-page`] === 1 ? 'gray' : 'black';
+            leftDoubleArrow.innerHTML = '&#171;';
+            leftDoubleArrow.classList = 'left page-arrows';
+            leftArrowBox.prepend(leftDoubleArrow);
+            pageControlBar.prepend(leftArrowBox);
+            // Show # dropdown
+            let showDropdown = document.createElement('select');
+            showDropdown.id = `${type}-show`;
+            showDropdown.value = table[`${type}-show`];
+            for (let i = 10; i <= 50; i += 10) {
+                let option = document.createElement('option');
+                option.value = i;
+                option.innerText = i;
+                option.id = `show-${i}`;
+                if (table[`${type}-show`] === i) option.selected = 'selected';
+                showDropdown.appendChild(option);
+            }
+            showDropdown.addEventListener('change', (e) => {
+                table[`${type}-show`] = parseInt(e.target.value);
+                document.getElementById(`${type}-go-to-page`).max = Math.ceil(results.length / table[`${type}-show`]);
+                createTable(type);
+                // createZoomTable();
+            })
+            let showLabel = document.createElement('label');
+            showLabel.innerText = 'Show ';
+            pageControlBar.appendChild(showLabel);
+            pageControlBar.appendChild(showDropdown);
+            // Right Arrows
+            let rightArrowBox = document.createElement('div');
+            rightArrowBox.id = `right-arrows-${type}`;
+            let rightSingleArrow = document.createElement('label');
+            rightSingleArrow.id = `next-page-arrow-${type}`;
+            rightSingleArrow.addEventListener('click', (e) => {
+                table[`${type}-go-to-page`] = table[`${type}-go-to-page`] !== table[`${type}-page-count`] ? table[`${type}-go-to-page`] + 1 : table[`${type}-page-count`];
+                document.getElementById(`${type}-go-to-page`).value = table[`${type}-go-to-page`];
+                createTable(type);
+            });
+            rightSingleArrow.style.color = table[`${type}-go-to-page`] === table[`${type}-page-count`] ? 'gray' : 'black';
+            rightSingleArrow.innerHTML = '&#8250;';
+            rightSingleArrow.classList = 'right page-arrows';
+            rightArrowBox.appendChild(rightSingleArrow);
+
+            let rightDoubleArrow = document.createElement('label');
+            rightDoubleArrow.id = `last-page-arrow-${type}`;
+            rightDoubleArrow.addEventListener('click', (e) => {
+                table[`${type}-go-to-page`] = table[`${type}-page-count`];
+                document.getElementById(`${type}-go-to-page`).value = table[`${type}-go-to-page`];
+                createTable(type);
+            });
+            rightDoubleArrow.style.color = table[`${type}-go-to-page`] === table[`${type}-page-count`] ? 'gray' : 'black';
+            rightDoubleArrow.innerHTML = '&#187;';
+            rightDoubleArrow.classList = 'right page-arrows';
+            rightArrowBox.appendChild(rightDoubleArrow);
+            pageControlBar.appendChild(rightArrowBox);
+            section.appendChild(pageControlBar);
+        }
+        if (type === 'record') resizeTableColumns();
+        aggregateRecords();
     }
 }
+
+// const createZoomTable = () => {
+//     if (!document.getElementById('zoom-section')) {
+//         let zoomSection = document.createElement('div');
+//         zoomSection.id = 'zoom-section';
+//         document.getElementById('container').appendChild(zoomSection);
+//     }
+
+//     pageCountZoom = zoomTags.length === 0 ? 1 : Math.ceil(zoomTags.length / showCountZoom);
+//     goToPageZoom = goToPageZoom > pageCountZoom ? pageCountZoom : goToPageZoom;
+//     if (document.getElementById('go-to-page-zoom')) document.getElementById('go-to-page-zoom').value = goToPageZoom;
+//     if (document.getElementById('go-to-page-zoom')) document.getElementById('go-to-page-zoom').max = pageCountZoom;
+//     if (document.getElementById('page-numbering-zoom')) document.getElementById('page-numbering-zoom').innerText = `Page ${goToPageZoom} of ${pageCountZoom}`;
+//     if (document.getElementsByClassName('page-arrows-zoom').length > 0) {
+//         [...document.getElementsByClassName('left')].forEach(arrow => {
+//             arrow.style.color = goToPageZoom === 1 ? 'gray' : 'black';
+//         });
+//         [...document.getElementsByClassName('right')].forEach(arrow => {
+//             arrow.style.color = goToPageZoom === pageCountZoom ? 'gray' : 'black';
+//         });
+//     }
+
+//     let zoomSection = document.getElementById('zoom-section');
+//     zoomSection.style.position = 'absolute';
+//     zoomSection.style.top = zoomTableTop || '41vh';
+//     zoomSection.style.left = zoomTableLeft || '800px';
+//     let table = document.createElement('table');
+//     table.id = 'zoom-table';
+//     let thead = document.createElement('thead');
+//     let hr = document.createElement('tr');
+//     hr.id = 'zoom-table-header';
+//     let header = ['tags', 'duration', 'start', 'end'];
+//     header.forEach(h => {
+//         let th = document.createElement('th');
+//         th.innerHTML = `${h.replace(h[0], h[0].toUpperCase())}`;
+//         th.id = `zoom-header-${h}`;
+//         if (h === 'tags') {
+//             th.id = 'zoom-tl-th';
+//             th.style.cursor = 'move';
+//             // Make Record Table Draggable
+//             var clickX, clickY, dragX, dragY;
+//             zoomSection.addEventListener('mousedown', (e) => {
+//                 if (e.target.id === 'zoom-tl-th') {
+//                     e = e || window.event;
+//                     e.preventDefault();
+//                     e.stopImmediatePropagation();
+//                     clickX = e.clientX;
+//                     clickY = e.clientY;
+//                     document.addEventListener('mousemove', calcTableLoc)
+//                 }
+//             });
+//             const calcTableLoc = (e) => {
+//                 e = e || window.event;
+//                 e.preventDefault();
+//                 dragX = clickX - e.clientX;
+//                 dragY = clickY - e.clientY;
+//                 clickX = e.clientX;
+//                 clickY = e.clientY;
+//                 zoomTableTop = (zoomSection.offsetTop - dragY) + 'px';
+//                 zoomTableLeft = (zoomSection.offsetLeft - dragX) + 'px';
+//                 zoomSection.style.top = zoomTableTop;
+//                 zoomSection.style.left = zoomTableLeft;
+//             }
+//             zoomSection.addEventListener('mouseup', (e) => {
+//                 document.removeEventListener('mousemove', calcTableLoc);
+//                 zoomSection.removeEventListener('mouseup', calcTableLoc);
+//                 let maxHeight;
+//                 if (zoomTableTop) maxHeight = window.innerHeight - parseInt(zoomTableTop.replace('px', '')) - (window.innerHeight * .05)
+//                 zoomSection.style.maxHeight = maxHeight + 'px';
+//             });
+//         }
+//         if (h === 'end') {
+//             let closeButton = document.createElement('div');
+//             closeButton.id = `close-zoom-section`;
+//             closeButton.innerText = 'X';
+//             closeButton.classList = 'close-button close-zooms';
+//             closeButton.style.removeProperty('left');
+//             closeButton.addEventListener('click', (e) => {
+//                 e.stopImmediatePropagation();
+//                 document.getElementById('zoom-section').remove();
+//             });
+//             th.appendChild(closeButton);
+//         }
+//         hr.appendChild(th);
+//     });
+//     thead.appendChild(hr);
+//     table.appendChild(thead);
+//     let tbody = document.createElement('tbody');
+
+//     zoomVisibleRecords = [];
+//     for (let i = (goToPageZoom - 1) * showCountZoom; i < (goToPageZoom * showCountZoom) - (goToPageZoom === pageCountZoom ? showCountZoom - (zoomTags.length % showCountZoom) : 0); i++) {
+//         let tr = document.createElement('tr');
+//         tr.id = `zoom-${zoomTags[i].start}`;
+//         zoomVisibleRecords.push(zoomTags[i].start);
+//         tr.classList = 'zoom-row';
+//         header.forEach((val, index) => {
+
+//             let td = document.createElement('td');
+//             if (index === 0) { // Tags
+//                 td.classList = 'tags-col';
+//                 td.addEventListener('mouseenter', (e) => {
+//                     if (!document.getElementById('tag-search')) {
+//                         let addTag = document.createElement('span');
+//                         addTag.classList = 'add-tag';
+//                         addTag.innerText = '+';
+//                         td.appendChild(addTag);
+//                         addTag.addEventListener('click', (e) => {
+//                             let addTagDiv = document.createElement('div');
+//                             addTagDiv.style.display = 'inline-block';
+//                             let tagSearch = document.createElement('input');
+//                             tagSearch.id = 'tag-search';
+//                             tagSearch.type = 'text';
+//                             tagSearch.addEventListener('focus', searchTags);
+//                             tagSearch.addEventListener('keyup', searchTags);
+//                             tagSearch.addEventListener('blur', removeSearchTagsDropdown);
+//                             addTagDiv.appendChild(tagSearch);
+//                             td.appendChild(addTagDiv);
+//                             document.getElementById('tag-search').focus();
+//                             addTag.remove();
+//                         });
+//                     }
+//                 });
+//                 td.addEventListener('mouseleave', (e) => {
+//                     let addTag = document.getElementsByClassName('add-tag')[0];
+//                     if (addTag) addTag.remove();
+//                 });
+//             }
+//             if (index === 1) { // Duration
+//                 let dur = (Date.parse(globalRecords[zoomTags[i].end].end) - Date.parse(globalRecords[zoomTags[i].start].start)) / 1000;
+//                 let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
+//                 let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
+//                 let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
+//                 td.innerText = `${hh}:${mm}:${ss}`;
+//             }
+//             if (index > 0) td.classList = 'time-col';
+//             if (index === 2) td.innerText = globalRecords[zoomTags[i].start].start;
+//             if (index === 3) td.innerText = globalRecords[zoomTags[i].end].end;
+//             tr.appendChild(td);
+//         })
+//         tbody.appendChild(tr);
+//     }
+//     table.appendChild(tbody);
+//     if (document.getElementById('zoom-table')) document.getElementById('zoom-table').remove();
+//     zoomSection.prepend(table);
+//     // Draw tags after table is drawn
+//     document.getElementById('zoom-table').childNodes[1].childNodes.forEach(row => {
+//         let val = globalRecords[row.id.split('-')[1]].tags;
+//         drawTag(val, row.id);
+//     })
+
+//     if (document.getElementById('zoom-page-controls') === null) {
+//         let pageControlBar = document.createElement('div');
+//         pageControlBar.id = 'zoom-page-controls';
+//         // Go to Page
+//         let goToPageLabel = document.createElement('label');
+//         let goToPageInput = document.createElement('input');
+//         goToPageLabel.innerText = 'Go to Page:';
+//         goToPageInput.type = 'number';
+//         goToPageInput.id = 'go-to-page-zoom';
+//         goToPageInput.value = goToPageZoom;
+//         goToPageInput.min = 1;
+//         goToPageInput.max = pageCountZoom;
+//         goToPageInput.addEventListener('change', (e) => {
+//             goToPageZoom = e.target.value > pageCountZoom ? parseInt(pageCountZoom) : parseInt(e.target.value);
+//             if (!isNaN(goToPageZoom)) document.getElementById('go-to-page-zoom').value = goToPageZoom;
+//             if (goToPageZoom < 1 || isNaN(goToPageZoom)) {
+//                 goToPageZoom = 1;
+//                 document.getElementById('go-to-page-zoom').value = 1;
+//             }
+//             createZoomTable();
+//         });
+//         pageControlBar.appendChild(goToPageLabel);
+//         pageControlBar.appendChild(goToPageInput);
+//         // Page # of #
+//         let pageNumLabel = document.createElement('label');
+//         pageNumLabel.innerText = `Page ${goToPageZoom} of ${pageCountZoom}`;
+//         pageNumLabel.id = 'page-numbering-zoom';
+//         pageControlBar.prepend(pageNumLabel);
+//         // Left Arrows
+//         let leftArrowBox = document.createElement('div');
+//         leftArrowBox.id = 'left-arrows-zoom';
+//         let leftSingleArrow = document.createElement('label');
+//         leftSingleArrow.id = 'previous-page-arrow-zoom';
+//         leftSingleArrow.addEventListener('click', (e) => {
+//             goToPageZoom = goToPageZoom !== 1 ? goToPageZoom - 1 : 1;
+//             document.getElementById('go-to-page-zoom').value = goToPageZoom;
+//             createZoomTable();
+//         });
+//         leftSingleArrow.style.color = goToPageZoom === 1 ? 'gray' : 'black';
+//         leftSingleArrow.innerHTML = '&#8249;';
+//         leftSingleArrow.classList = 'left page-arrows';
+//         leftArrowBox.prepend(leftSingleArrow);
+
+//         let leftDoubleArrow = document.createElement('label');
+//         leftDoubleArrow.id = 'first-page-arrow-zoom';
+//         leftDoubleArrow.addEventListener('click', (e) => {
+//             goToPageZoom = 1;
+//             document.getElementById('go-to-page-zoom').value = goToPageZoom;
+//             createZoomTable();
+//         });
+//         leftDoubleArrow.style.color = goToPageZoom === 1 ? 'gray' : 'black';
+//         leftDoubleArrow.innerHTML = '&#171;';
+//         leftDoubleArrow.classList = 'left page-arrows';
+//         leftArrowBox.prepend(leftDoubleArrow);
+//         pageControlBar.prepend(leftArrowBox);
+//         // Show # dropdown
+//         let showDropdown = document.createElement('select');
+//         showDropdown.id = 'show-record-count-zoom';
+//         showDropdown.value = showCountZoom;
+//         for (let i = 10; i <= 50; i += 10) {
+//             let option = document.createElement('option');
+//             option.value = i;
+//             option.innerText = i;
+//             option.id = `show-${i}`;
+//             if (showCountZoom === i) option.selected = 'selected';
+//             showDropdown.appendChild(option);
+//         }
+//         showDropdown.addEventListener('change', (e) => {
+//             showCountZoom = parseInt(e.target.value);
+//             document.getElementById('go-to-page-zoom').max = Math.ceil(zoomTags.length / showCountZoom);
+//             createZoomTable();
+//         })
+//         let showLabel = document.createElement('label');
+//         showLabel.innerText = 'Show ';
+//         pageControlBar.appendChild(showLabel);
+//         pageControlBar.appendChild(showDropdown);
+//         // Right Arrows
+//         let rightArrowBox = document.createElement('div');
+//         rightArrowBox.id = 'right-arrows-zoom';
+//         let rightSingleArrow = document.createElement('label');
+//         rightSingleArrow.id = 'next-page-arrow-zoom';
+//         rightSingleArrow.addEventListener('click', (e) => {
+//             goToPageZoom = goToPageZoom !== pageCountZoom ? goToPageZoom + 1 : pageCountZoom;
+//             document.getElementById('go-to-page-zoom').value = goToPageZoom;
+//             createZoomTable();
+//         });
+//         rightSingleArrow.style.color = goToPageZoom === pageCountZoom ? 'gray' : 'black';
+//         rightSingleArrow.innerHTML = '&#8250;';
+//         rightSingleArrow.classList = 'right page-arrows';
+//         rightArrowBox.appendChild(rightSingleArrow);
+
+//         let rightDoubleArrow = document.createElement('label');
+//         rightDoubleArrow.id = 'last-page-arrow-zoom';
+//         rightDoubleArrow.addEventListener('click', (e) => {
+//             goToPageZoom = pageCountZoom;
+//             document.getElementById('go-to-page-zoom').value = goToPageZoom;
+//             createZoomTable();
+//         });
+//         rightDoubleArrow.style.color = goToPageZoom === pageCountZoom ? 'gray' : 'black';
+//         rightDoubleArrow.innerHTML = '&#187;';
+//         rightDoubleArrow.classList = 'right page-arrows';
+//         rightArrowBox.appendChild(rightDoubleArrow);
+//         pageControlBar.appendChild(rightArrowBox);
+//         zoomSection.appendChild(pageControlBar);
+//     }
+// }
 
 const postDataRetrieval = (records) => {
     document.getElementById('date-input').value = records[0].start.split(' ')[0];
     globalRecords = records;
+    filteredRecords = records;
     let apps = [...new Set(records.map(r => r.app))];
     dataLoaded = true;
 
@@ -577,7 +1081,8 @@ const postDataRetrieval = (records) => {
     refreshedApps = true;
 
     createAppFilter(apps);
-    grabRecords(records);
+    createTable('record');
+    // grabRecords(records);
 
     // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
     let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/, / [T-t]ransition/, /\(?rca|RCA\)?/, /[P-p]ager[D-d]uty/]
@@ -651,7 +1156,10 @@ const postDataRetrieval = (records) => {
         let zTB = document.createElement('button');
         zTB.id = 'zoom-table-button';
         zTB.innerText = 'Zoom Table'
-        zTB.addEventListener('click', createZoomTable);
+        // zTB.addEventListener('click', createZoomTable);
+        zTB.addEventListener('click', () => { 
+            createTable('zoom');
+        });
         document.body.appendChild(zTB);
     }
 
@@ -697,7 +1205,7 @@ const searchTags = (e) => {
                 let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
                 if (sortedTags[i].name !== 'Add Tag') {
                     record.tags.push(tags.filter(tag => tag.name === e.target.innerText)[0].id);
-                    drawTag(record.tags, `${visibleRecords.includes(record.id) ? 'record' : 'zoom'}-${record.id}`);
+                    drawTag(record.tags, `${visibleRecords['record'].includes(record.id) ? 'record' : 'zoom'}-${record.id}`);
                 }
                 if (sortedTags[i].name === 'Add Tag' && document.getElementById('tag-search').value.length > 0 && document.getElementById('tag-search').value.toLowerCase() !== 'add tag' && tags.filter(tag => tag.name === document.getElementById('tag-search').value.trim().toLowerCase()).length === 0) handleAddTag(td);
             });
@@ -769,13 +1277,16 @@ const drawTag = (val, rowID) => {
                         id = id.substring(id.indexOf('-') + 1);
                         globalRecords[id].tags = globalRecords[id].tags.filter(t => t !== idToRemove);
                         tag.remove();
-                        if (fromTag && visibleRecords.includes(parseInt(id))) {
+                        // if (fromTag && visibleRecords.includes(parseInt(id))) {
+                        if (fromTag && visibleRecords['record'].includes(parseInt(id))) {
                             document.getElementById(`record-${id}`).childNodes[6].childNodes.forEach(t => {
                                 if ([...t.classList].includes(`tag-${idToRemove}`)) t.remove();
                             })
                         }
-                        if (tagVisibleRecords.includes(parseInt(id)) && parseInt(tagID) === idToRemove) {
-                            tagVisibleRecords.filter(r => r !== parseInt(id)).length > 0 ? createTagTable() : document.getElementById('tag-section').remove();
+                        // if (tagVisibleRecords.includes(parseInt(id)) && parseInt(tagID) === idToRemove) {
+                        if (visibleRecords['tag'].includes(parseInt(id)) && parseInt(tagID) === idToRemove) {
+                            // tagVisibleRecords.filter(r => r !== parseInt(id)).length > 0 ? createTagTable() : document.getElementById('tag-section').remove();
+                            visibleRecords['tag'].filter(r => r !== parseInt(id)).length > 0 ? createTable('tag') : document.getElementById('tag-section').remove();
                         };
                         if (document.getElementsByClassName('add-tag')[0]) document.getElementsByClassName('add-tag')[0].remove();
                     };
@@ -787,7 +1298,8 @@ const drawTag = (val, rowID) => {
             })
             tag.addEventListener('click', (e) => {
                 tagID = [...e.target.classList].filter(t => t.includes('tag-'))[0].split('-')[1];
-                createTagTable();
+                createTable('tag')
+                //createTagTable();
             })
             tag.draggable = true;
             tag.addEventListener('drag', (e) => {
@@ -905,740 +1417,742 @@ const replaceTags = (mergedID, oldTagIDs) => {
     records.forEach(r => {
         globalRecords[r.id].tags = [...globalRecords[r.id].tags, mergedID].filter(tag => tag !== oldTagIDs[0] && tag !== oldTagIDs[1]);
     });
-    grabRecords(globalRecords);
+    createTable('record');
+    //grabRecords(globalRecords);
     if (document.getElementById('tag-section')) {
         tagID = mergedID;
-        createTagTable();
+        createTable('tag');
+        // createTagTable();
     }
 }
 
-const createTagTable = () => {
-    if (!document.getElementById('tag-section')) {
-        let tagSection = document.createElement('div');
-        tagSection.id = 'tag-section';
-        document.getElementById('container').appendChild(tagSection);
-    }
+// const createTagTable = () => {
+//     if (!document.getElementById('tag-section')) {
+//         let tagSection = document.createElement('div');
+//         tagSection.id = 'tag-section';
+//         document.getElementById('container').appendChild(tagSection);
+//     }
 
-    let filteredRecordTags = globalRecords.filter(r => r.tags.includes(parseInt(tagID)));
-    if (filteredRecordTags.length > 0) {
-        pageCountTags = filteredRecordTags.length === 0 ? 1 : Math.ceil(filteredRecordTags.length / showCountTags);
-        goToPageTags = goToPageTags > pageCountTags ? pageCountTags : goToPageTags;
-        if (document.getElementById('go-to-page-tags')) document.getElementById('go-to-page-tags').value = goToPageTags;
-        if (document.getElementById('go-to-page-tags')) document.getElementById('go-to-page-tags').max = pageCountTags;
-        if (document.getElementById('page-numbering-tags')) document.getElementById('page-numbering-tags').innerText = `Page ${goToPageTags} of ${pageCountTags}`;
-        if (document.getElementsByClassName('page-arrows-tags').length > 0) {
-            [...document.getElementsByClassName('left')].forEach(arrow => {
-                arrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
-            });
-            [...document.getElementsByClassName('right')].forEach(arrow => {
-                arrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
-            });
-        }
+//     let filteredRecordTags = globalRecords.filter(r => r.tags.includes(parseInt(tagID)));
+//     if (filteredRecordTags.length > 0) {
+//         pageCountTags = filteredRecordTags.length === 0 ? 1 : Math.ceil(filteredRecordTags.length / showCountTags);
+//         goToPageTags = goToPageTags > pageCountTags ? pageCountTags : goToPageTags;
+//         if (document.getElementById('go-to-page-tags')) document.getElementById('go-to-page-tags').value = goToPageTags;
+//         if (document.getElementById('go-to-page-tags')) document.getElementById('go-to-page-tags').max = pageCountTags;
+//         if (document.getElementById('page-numbering-tags')) document.getElementById('page-numbering-tags').innerText = `Page ${goToPageTags} of ${pageCountTags}`;
+//         if (document.getElementsByClassName('page-arrows-tags').length > 0) {
+//             [...document.getElementsByClassName('left')].forEach(arrow => {
+//                 arrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
+//             });
+//             [...document.getElementsByClassName('right')].forEach(arrow => {
+//                 arrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
+//             });
+//         }
 
 
-        let tagSection = document.getElementById('tag-section');
-        tagSection.style.position = 'absolute';
-        tagSection.style.top = tagTableTop || '41vh';
-        tagSection.style.left = tagTableLeft || '300px';
-        let table = document.createElement('table');
-        table.id = 'tag-table';
-        let thead = document.createElement('thead');
-        let hr = document.createElement('tr');
-        hr.id = 'tag-table-header';
-        let topLeftTH = document.createElement('th');
-        topLeftTH.id = 'tag-tl-th';
-        topLeftTH.style.cursor = 'move';
-        // Make Record Table Draggable
-        var clickX, clickY, dragX, dragY;
-        tagSection.addEventListener('mousedown', (e) => {
-            if (e.target.id === 'tag-tl-th') {
-                e = e || window.event;
-                e.preventDefault();
-                e.stopImmediatePropagation();
-                clickX = e.clientX;
-                clickY = e.clientY;
-                document.addEventListener('mousemove', calcTableLoc)
-            }
-        });
-        const calcTableLoc = (e) => {
-            e = e || window.event;
-            e.preventDefault();
-            dragX = clickX - e.clientX;
-            dragY = clickY - e.clientY;
-            clickX = e.clientX;
-            clickY = e.clientY;
-            tagTableTop = (tagSection.offsetTop - dragY) + 'px';
-            tagTableLeft = (tagSection.offsetLeft - dragX) + 'px';
-            tagSection.style.top = tagTableTop;
-            tagSection.style.left = tagTableLeft;
-        }
-        tagSection.addEventListener('mouseup', (e) => {
-            document.removeEventListener('mousemove', calcTableLoc);
-            tagSection.removeEventListener('mouseup', calcTableLoc);
-            let maxHeight;
-            if (tagTableTop) maxHeight = window.innerHeight - parseInt(tagTableTop.replace('px', '')) - (window.innerHeight * .05)
-            tagSection.style.maxHeight = maxHeight + 'px';
-        });
-        hr.appendChild(topLeftTH);
-        let header = ['app', 'title', 'duration', 'tags'];
-        header.forEach(h => {
-            let th = document.createElement('th');
-            th.innerHTML = `${h.replace(h[0], h[0].toUpperCase())}<span style="line-height: 1.2">${sortByHeaderTags[h] === 'asc' ? ' &#129041;' : sortByHeaderTags[h] === 'desc' ? ' &#129043;' : ''}</span>`;
-            th.id = `tag-header-${h}`;
-            th.addEventListener('click', (e) => {
-                let val = e.target.id.split('-')[2];
-                if (val !== 'section' && val) {
-                    sortByHeaderTags[val] = sortByHeaderTags[val] === '' ? 'asc' : sortByHeaderTags[val] === 'asc' ? 'desc' : '';
-                    goToPageTags = 1;
-                    createTagTable();
-                }
-            });
-            if (h === 'tags') {
-                let closeButton = document.createElement('div');
-                closeButton.id = `close-tag-section`;
-                closeButton.innerText = 'X';
-                closeButton.classList = 'close-button close-tags';
-                closeButton.style.removeProperty('left');
-                closeButton.addEventListener('click', (e) => {
-                    e.stopImmediatePropagation();
-                    document.getElementById('tag-section').remove();
-                    aggregateRecords();
-                });
-                th.appendChild(closeButton);
-            }
-            hr.appendChild(th);
-        });
-        thead.appendChild(hr);
-        table.appendChild(thead);
-        let tbody = document.createElement('tbody');
+//         let tagSection = document.getElementById('tag-section');
+//         tagSection.style.position = 'absolute';
+//         tagSection.style.top = tagTableTop || '41vh';
+//         tagSection.style.left = tagTableLeft || '300px';
+//         let table = document.createElement('table');
+//         table.id = 'tag-table';
+//         let thead = document.createElement('thead');
+//         let hr = document.createElement('tr');
+//         hr.id = 'tag-table-header';
+//         let topLeftTH = document.createElement('th');
+//         topLeftTH.id = 'tag-tl-th';
+//         topLeftTH.style.cursor = 'move';
+//         // Make Record Table Draggable
+//         var clickX, clickY, dragX, dragY;
+//         tagSection.addEventListener('mousedown', (e) => {
+//             if (e.target.id === 'tag-tl-th') {
+//                 e = e || window.event;
+//                 e.preventDefault();
+//                 e.stopImmediatePropagation();
+//                 clickX = e.clientX;
+//                 clickY = e.clientY;
+//                 document.addEventListener('mousemove', calcTableLoc)
+//             }
+//         });
+//         const calcTableLoc = (e) => {
+//             e = e || window.event;
+//             e.preventDefault();
+//             dragX = clickX - e.clientX;
+//             dragY = clickY - e.clientY;
+//             clickX = e.clientX;
+//             clickY = e.clientY;
+//             tagTableTop = (tagSection.offsetTop - dragY) + 'px';
+//             tagTableLeft = (tagSection.offsetLeft - dragX) + 'px';
+//             tagSection.style.top = tagTableTop;
+//             tagSection.style.left = tagTableLeft;
+//         }
+//         tagSection.addEventListener('mouseup', (e) => {
+//             document.removeEventListener('mousemove', calcTableLoc);
+//             tagSection.removeEventListener('mouseup', calcTableLoc);
+//             let maxHeight;
+//             if (tagTableTop) maxHeight = window.innerHeight - parseInt(tagTableTop.replace('px', '')) - (window.innerHeight * .05)
+//             tagSection.style.maxHeight = maxHeight + 'px';
+//         });
+//         hr.appendChild(topLeftTH);
+//         let header = ['app', 'title', 'duration', 'tags'];
+//         header.forEach(h => {
+//             let th = document.createElement('th');
+//             th.innerHTML = `${h.replace(h[0], h[0].toUpperCase())}<span style="line-height: 1.2">${sortByHeaderTags[h] === 'asc' ? ' &#129041;' : sortByHeaderTags[h] === 'desc' ? ' &#129043;' : ''}</span>`;
+//             th.id = `tag-header-${h}`;
+//             th.addEventListener('click', (e) => {
+//                 let val = e.target.id.split('-')[2];
+//                 if (val !== 'section' && val) {
+//                     sortByHeaderTags[val] = sortByHeaderTags[val] === '' ? 'asc' : sortByHeaderTags[val] === 'asc' ? 'desc' : '';
+//                     goToPageTags = 1;
+//                     createTagTable();
+//                 }
+//             });
+//             if (h === 'tags') {
+//                 let closeButton = document.createElement('div');
+//                 closeButton.id = `close-tag-section`;
+//                 closeButton.innerText = 'X';
+//                 closeButton.classList = 'close-button close-tags';
+//                 closeButton.style.removeProperty('left');
+//                 closeButton.addEventListener('click', (e) => {
+//                     e.stopImmediatePropagation();
+//                     document.getElementById('tag-section').remove();
+//                     aggregateRecords();
+//                 });
+//                 th.appendChild(closeButton);
+//             }
+//             hr.appendChild(th);
+//         });
+//         thead.appendChild(hr);
+//         table.appendChild(thead);
+//         let tbody = document.createElement('tbody');
 
-        let len = filteredRecordTags.length === 0 ? 1 : filteredRecordTags.length > showCountTags ? showCountTags : filteredRecordTags.length;
+//         let len = filteredRecordTags.length === 0 ? 1 : filteredRecordTags.length > showCountTags ? showCountTags : filteredRecordTags.length;
 
-        Object.keys(sortByHeaderTags).forEach(key => {
-            if (sortByHeaderTags[key].length > 0) filteredRecordTags = sortByHeaderTags[key] === 'asc' ? filteredRecordTags.sort((a, b) => a[key] > b[key] ? 1 : -1) : filteredRecordTags.sort((a, b) => a[key] < b[key] ? 1 : -1);
-        })
+//         Object.keys(sortByHeaderTags).forEach(key => {
+//             if (sortByHeaderTags[key].length > 0) filteredRecordTags = sortByHeaderTags[key] === 'asc' ? filteredRecordTags.sort((a, b) => a[key] > b[key] ? 1 : -1) : filteredRecordTags.sort((a, b) => a[key] < b[key] ? 1 : -1);
+//         })
 
-        tagVisibleRecords = [];
-        for (let i = (goToPageTags - 1) * showCountTags; i < (goToPageTags * showCountTags) - (goToPageTags === pageCountTags ? showCountTags - (filteredRecordTags.length % showCountTags) : 0); i++) {
-            let tr = document.createElement('tr');
-            tr.id = `tag-${filteredRecordTags[i].id}`;
-            tagVisibleRecords.push(filteredRecordTags[i].id);
-            tr.classList = 'tag-row';
-            let firstCol = document.createElement('td');
-            firstCol.classList = 'check-col';
-            let checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.checked = filteredRecordTags[i].checked;
-            checkbox.id = `check-tag-${filteredRecordTags[i].id}`;
-            // CREATE EVENT LISTENER WHEN CHECKBOX IS CHANGED OR ROW IS CLICKED ON TO UPDATE CHECKED STATUS OF THE GLOBAL RECORD
-            checkbox.addEventListener('change', (e) => {
-                e.stopImmediatePropagation();
-                let id = e.target.id.substring('check-tag-'.length);
-                globalRecords[id].checked = e.target.checked;
-                aggregateRecords();
-            });
-            tr.addEventListener('click', (e) => {
-                if (e.target.tagName !== 'INPUT') {
-                    if (![...e.target.classList][0].includes('tag')) {
-                        let id = [...e.target.classList][0].includes('tool') ? e.target.parentElement.parentElement.id.substring('tag-'.length) : e.target.parentElement.id.substring('tag-'.length);
-                        let cb = document.getElementById(`check-tag-${id}`);
-                        globalRecords[id].checked = !cb.checked;
-                        // If visible toggle record table check
-                        if (document.querySelector(`#check-record-${id}`)) document.querySelector(`#check-record-${id}`).checked = !cb.checked;
-                        cb.checked = !cb.checked;
-                        ['tag-table', 'record-table'].forEach(tbl => {
-                            if (document.getElementById(tbl)) {
-                                let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
-                                let selectAllVisible = document.getElementById(selectAllVisibleID);
-                                let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
-                                if (visibleChecked === visibleCount) {
-                                    selectAllVisible.checked = true;
-                                    selectAllVisible.indeterminate = false;
-                                }
-                                if (visibleChecked < visibleCount) {
-                                    selectAllVisible.checked = false;
-                                    selectAllVisible.indeterminate = true;
-                                    if (visibleChecked === 0) {
-                                        selectAllVisible.checked = false;
-                                        selectAllVisible.indeterminate = false;
-                                    }
-                                }
-                            }
-                        })
-                        aggregateRecords();
-                    }
-                }
-            });
-            firstCol.appendChild(checkbox);
-            tr.appendChild(firstCol);
-            let row = [];
-            header.forEach(col => filteredRecordTags.length > 0 ? row.push(filteredRecordTags[i][col]) : row.push(''));
-            row.map((val, index) => {
-                let td = document.createElement('td');
-                td.innerText = val;
-                if (index === 0) td.classList = 'app-col';
-                if (index === 1) {
-                    let tooltTip = document.createElement('span');
-                    tooltTip.classList = 'tool-tip';
-                    tooltTip.innerText = val;
-                    td.appendChild(tooltTip);
-                    td.classList = 'title-col';
-                    td.addEventListener('mouseover', (e) => {
-                        let coord = e.target.getBoundingClientRect();
-                        tooltTip.style.left = coord.x + 'px';
-                        tooltTip.style.top = coord.y + .4 + 'px';
-                    })
-                }
-                if (index === 2) td.classList = 'time-col';
-                if (index === 3) {
-                    td.innerText = '';
-                    td.classList = 'tags-col';
-                }
-                tr.appendChild(td);
-            })
-            tbody.appendChild(tr);
-        }
-        table.appendChild(tbody);
-        let selectAllVisible = document.createElement('input');
-        selectAllVisible.id = 'select-all-visible-tags';
-        selectAllVisible.type = 'checkbox';
-        let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible-tags').length;
-        let visibleCount = [...table.querySelectorAll('tr')].length - 1;
-        if (visibleChecked === visibleCount) {
-            selectAllVisible.checked = true;
-            selectAllVisible.indeterminate = false;
-        }
-        if (visibleChecked < visibleCount) {
-            selectAllVisible.checked = false;
-            selectAllVisible.indeterminate = true;
-            if (visibleChecked === 0) {
-                selectAllVisible.checked = false;
-                selectAllVisible.indeterminate = false;
-            }
-        }
-        selectAllVisible.addEventListener('change', (e) => {
-            let allCheckboxes = [...table.querySelectorAll('input[type="checkbox"]')].filter(c => c.id !== 'select-all-visible-tags')
-            allCheckboxes.forEach(i => {
-                let id = i.id.split('-')[2];
-                globalRecords[id].checked = selectAllVisible.checked;
-                if (document.querySelector(`#check-record-${id}`)) document.querySelector(`#check-record-${id}`).checked = selectAllVisible.checked;
-                i.checked = selectAllVisible.checked;
-            });
-            ['tag-table', 'record-table'].forEach(tbl => {
-                if (document.getElementById(tbl)) {
-                    let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                    let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
-                    let selectAllVisible = document.getElementById(selectAllVisibleID);
-                    let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
-                    if (visibleChecked === visibleCount) {
-                        selectAllVisible.checked = true;
-                        selectAllVisible.indeterminate = false;
-                    }
-                    if (visibleChecked < visibleCount) {
-                        selectAllVisible.checked = false;
-                        selectAllVisible.indeterminate = true;
-                        if (visibleChecked === 0) {
-                            selectAllVisible.checked = false;
-                            selectAllVisible.indeterminate = false;
-                        }
-                    }
-                }
-            })
-        })
-        topLeftTH.appendChild(selectAllVisible)
-        if (document.getElementById('tag-table')) document.getElementById('tag-table').remove();
-        tagSection.prepend(table);
+//         tagVisibleRecords = [];
+//         for (let i = (goToPageTags - 1) * showCountTags; i < (goToPageTags * showCountTags) - (goToPageTags === pageCountTags ? showCountTags - (filteredRecordTags.length % showCountTags) : 0); i++) {
+//             let tr = document.createElement('tr');
+//             tr.id = `tag-${filteredRecordTags[i].id}`;
+//             tagVisibleRecords.push(filteredRecordTags[i].id);
+//             tr.classList = 'tag-row';
+//             let firstCol = document.createElement('td');
+//             firstCol.classList = 'check-col';
+//             let checkbox = document.createElement('input');
+//             checkbox.type = 'checkbox';
+//             checkbox.checked = filteredRecordTags[i].checked;
+//             checkbox.id = `check-tag-${filteredRecordTags[i].id}`;
+//             // CREATE EVENT LISTENER WHEN CHECKBOX IS CHANGED OR ROW IS CLICKED ON TO UPDATE CHECKED STATUS OF THE GLOBAL RECORD
+//             checkbox.addEventListener('change', (e) => {
+//                 e.stopImmediatePropagation();
+//                 let id = e.target.id.substring('check-tag-'.length);
+//                 globalRecords[id].checked = e.target.checked;
+//                 aggregateRecords();
+//             });
+//             tr.addEventListener('click', (e) => {
+//                 if (e.target.tagName !== 'INPUT') {
+//                     if (![...e.target.classList][0].includes('tag')) {
+//                         let id = [...e.target.classList][0].includes('tool') ? e.target.parentElement.parentElement.id.substring('tag-'.length) : e.target.parentElement.id.substring('tag-'.length);
+//                         let cb = document.getElementById(`check-tag-${id}`);
+//                         globalRecords[id].checked = !cb.checked;
+//                         // If visible toggle record table check
+//                         if (document.querySelector(`#check-record-${id}`)) document.querySelector(`#check-record-${id}`).checked = !cb.checked;
+//                         cb.checked = !cb.checked;
+//                         ['tag-table', 'record-table'].forEach(tbl => {
+//                             if (document.getElementById(tbl)) {
+//                                 let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
+//                                 let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
+//                                 let selectAllVisible = document.getElementById(selectAllVisibleID);
+//                                 let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
+//                                 if (visibleChecked === visibleCount) {
+//                                     selectAllVisible.checked = true;
+//                                     selectAllVisible.indeterminate = false;
+//                                 }
+//                                 if (visibleChecked < visibleCount) {
+//                                     selectAllVisible.checked = false;
+//                                     selectAllVisible.indeterminate = true;
+//                                     if (visibleChecked === 0) {
+//                                         selectAllVisible.checked = false;
+//                                         selectAllVisible.indeterminate = false;
+//                                     }
+//                                 }
+//                             }
+//                         })
+//                         aggregateRecords();
+//                     }
+//                 }
+//             });
+//             firstCol.appendChild(checkbox);
+//             tr.appendChild(firstCol);
+//             let row = [];
+//             header.forEach(col => filteredRecordTags.length > 0 ? row.push(filteredRecordTags[i][col]) : row.push(''));
+//             row.map((val, index) => {
+//                 let td = document.createElement('td');
+//                 td.innerText = val;
+//                 if (index === 0) td.classList = 'app-col';
+//                 if (index === 1) {
+//                     let tooltTip = document.createElement('span');
+//                     tooltTip.classList = 'tool-tip';
+//                     tooltTip.innerText = val;
+//                     td.appendChild(tooltTip);
+//                     td.classList = 'title-col';
+//                     td.addEventListener('mouseover', (e) => {
+//                         let coord = e.target.getBoundingClientRect();
+//                         tooltTip.style.left = coord.x + 'px';
+//                         tooltTip.style.top = coord.y + .4 + 'px';
+//                     })
+//                 }
+//                 if (index === 2) td.classList = 'time-col';
+//                 if (index === 3) {
+//                     td.innerText = '';
+//                     td.classList = 'tags-col';
+//                 }
+//                 tr.appendChild(td);
+//             })
+//             tbody.appendChild(tr);
+//         }
+//         table.appendChild(tbody);
+//         let selectAllVisible = document.createElement('input');
+//         selectAllVisible.id = 'select-all-visible-tags';
+//         selectAllVisible.type = 'checkbox';
+//         let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible-tags').length;
+//         let visibleCount = [...table.querySelectorAll('tr')].length - 1;
+//         if (visibleChecked === visibleCount) {
+//             selectAllVisible.checked = true;
+//             selectAllVisible.indeterminate = false;
+//         }
+//         if (visibleChecked < visibleCount) {
+//             selectAllVisible.checked = false;
+//             selectAllVisible.indeterminate = true;
+//             if (visibleChecked === 0) {
+//                 selectAllVisible.checked = false;
+//                 selectAllVisible.indeterminate = false;
+//             }
+//         }
+//         selectAllVisible.addEventListener('change', (e) => {
+//             let allCheckboxes = [...table.querySelectorAll('input[type="checkbox"]')].filter(c => c.id !== 'select-all-visible-tags')
+//             allCheckboxes.forEach(i => {
+//                 let id = i.id.split('-')[2];
+//                 globalRecords[id].checked = selectAllVisible.checked;
+//                 if (document.querySelector(`#check-record-${id}`)) document.querySelector(`#check-record-${id}`).checked = selectAllVisible.checked;
+//                 i.checked = selectAllVisible.checked;
+//             });
+//             ['tag-table', 'record-table'].forEach(tbl => {
+//                 if (document.getElementById(tbl)) {
+//                     let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
+//                     let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
+//                     let selectAllVisible = document.getElementById(selectAllVisibleID);
+//                     let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
+//                     if (visibleChecked === visibleCount) {
+//                         selectAllVisible.checked = true;
+//                         selectAllVisible.indeterminate = false;
+//                     }
+//                     if (visibleChecked < visibleCount) {
+//                         selectAllVisible.checked = false;
+//                         selectAllVisible.indeterminate = true;
+//                         if (visibleChecked === 0) {
+//                             selectAllVisible.checked = false;
+//                             selectAllVisible.indeterminate = false;
+//                         }
+//                     }
+//                 }
+//             })
+//         })
+//         topLeftTH.appendChild(selectAllVisible)
+//         if (document.getElementById('tag-table')) document.getElementById('tag-table').remove();
+//         tagSection.prepend(table);
 
-        aggregateRecords();
+//         aggregateRecords();
 
-        // Draw tags after table is drawn
-        document.getElementById('tag-table').childNodes[1].childNodes.forEach(row => {
-            if (globalRecords[row.id.substring(row.id.indexOf('-') + 1)]) {
-                let val = globalRecords[row.id.substring(row.id.indexOf('-') + 1)].tags;
-                drawTag(val, row.id)
-            }
-        })
+//         // Draw tags after table is drawn
+//         document.getElementById('tag-table').childNodes[1].childNodes.forEach(row => {
+//             if (globalRecords[row.id.substring(row.id.indexOf('-') + 1)]) {
+//                 let val = globalRecords[row.id.substring(row.id.indexOf('-') + 1)].tags;
+//                 drawTag(val, row.id)
+//             }
+//         })
 
-        if (document.getElementById('tag-page-controls') === null) { //document.getElementById('page-controls').remove();
-            let pageControlBar = document.createElement('div');
-            pageControlBar.id = 'tag-page-controls';
-            // Go to Page
-            let goToPageLabel = document.createElement('label');
-            let goToPageInput = document.createElement('input');
-            goToPageLabel.innerText = 'Go to Page:';
-            goToPageInput.type = 'number';
-            goToPageInput.id = 'go-to-page-tags';
-            goToPageInput.value = goToPageTags;
-            goToPageInput.min = 1;
-            goToPageInput.max = pageCountTags;
-            goToPageInput.addEventListener('change', (e) => {
-                goToPageTags = e.target.value > pageCountTags ? parseInt(pageCountTags) : parseInt(e.target.value);
-                if (!isNaN(goToPageTags)) document.getElementById('go-to-page-tags').value = goToPageTags;
-                if (goToPageTags < 1 || isNaN(goToPageTags)) {
-                    goToPageTags = 1;
-                    document.getElementById('go-to-page-tags').value = 1;
-                }
-                createTagTable();
-            });
-            pageControlBar.appendChild(goToPageLabel);
-            pageControlBar.appendChild(goToPageInput);
-            // Page # of #
-            let pageNumLabel = document.createElement('label');
-            pageNumLabel.innerText = `Page ${goToPageTags} of ${pageCountTags}`;
-            pageNumLabel.id = 'page-numbering-tags';
-            pageControlBar.prepend(pageNumLabel);
-            // Left Arrows
-            let leftArrowBox = document.createElement('div');
-            leftArrowBox.id = 'left-arrows-tags';
-            let leftSingleArrow = document.createElement('label');
-            leftSingleArrow.id = 'previous-page-arrow-tags';
-            leftSingleArrow.addEventListener('click', (e) => {
-                goToPageTags = goToPageTags !== 1 ? goToPageTags - 1 : 1;
-                document.getElementById('go-to-page-tags').value = goToPageTags;
-                createTagTable();
-            });
-            leftSingleArrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
-            leftSingleArrow.innerHTML = '&#8249;';
-            leftSingleArrow.classList = 'left page-arrows';
-            leftArrowBox.prepend(leftSingleArrow);
+//         if (document.getElementById('tag-page-controls') === null) { //document.getElementById('page-controls').remove();
+//             let pageControlBar = document.createElement('div');
+//             pageControlBar.id = 'tag-page-controls';
+//             // Go to Page
+//             let goToPageLabel = document.createElement('label');
+//             let goToPageInput = document.createElement('input');
+//             goToPageLabel.innerText = 'Go to Page:';
+//             goToPageInput.type = 'number';
+//             goToPageInput.id = 'go-to-page-tags';
+//             goToPageInput.value = goToPageTags;
+//             goToPageInput.min = 1;
+//             goToPageInput.max = pageCountTags;
+//             goToPageInput.addEventListener('change', (e) => {
+//                 goToPageTags = e.target.value > pageCountTags ? parseInt(pageCountTags) : parseInt(e.target.value);
+//                 if (!isNaN(goToPageTags)) document.getElementById('go-to-page-tags').value = goToPageTags;
+//                 if (goToPageTags < 1 || isNaN(goToPageTags)) {
+//                     goToPageTags = 1;
+//                     document.getElementById('go-to-page-tags').value = 1;
+//                 }
+//                 createTagTable();
+//             });
+//             pageControlBar.appendChild(goToPageLabel);
+//             pageControlBar.appendChild(goToPageInput);
+//             // Page # of #
+//             let pageNumLabel = document.createElement('label');
+//             pageNumLabel.innerText = `Page ${goToPageTags} of ${pageCountTags}`;
+//             pageNumLabel.id = 'page-numbering-tags';
+//             pageControlBar.prepend(pageNumLabel);
+//             // Left Arrows
+//             let leftArrowBox = document.createElement('div');
+//             leftArrowBox.id = 'left-arrows-tags';
+//             let leftSingleArrow = document.createElement('label');
+//             leftSingleArrow.id = 'previous-page-arrow-tags';
+//             leftSingleArrow.addEventListener('click', (e) => {
+//                 goToPageTags = goToPageTags !== 1 ? goToPageTags - 1 : 1;
+//                 document.getElementById('go-to-page-tags').value = goToPageTags;
+//                 createTagTable();
+//             });
+//             leftSingleArrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
+//             leftSingleArrow.innerHTML = '&#8249;';
+//             leftSingleArrow.classList = 'left page-arrows';
+//             leftArrowBox.prepend(leftSingleArrow);
 
-            let leftDoubleArrow = document.createElement('label');
-            leftDoubleArrow.id = 'first-page-arrow-tags';
-            leftDoubleArrow.addEventListener('click', (e) => {
-                goToPageTags = 1;
-                document.getElementById('go-to-page-tags').value = goToPageTags;
-                createTagTable();
-            });
-            leftDoubleArrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
-            leftDoubleArrow.innerHTML = '&#171;';
-            leftDoubleArrow.classList = 'left page-arrows';
-            leftArrowBox.prepend(leftDoubleArrow);
-            pageControlBar.prepend(leftArrowBox);
-            // Show # dropdown
-            let showDropdown = document.createElement('select');
-            showDropdown.id = 'show-record-count-tags';
-            showDropdown.value = showCountTags;
-            for (let i = 10; i <= 50; i += 10) {
-                let option = document.createElement('option');
-                option.value = i;
-                option.innerText = i;
-                option.id = `show-${i}`;
-                if (showCountTags === i) option.selected = 'selected';
-                showDropdown.appendChild(option);
-            }
-            showDropdown.addEventListener('change', (e) => {
-                showCountTags = parseInt(e.target.value);
-                document.getElementById('go-to-page-tags').max = Math.ceil(filteredRecordTags.length / showCountTags);
-                createTagTable();
-            })
-            let showLabel = document.createElement('label');
-            showLabel.innerText = 'Show ';
-            pageControlBar.appendChild(showLabel);
-            pageControlBar.appendChild(showDropdown);
-            // Right Arrows
-            let rightArrowBox = document.createElement('div');
-            rightArrowBox.id = 'right-arrows-tags';
-            let rightSingleArrow = document.createElement('label');
-            rightSingleArrow.id = 'next-page-arrow-tags';
-            rightSingleArrow.addEventListener('click', (e) => {
-                goToPageTags = goToPageTags !== pageCountTags ? goToPageTags + 1 : pageCountTags;
-                document.getElementById('go-to-page-tags').value = goToPageTags;
-                createTagTable();
-            });
-            rightSingleArrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
-            rightSingleArrow.innerHTML = '&#8250;';
-            rightSingleArrow.classList = 'right page-arrows';
-            rightArrowBox.appendChild(rightSingleArrow);
+//             let leftDoubleArrow = document.createElement('label');
+//             leftDoubleArrow.id = 'first-page-arrow-tags';
+//             leftDoubleArrow.addEventListener('click', (e) => {
+//                 goToPageTags = 1;
+//                 document.getElementById('go-to-page-tags').value = goToPageTags;
+//                 createTagTable();
+//             });
+//             leftDoubleArrow.style.color = goToPageTags === 1 ? 'gray' : 'black';
+//             leftDoubleArrow.innerHTML = '&#171;';
+//             leftDoubleArrow.classList = 'left page-arrows';
+//             leftArrowBox.prepend(leftDoubleArrow);
+//             pageControlBar.prepend(leftArrowBox);
+//             // Show # dropdown
+//             let showDropdown = document.createElement('select');
+//             showDropdown.id = 'show-record-count-tags';
+//             showDropdown.value = showCountTags;
+//             for (let i = 10; i <= 50; i += 10) {
+//                 let option = document.createElement('option');
+//                 option.value = i;
+//                 option.innerText = i;
+//                 option.id = `show-${i}`;
+//                 if (showCountTags === i) option.selected = 'selected';
+//                 showDropdown.appendChild(option);
+//             }
+//             showDropdown.addEventListener('change', (e) => {
+//                 showCountTags = parseInt(e.target.value);
+//                 document.getElementById('go-to-page-tags').max = Math.ceil(filteredRecordTags.length / showCountTags);
+//                 createTagTable();
+//             })
+//             let showLabel = document.createElement('label');
+//             showLabel.innerText = 'Show ';
+//             pageControlBar.appendChild(showLabel);
+//             pageControlBar.appendChild(showDropdown);
+//             // Right Arrows
+//             let rightArrowBox = document.createElement('div');
+//             rightArrowBox.id = 'right-arrows-tags';
+//             let rightSingleArrow = document.createElement('label');
+//             rightSingleArrow.id = 'next-page-arrow-tags';
+//             rightSingleArrow.addEventListener('click', (e) => {
+//                 goToPageTags = goToPageTags !== pageCountTags ? goToPageTags + 1 : pageCountTags;
+//                 document.getElementById('go-to-page-tags').value = goToPageTags;
+//                 createTagTable();
+//             });
+//             rightSingleArrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
+//             rightSingleArrow.innerHTML = '&#8250;';
+//             rightSingleArrow.classList = 'right page-arrows';
+//             rightArrowBox.appendChild(rightSingleArrow);
 
-            let rightDoubleArrow = document.createElement('label');
-            rightDoubleArrow.id = 'last-page-arrow-tags';
-            rightDoubleArrow.addEventListener('click', (e) => {
-                goToPageTags = pageCountTags;
-                document.getElementById('go-to-page-tags').value = goToPageTags;
-                createTagTable();
-            });
-            rightDoubleArrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
-            rightDoubleArrow.innerHTML = '&#187;';
-            rightDoubleArrow.classList = 'right page-arrows';
-            rightArrowBox.appendChild(rightDoubleArrow);
-            pageControlBar.appendChild(rightArrowBox);
-            tagSection.appendChild(pageControlBar);
-        }
-        // aggregateRecords();
-    }
-};
+//             let rightDoubleArrow = document.createElement('label');
+//             rightDoubleArrow.id = 'last-page-arrow-tags';
+//             rightDoubleArrow.addEventListener('click', (e) => {
+//                 goToPageTags = pageCountTags;
+//                 document.getElementById('go-to-page-tags').value = goToPageTags;
+//                 createTagTable();
+//             });
+//             rightDoubleArrow.style.color = goToPageTags === pageCountTags ? 'gray' : 'black';
+//             rightDoubleArrow.innerHTML = '&#187;';
+//             rightDoubleArrow.classList = 'right page-arrows';
+//             rightArrowBox.appendChild(rightDoubleArrow);
+//             pageControlBar.appendChild(rightArrowBox);
+//             tagSection.appendChild(pageControlBar);
+//         }
+//         // aggregateRecords();
+//     }
+// };
 
-const grabRecords = (record) => {
-    // console.log('grabbing records');
-    let filteredRecord = record.filter(r => !removedApps.includes(r.app));
-    pageCount = filteredRecord.length === 0 ? 1 : Math.ceil(filteredRecord.length / showCount);
-    goToPage = goToPage > pageCount ? pageCount : goToPage;
-    if (document.getElementById('go-to-page')) document.getElementById('go-to-page').value = goToPage;
-    if (document.getElementById('go-to-page')) document.getElementById('go-to-page').max = pageCount;
-    if (document.getElementById('page-numbering')) document.getElementById('page-numbering').innerText = `Page ${goToPage} of ${pageCount}`;
-    if (document.getElementsByClassName('page-arrows').length > 0) {
-        [...document.getElementsByClassName('left')].forEach(arrow => {
-            arrow.style.color = goToPage === 1 ? 'gray' : 'black';
-        });
-        [...document.getElementsByClassName('right')].forEach(arrow => {
-            arrow.style.color = goToPage === pageCount ? 'gray' : 'black';
-        });
-    }
-    let recordSection = document.getElementById('record-section');
-    recordSection.style.position = 'absolute';
-    recordSection.style.top = tableTop || '5vh';
-    recordSection.style.left = tableLeft || '300px';
-    let table = document.createElement('table');
-    table.id = 'record-table';
-    let thead = document.createElement('thead');
-    let hr = document.createElement('tr');
-    hr.id = 'table-header';
-    let topLeftTH = document.createElement('th');
-    topLeftTH.id = 'tl-th';
-    topLeftTH.style.cursor = 'move';
-    // Make Record Table Draggable
-    var clickX, clickY, dragX, dragY;
-    recordSection.addEventListener('mousedown', (e) => {
-        if (e.target.id === 'tl-th') {
-            e = e || window.event;
-            e.preventDefault();
-            e.stopImmediatePropagation();
-            clickX = e.clientX;
-            clickY = e.clientY;
-            document.addEventListener('mousemove', calcTableLoc)
-        }
-    });
-    const calcTableLoc = (e) => {
-        e = e || window.event;
-        e.preventDefault();
-        dragX = clickX - e.clientX;
-        dragY = clickY - e.clientY;
-        clickX = e.clientX;
-        clickY = e.clientY;
-        tableTop = (recordSection.offsetTop - dragY) + 'px';
-        tableLeft = (recordSection.offsetLeft - dragX) + 'px';
-        recordSection.style.top = tableTop;
-        recordSection.style.left = tableLeft;
-    }
-    recordSection.addEventListener('mouseup', (e) => {
-        document.removeEventListener('mousemove', calcTableLoc);
-        recordSection.removeEventListener('mouseup', calcTableLoc);
-        let maxHeight;
-        if (tableTop) maxHeight = window.innerHeight - parseInt(tableTop.replace('px', '')) - (window.innerHeight * .05)
-        recordSection.style.maxHeight = maxHeight + 'px';
-    });
-    hr.appendChild(topLeftTH);
-    let header = ['app', 'title', 'start', 'end', 'duration', 'tags'];
-    header.forEach(h => {
-        let th = document.createElement('th');
-        th.innerHTML = `${h}<span style="line-height: 1.2">${sortByHeader[h] === 'asc' ? ' &#129041;' : sortByHeader[h] === 'desc' ? ' &#129043;' : ''}</span>`;
-        th.id = `header-${h}`;
-        th.addEventListener('click', (e) => {
-            let val = e.target.id.split('-')[1];
-            if (val !== 'search' && val) {
-                sortByHeader[val] = sortByHeader[val] === '' ? 'asc' : sortByHeader[val] === 'asc' ? 'desc' : '';
-                goToPage = 1;
-                grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
-            }
-        });
-        hr.appendChild(th);
-        if (h === 'title') {
-            let input = document.createElement('input');
-            input.id = 'title-search-bar';
-            input.value = filterTitle || '';
-            input.addEventListener('change', (e) => {
-                filterTitle = e.target.value;
-                let relatedTags = tags.filter(t => t.name.toLowerCase().includes(filterTitle.toLowerCase())).map(t => t.id);
-                grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase()) || r.tags.some(t => relatedTags.includes(t))) : globalRecords);
-                document.getElementById('go-to-page').max = pageCount;
-            })
-            th.appendChild(input);
-        }
-    });
-    thead.appendChild(hr);
-    table.appendChild(thead);
-    let tbody = document.createElement('tbody');
+// const grabRecords = (record) => {
+//     // console.log('grabbing records');
+//     let filteredRecord = record.filter(r => !removedApps.includes(r.app));
+//     pageCount = filteredRecord.length === 0 ? 1 : Math.ceil(filteredRecord.length / showCount);
+//     goToPage = goToPage > pageCount ? pageCount : goToPage;
+//     if (document.getElementById('go-to-page')) document.getElementById('go-to-page').value = goToPage;
+//     if (document.getElementById('go-to-page')) document.getElementById('go-to-page').max = pageCount;
+//     if (document.getElementById('page-numbering')) document.getElementById('page-numbering').innerText = `Page ${goToPage} of ${pageCount}`;
+//     if (document.getElementsByClassName('page-arrows').length > 0) {
+//         [...document.getElementsByClassName('left')].forEach(arrow => {
+//             arrow.style.color = goToPage === 1 ? 'gray' : 'black';
+//         });
+//         [...document.getElementsByClassName('right')].forEach(arrow => {
+//             arrow.style.color = goToPage === pageCount ? 'gray' : 'black';
+//         });
+//     }
+//     let recordSection = document.getElementById('record-section');
+//     recordSection.style.position = 'absolute';
+//     recordSection.style.top = tableTop || '5vh';
+//     recordSection.style.left = tableLeft || '300px';
+//     let table = document.createElement('table');
+//     table.id = 'record-table';
+//     let thead = document.createElement('thead');
+//     let hr = document.createElement('tr');
+//     hr.id = 'table-header';
+//     let topLeftTH = document.createElement('th');
+//     topLeftTH.id = 'tl-th';
+//     topLeftTH.style.cursor = 'move';
+//     // Make Record Table Draggable
+//     var clickX, clickY, dragX, dragY;
+//     recordSection.addEventListener('mousedown', (e) => {
+//         if (e.target.id === 'tl-th') {
+//             e = e || window.event;
+//             e.preventDefault();
+//             e.stopImmediatePropagation();
+//             clickX = e.clientX;
+//             clickY = e.clientY;
+//             document.addEventListener('mousemove', calcTableLoc)
+//         }
+//     });
+//     const calcTableLoc = (e) => {
+//         e = e || window.event;
+//         e.preventDefault();
+//         dragX = clickX - e.clientX;
+//         dragY = clickY - e.clientY;
+//         clickX = e.clientX;
+//         clickY = e.clientY;
+//         tableTop = (recordSection.offsetTop - dragY) + 'px';
+//         tableLeft = (recordSection.offsetLeft - dragX) + 'px';
+//         recordSection.style.top = tableTop;
+//         recordSection.style.left = tableLeft;
+//     }
+//     recordSection.addEventListener('mouseup', (e) => {
+//         document.removeEventListener('mousemove', calcTableLoc);
+//         recordSection.removeEventListener('mouseup', calcTableLoc);
+//         let maxHeight;
+//         if (tableTop) maxHeight = window.innerHeight - parseInt(tableTop.replace('px', '')) - (window.innerHeight * .05)
+//         recordSection.style.maxHeight = maxHeight + 'px';
+//     });
+//     hr.appendChild(topLeftTH);
+//     let header = ['app', 'title', 'start', 'end', 'duration', 'tags'];
+//     header.forEach(h => {
+//         let th = document.createElement('th');
+//         th.innerHTML = `${h}<span style="line-height: 1.2">${sortByHeader[h] === 'asc' ? ' &#129041;' : sortByHeader[h] === 'desc' ? ' &#129043;' : ''}</span>`;
+//         th.id = `header-${h}`;
+//         th.addEventListener('click', (e) => {
+//             let val = e.target.id.split('-')[1];
+//             if (val !== 'search' && val) {
+//                 sortByHeader[val] = sortByHeader[val] === '' ? 'asc' : sortByHeader[val] === 'asc' ? 'desc' : '';
+//                 goToPage = 1;
+//                 grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+//             }
+//         });
+//         hr.appendChild(th);
+//         if (h === 'title') {
+//             let input = document.createElement('input');
+//             input.id = 'title-search-bar';
+//             input.value = filterTitle || '';
+//             input.addEventListener('change', (e) => {
+//                 filterTitle = e.target.value;
+//                 let relatedTags = tags.filter(t => t.name.toLowerCase().includes(filterTitle.toLowerCase())).map(t => t.id);
+//                 grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase()) || r.tags.some(t => relatedTags.includes(t))) : globalRecords);
+//                 document.getElementById('go-to-page').max = pageCount;
+//             })
+//             th.appendChild(input);
+//         }
+//     });
+//     thead.appendChild(hr);
+//     table.appendChild(thead);
+//     let tbody = document.createElement('tbody');
 
-    let len = filteredRecord.length === 0 ? 1 : filteredRecord.length > showCount ? showCount : filteredRecord.length; //records.length;
+//     let len = filteredRecord.length === 0 ? 1 : filteredRecord.length > showCount ? showCount : filteredRecord.length; //records.length;
 
-    Object.keys(sortByHeader).forEach(key => {
-        if (sortByHeader[key].length > 0) filteredRecord = sortByHeader[key] === 'asc' ? filteredRecord.sort((a, b) => a[key] > b[key] ? 1 : -1) : filteredRecord.sort((a, b) => a[key] < b[key] ? 1 : -1);
-    })
-    visibleRecords = [];
-    for (let i = (goToPage - 1) * showCount; i < (goToPage * showCount) - (goToPage === pageCount ? showCount - (filteredRecord.length % showCount) : 0); i++) {
-        let tr = document.createElement('tr');
-        tr.id = len > 1 ? `record-${filteredRecord[i].id}` : 'no-row';
-        if (len > 1) visibleRecords.push(filteredRecord[i].id);
-        tr.classList = 'record-row';
-        let firstCol = document.createElement('td');
-        firstCol.classList = 'check-col';
-        let checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.checked = len > 1 ? filteredRecord[i].checked : false;
-        checkbox.id = len > 1 ? `check-record-${filteredRecord[i].id}` : 'no-record';
-        // CREATE EVENT LISTENER WHEN CHECKBOX IS CHANGED OR ROW IS CLICKED ON TO UPDATE CHECKED STATUS OF THE GLOBAL RECORD
-        checkbox.addEventListener('change', (e) => {
-            e.stopImmediatePropagation();
-            let id = e.target.id.substring('check-record-'.length);
-            globalRecords[id].checked = e.target.checked;
-            aggregateRecords();
-        });
-        tr.addEventListener('click', (e) => {
-            if (e.target.tagName !== 'INPUT') {
-                if (![...e.target.classList][0].includes('tag')) {
-                    let id = [...e.target.classList][0].includes('tool') ? e.target.parentElement.parentElement.id.substring('record-'.length) : e.target.parentElement.id.substring('record-'.length);
-                    let cb = document.getElementById(`check-record-${id}`);
-                    globalRecords[id].checked = !cb.checked;
-                    // If visible toggle tag table check
-                    if (document.querySelector(`#check-tag-${id}`)) document.querySelector(`#check-tag-${id}`).checked = !cb.checked;
-                    cb.checked = !cb.checked;
-                    ['tag-table', 'record-table'].forEach(tbl => {
-                        if (document.getElementById(tbl)) {
-                            let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                            let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
-                            let selectAllVisible = document.getElementById(selectAllVisibleID);
-                            let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
-                            if (visibleChecked === visibleCount) {
-                                selectAllVisible.checked = true;
-                                selectAllVisible.indeterminate = false;
-                            }
-                            if (visibleChecked < visibleCount) {
-                                selectAllVisible.checked = false;
-                                selectAllVisible.indeterminate = true;
-                                if (visibleChecked === 0) {
-                                    selectAllVisible.checked = false;
-                                    selectAllVisible.indeterminate = false;
-                                }
-                            }
-                        }
-                    })
-                    aggregateRecords();
-                }
-            }
-        });
-        firstCol.appendChild(checkbox);
-        tr.appendChild(firstCol);
-        let row = [];
-        header.forEach(col => filteredRecord.length > 0 ? row.push(filteredRecord[i][col]) : row.push(''));
-        row.map((val, index) => {
-            let td = document.createElement('td');
-            td.innerText = val;
-            if (index === 0) td.classList = 'app-col';
-            if (index === 1) {
-                let tooltTip = document.createElement('span');
-                tooltTip.classList = 'tool-tip';
-                tooltTip.innerText = val;
-                td.appendChild(tooltTip);
-                td.classList = 'title-col';
-                td.addEventListener('mouseover', (e) => {
-                    let coord = e.target.getBoundingClientRect();
-                    tooltTip.style.left = coord.x + 'px';
-                    tooltTip.style.top = coord.y + .4 + 'px';
-                })
-            }
-            if (index >= 2 && index <= 4) td.classList = 'time-col';
-            if (index === 5) {
-                td.innerText = '';
-                td.classList = 'tags-col';
-                td.addEventListener('mouseenter', (e) => {
-                    if (!document.getElementById('tag-search')) {
-                        let addTag = document.createElement('span');
-                        addTag.classList = 'add-tag';
-                        addTag.innerText = '+';
-                        td.appendChild(addTag);
-                        addTag.addEventListener('click', (e) => {
-                            let addTagDiv = document.createElement('div');
-                            addTagDiv.style.display = 'inline-block';
-                            let tagSearch = document.createElement('input');
-                            tagSearch.id = 'tag-search';
-                            tagSearch.type = 'text';
-                            tagSearch.addEventListener('focus', searchTags);
-                            tagSearch.addEventListener('keyup', searchTags);
-                            tagSearch.addEventListener('blur', removeSearchTagsDropdown);
-                            addTagDiv.appendChild(tagSearch);
-                            td.appendChild(addTagDiv);
-                            document.getElementById('tag-search').focus();
-                            addTag.remove();
-                        });
-                    }
-                });
-                td.addEventListener('mouseleave', (e) => {
-                    let addTag = document.getElementsByClassName('add-tag')[0];
-                    if (addTag) addTag.remove();
-                });
-            }
-            tr.appendChild(td);
-        })
-        tbody.appendChild(tr);
-    }
-    table.appendChild(tbody);
-    let selectAllVisible = document.createElement('input');
-    selectAllVisible.id = 'select-all-visible';
-    selectAllVisible.type = 'checkbox';
-    let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible').length;
-    let visibleCount = [...table.querySelectorAll('tr')].length - 1;
-    if (visibleChecked === visibleCount) {
-        selectAllVisible.checked = true;
-        selectAllVisible.indeterminate = false;
-    }
-    if (visibleChecked < visibleCount) {
-        selectAllVisible.checked = false;
-        selectAllVisible.indeterminate = true;
-        if (visibleChecked === 0) {
-            selectAllVisible.checked = false;
-            selectAllVisible.indeterminate = false;
-        }
-    }
-    selectAllVisible.addEventListener('change', (e) => {
-        let allCheckboxes = [...table.querySelectorAll('input[type="checkbox"]')].filter(c => c.id !== 'select-all-visible')
-        allCheckboxes.forEach(i => {
-            let id = i.id.split('-')[2];
-            globalRecords[id].checked = selectAllVisible.checked;
-            if (document.querySelector(`#check-tag-${id}`)) document.querySelector(`#check-tag-${id}`).checked = selectAllVisible.checked;
-            i.checked = selectAllVisible.checked;
-        });
-        ['tag-table', 'record-table'].forEach(tbl => {
-            if (document.getElementById(tbl)) {
-                let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
-                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
-                let selectAllVisible = document.getElementById(selectAllVisibleID);
-                let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
-                if (visibleChecked === visibleCount) {
-                    selectAllVisible.checked = true;
-                    selectAllVisible.indeterminate = false;
-                }
-                if (visibleChecked < visibleCount) {
-                    selectAllVisible.checked = false;
-                    selectAllVisible.indeterminate = true;
-                    if (visibleChecked === 0) {
-                        selectAllVisible.checked = false;
-                        selectAllVisible.indeterminate = false;
-                    }
-                }
-            }
-        })
-    })
-    topLeftTH.appendChild(selectAllVisible)
-    if (document.getElementById('record-table')) document.getElementById('record-table').remove();
-    recordSection.prepend(table);
+//     Object.keys(sortByHeader).forEach(key => {
+//         if (sortByHeader[key].length > 0) filteredRecord = sortByHeader[key] === 'asc' ? filteredRecord.sort((a, b) => a[key] > b[key] ? 1 : -1) : filteredRecord.sort((a, b) => a[key] < b[key] ? 1 : -1);
+//     })
+//     visibleRecords = [];
+//     for (let i = (goToPage - 1) * showCount; i < (goToPage * showCount) - (goToPage === pageCount ? showCount - (filteredRecord.length % showCount) : 0); i++) {
+//         let tr = document.createElement('tr');
+//         tr.id = len > 1 ? `record-${filteredRecord[i].id}` : 'no-row';
+//         if (len > 1) visibleRecords.push(filteredRecord[i].id);
+//         tr.classList = 'record-row';
+//         let firstCol = document.createElement('td');
+//         firstCol.classList = 'check-col';
+//         let checkbox = document.createElement('input');
+//         checkbox.type = 'checkbox';
+//         checkbox.checked = len > 1 ? filteredRecord[i].checked : false;
+//         checkbox.id = len > 1 ? `check-record-${filteredRecord[i].id}` : 'no-record';
+//         // CREATE EVENT LISTENER WHEN CHECKBOX IS CHANGED OR ROW IS CLICKED ON TO UPDATE CHECKED STATUS OF THE GLOBAL RECORD
+//         checkbox.addEventListener('change', (e) => {
+//             e.stopImmediatePropagation();
+//             let id = e.target.id.substring('check-record-'.length);
+//             globalRecords[id].checked = e.target.checked;
+//             aggregateRecords();
+//         });
+//         tr.addEventListener('click', (e) => {
+//             if (e.target.tagName !== 'INPUT') {
+//                 if (![...e.target.classList][0].includes('tag')) {
+//                     let id = [...e.target.classList][0].includes('tool') ? e.target.parentElement.parentElement.id.substring('record-'.length) : e.target.parentElement.id.substring('record-'.length);
+//                     let cb = document.getElementById(`check-record-${id}`);
+//                     globalRecords[id].checked = !cb.checked;
+//                     // If visible toggle tag table check
+//                     if (document.querySelector(`#check-tag-${id}`)) document.querySelector(`#check-tag-${id}`).checked = !cb.checked;
+//                     cb.checked = !cb.checked;
+//                     ['tag-table', 'record-table'].forEach(tbl => {
+//                         if (document.getElementById(tbl)) {
+//                             let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
+//                             let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
+//                             let selectAllVisible = document.getElementById(selectAllVisibleID);
+//                             let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
+//                             if (visibleChecked === visibleCount) {
+//                                 selectAllVisible.checked = true;
+//                                 selectAllVisible.indeterminate = false;
+//                             }
+//                             if (visibleChecked < visibleCount) {
+//                                 selectAllVisible.checked = false;
+//                                 selectAllVisible.indeterminate = true;
+//                                 if (visibleChecked === 0) {
+//                                     selectAllVisible.checked = false;
+//                                     selectAllVisible.indeterminate = false;
+//                                 }
+//                             }
+//                         }
+//                     })
+//                     aggregateRecords();
+//                 }
+//             }
+//         });
+//         firstCol.appendChild(checkbox);
+//         tr.appendChild(firstCol);
+//         let row = [];
+//         header.forEach(col => filteredRecord.length > 0 ? row.push(filteredRecord[i][col]) : row.push(''));
+//         row.map((val, index) => {
+//             let td = document.createElement('td');
+//             td.innerText = val;
+//             if (index === 0) td.classList = 'app-col';
+//             if (index === 1) {
+//                 let tooltTip = document.createElement('span');
+//                 tooltTip.classList = 'tool-tip';
+//                 tooltTip.innerText = val;
+//                 td.appendChild(tooltTip);
+//                 td.classList = 'title-col';
+//                 td.addEventListener('mouseover', (e) => {
+//                     let coord = e.target.getBoundingClientRect();
+//                     tooltTip.style.left = coord.x + 'px';
+//                     tooltTip.style.top = coord.y + .4 + 'px';
+//                 })
+//             }
+//             if (index >= 2 && index <= 4) td.classList = 'time-col';
+//             if (index === 5) {
+//                 td.innerText = '';
+//                 td.classList = 'tags-col';
+//                 td.addEventListener('mouseenter', (e) => {
+//                     if (!document.getElementById('tag-search')) {
+//                         let addTag = document.createElement('span');
+//                         addTag.classList = 'add-tag';
+//                         addTag.innerText = '+';
+//                         td.appendChild(addTag);
+//                         addTag.addEventListener('click', (e) => {
+//                             let addTagDiv = document.createElement('div');
+//                             addTagDiv.style.display = 'inline-block';
+//                             let tagSearch = document.createElement('input');
+//                             tagSearch.id = 'tag-search';
+//                             tagSearch.type = 'text';
+//                             tagSearch.addEventListener('focus', searchTags);
+//                             tagSearch.addEventListener('keyup', searchTags);
+//                             tagSearch.addEventListener('blur', removeSearchTagsDropdown);
+//                             addTagDiv.appendChild(tagSearch);
+//                             td.appendChild(addTagDiv);
+//                             document.getElementById('tag-search').focus();
+//                             addTag.remove();
+//                         });
+//                     }
+//                 });
+//                 td.addEventListener('mouseleave', (e) => {
+//                     let addTag = document.getElementsByClassName('add-tag')[0];
+//                     if (addTag) addTag.remove();
+//                 });
+//             }
+//             tr.appendChild(td);
+//         })
+//         tbody.appendChild(tr);
+//     }
+//     table.appendChild(tbody);
+//     let selectAllVisible = document.createElement('input');
+//     selectAllVisible.id = 'select-all-visible';
+//     selectAllVisible.type = 'checkbox';
+//     let visibleChecked = [...table.querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== 'select-all-visible').length;
+//     let visibleCount = [...table.querySelectorAll('tr')].length - 1;
+//     if (visibleChecked === visibleCount) {
+//         selectAllVisible.checked = true;
+//         selectAllVisible.indeterminate = false;
+//     }
+//     if (visibleChecked < visibleCount) {
+//         selectAllVisible.checked = false;
+//         selectAllVisible.indeterminate = true;
+//         if (visibleChecked === 0) {
+//             selectAllVisible.checked = false;
+//             selectAllVisible.indeterminate = false;
+//         }
+//     }
+//     selectAllVisible.addEventListener('change', (e) => {
+//         let allCheckboxes = [...table.querySelectorAll('input[type="checkbox"]')].filter(c => c.id !== 'select-all-visible')
+//         allCheckboxes.forEach(i => {
+//             let id = i.id.split('-')[2];
+//             globalRecords[id].checked = selectAllVisible.checked;
+//             if (document.querySelector(`#check-tag-${id}`)) document.querySelector(`#check-tag-${id}`).checked = selectAllVisible.checked;
+//             i.checked = selectAllVisible.checked;
+//         });
+//         ['tag-table', 'record-table'].forEach(tbl => {
+//             if (document.getElementById(tbl)) {
+//                 let selectAllVisibleID = tbl === 'tag-table' ? 'select-all-visible-tags' : 'select-all-visible';
+//                 let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
+//                 let selectAllVisible = document.getElementById(selectAllVisibleID);
+//                 let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
+//                 if (visibleChecked === visibleCount) {
+//                     selectAllVisible.checked = true;
+//                     selectAllVisible.indeterminate = false;
+//                 }
+//                 if (visibleChecked < visibleCount) {
+//                     selectAllVisible.checked = false;
+//                     selectAllVisible.indeterminate = true;
+//                     if (visibleChecked === 0) {
+//                         selectAllVisible.checked = false;
+//                         selectAllVisible.indeterminate = false;
+//                     }
+//                 }
+//             }
+//         })
+//     })
+//     topLeftTH.appendChild(selectAllVisible)
+//     if (document.getElementById('record-table')) document.getElementById('record-table').remove();
+//     recordSection.prepend(table);
 
-    // Draw tags after table is drawn
-    document.getElementById('record-table').childNodes[1].childNodes.forEach(row => {
-        if (globalRecords[row.id.substring(row.id.indexOf('-') + 1)]) {
-            let val = globalRecords[row.id.substring(row.id.indexOf('-') + 1)].tags;
-            drawTag(val, row.id)
-        }
-    })
+//     // Draw tags after table is drawn
+//     document.getElementById('record-table').childNodes[1].childNodes.forEach(row => {
+//         if (globalRecords[row.id.substring(row.id.indexOf('-') + 1)]) {
+//             let val = globalRecords[row.id.substring(row.id.indexOf('-') + 1)].tags;
+//             drawTag(val, row.id)
+//         }
+//     })
 
-    if (document.getElementById('page-controls') === null) { //document.getElementById('page-controls').remove();
-        let pageControlBar = document.createElement('div');
-        pageControlBar.id = 'page-controls';
-        // Go to Page
-        let goToPageLabel = document.createElement('label');
-        let goToPageInput = document.createElement('input');
-        goToPageLabel.innerText = 'Go to Page:';
-        goToPageInput.type = 'number';
-        goToPageInput.id = 'go-to-page';
-        goToPageInput.value = goToPage;
-        goToPageInput.min = 1;
-        goToPageInput.max = pageCount;
-        goToPageInput.addEventListener('change', (e) => {
-            goToPage = e.target.value > pageCount ? parseInt(pageCount) : parseInt(e.target.value);
-            if (!isNaN(goToPage)) document.getElementById('go-to-page').value = goToPage;
-            if (goToPage < 1 || isNaN(goToPage)) {
-                goToPage = 1;
-                document.getElementById('go-to-page').value = 1;
-            }
-            grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
-        });
-        pageControlBar.appendChild(goToPageLabel);
-        pageControlBar.appendChild(goToPageInput);
-        // Page # of #
-        let pageNumLabel = document.createElement('label');
-        pageNumLabel.innerText = `Page ${goToPage} of ${pageCount}`;
-        pageNumLabel.id = 'page-numbering';
-        pageControlBar.prepend(pageNumLabel);
-        // Left Arrows
-        let leftArrowBox = document.createElement('div');
-        leftArrowBox.id = 'left-arrows';
-        let leftSingleArrow = document.createElement('label');
-        leftSingleArrow.id = 'previous-page-arrow';
-        leftSingleArrow.addEventListener('click', (e) => {
-            goToPage = goToPage !== 1 ? goToPage - 1 : 1;
-            document.getElementById('go-to-page').value = goToPage;
-            grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
-        });
-        leftSingleArrow.style.color = goToPage === 1 ? 'gray' : 'black';
-        leftSingleArrow.innerHTML = '&#8249;';
-        leftSingleArrow.classList = 'left page-arrows';
-        leftArrowBox.prepend(leftSingleArrow);
+//     if (document.getElementById('page-controls') === null) { //document.getElementById('page-controls').remove();
+//         let pageControlBar = document.createElement('div');
+//         pageControlBar.id = 'page-controls';
+//         // Go to Page
+//         let goToPageLabel = document.createElement('label');
+//         let goToPageInput = document.createElement('input');
+//         goToPageLabel.innerText = 'Go to Page:';
+//         goToPageInput.type = 'number';
+//         goToPageInput.id = 'go-to-page';
+//         goToPageInput.value = goToPage;
+//         goToPageInput.min = 1;
+//         goToPageInput.max = pageCount;
+//         goToPageInput.addEventListener('change', (e) => {
+//             goToPage = e.target.value > pageCount ? parseInt(pageCount) : parseInt(e.target.value);
+//             if (!isNaN(goToPage)) document.getElementById('go-to-page').value = goToPage;
+//             if (goToPage < 1 || isNaN(goToPage)) {
+//                 goToPage = 1;
+//                 document.getElementById('go-to-page').value = 1;
+//             }
+//             grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+//         });
+//         pageControlBar.appendChild(goToPageLabel);
+//         pageControlBar.appendChild(goToPageInput);
+//         // Page # of #
+//         let pageNumLabel = document.createElement('label');
+//         pageNumLabel.innerText = `Page ${goToPage} of ${pageCount}`;
+//         pageNumLabel.id = 'page-numbering';
+//         pageControlBar.prepend(pageNumLabel);
+//         // Left Arrows
+//         let leftArrowBox = document.createElement('div');
+//         leftArrowBox.id = 'left-arrows';
+//         let leftSingleArrow = document.createElement('label');
+//         leftSingleArrow.id = 'previous-page-arrow';
+//         leftSingleArrow.addEventListener('click', (e) => {
+//             goToPage = goToPage !== 1 ? goToPage - 1 : 1;
+//             document.getElementById('go-to-page').value = goToPage;
+//             grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+//         });
+//         leftSingleArrow.style.color = goToPage === 1 ? 'gray' : 'black';
+//         leftSingleArrow.innerHTML = '&#8249;';
+//         leftSingleArrow.classList = 'left page-arrows';
+//         leftArrowBox.prepend(leftSingleArrow);
 
-        let leftDoubleArrow = document.createElement('label');
-        leftDoubleArrow.id = 'first-page-arrow';
-        leftDoubleArrow.addEventListener('click', (e) => {
-            goToPage = 1;
-            document.getElementById('go-to-page').value = goToPage;
-            grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
-        });
-        leftDoubleArrow.style.color = goToPage === 1 ? 'gray' : 'black';
-        leftDoubleArrow.innerHTML = '&#171;';
-        leftDoubleArrow.classList = 'left page-arrows';
-        leftArrowBox.prepend(leftDoubleArrow);
-        pageControlBar.prepend(leftArrowBox);
-        // Show # dropdown
-        let showDropdown = document.createElement('select');
-        showDropdown.id = 'show-record-count';
-        showDropdown.value = showCount;
-        for (let i = 10; i <= 50; i += 10) {
-            let option = document.createElement('option');
-            option.value = i;
-            option.innerText = i;
-            option.id = `show-${i}`;
-            if (showCount === i) option.selected = 'selected';
-            showDropdown.appendChild(option);
-        }
-        showDropdown.addEventListener('change', (e) => {
-            showCount = parseInt(e.target.value);
-            document.getElementById('go-to-page').max = Math.ceil(filteredRecord.length / showCount);
-            grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
-        })
-        let showLabel = document.createElement('label');
-        showLabel.innerText = 'Show ';
-        pageControlBar.appendChild(showLabel);
-        pageControlBar.appendChild(showDropdown);
-        // Right Arrows
-        let rightArrowBox = document.createElement('div');
-        rightArrowBox.id = 'right-arrows';
-        let rightSingleArrow = document.createElement('label');
-        rightSingleArrow.id = 'next-page-arrow';
-        rightSingleArrow.addEventListener('click', (e) => {
-            goToPage = goToPage !== pageCount ? goToPage + 1 : pageCount;
-            document.getElementById('go-to-page').value = goToPage;
-            grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
-        });
-        rightSingleArrow.style.color = goToPage === pageCount ? 'gray' : 'black';
-        rightSingleArrow.innerHTML = '&#8250;';
-        rightSingleArrow.classList = 'right page-arrows';
-        rightArrowBox.appendChild(rightSingleArrow);
+//         let leftDoubleArrow = document.createElement('label');
+//         leftDoubleArrow.id = 'first-page-arrow';
+//         leftDoubleArrow.addEventListener('click', (e) => {
+//             goToPage = 1;
+//             document.getElementById('go-to-page').value = goToPage;
+//             grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+//         });
+//         leftDoubleArrow.style.color = goToPage === 1 ? 'gray' : 'black';
+//         leftDoubleArrow.innerHTML = '&#171;';
+//         leftDoubleArrow.classList = 'left page-arrows';
+//         leftArrowBox.prepend(leftDoubleArrow);
+//         pageControlBar.prepend(leftArrowBox);
+//         // Show # dropdown
+//         let showDropdown = document.createElement('select');
+//         showDropdown.id = 'show-record-count';
+//         showDropdown.value = showCount;
+//         for (let i = 10; i <= 50; i += 10) {
+//             let option = document.createElement('option');
+//             option.value = i;
+//             option.innerText = i;
+//             option.id = `show-${i}`;
+//             if (showCount === i) option.selected = 'selected';
+//             showDropdown.appendChild(option);
+//         }
+//         showDropdown.addEventListener('change', (e) => {
+//             showCount = parseInt(e.target.value);
+//             document.getElementById('go-to-page').max = Math.ceil(filteredRecord.length / showCount);
+//             grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+//         })
+//         let showLabel = document.createElement('label');
+//         showLabel.innerText = 'Show ';
+//         pageControlBar.appendChild(showLabel);
+//         pageControlBar.appendChild(showDropdown);
+//         // Right Arrows
+//         let rightArrowBox = document.createElement('div');
+//         rightArrowBox.id = 'right-arrows';
+//         let rightSingleArrow = document.createElement('label');
+//         rightSingleArrow.id = 'next-page-arrow';
+//         rightSingleArrow.addEventListener('click', (e) => {
+//             goToPage = goToPage !== pageCount ? goToPage + 1 : pageCount;
+//             document.getElementById('go-to-page').value = goToPage;
+//             grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+//         });
+//         rightSingleArrow.style.color = goToPage === pageCount ? 'gray' : 'black';
+//         rightSingleArrow.innerHTML = '&#8250;';
+//         rightSingleArrow.classList = 'right page-arrows';
+//         rightArrowBox.appendChild(rightSingleArrow);
 
-        let rightDoubleArrow = document.createElement('label');
-        rightDoubleArrow.id = 'last-page-arrow';
-        rightDoubleArrow.addEventListener('click', (e) => {
-            goToPage = pageCount;
-            document.getElementById('go-to-page').value = goToPage;
-            grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
-        });
-        rightDoubleArrow.style.color = goToPage === pageCount ? 'gray' : 'black';
-        rightDoubleArrow.innerHTML = '&#187;';
-        rightDoubleArrow.classList = 'right page-arrows';
-        rightArrowBox.appendChild(rightDoubleArrow);
-        pageControlBar.appendChild(rightArrowBox);
-        recordSection.appendChild(pageControlBar);
-    }
-    resizeTableColumns();
-    aggregateRecords();
-};
+//         let rightDoubleArrow = document.createElement('label');
+//         rightDoubleArrow.id = 'last-page-arrow';
+//         rightDoubleArrow.addEventListener('click', (e) => {
+//             goToPage = pageCount;
+//             document.getElementById('go-to-page').value = goToPage;
+//             grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+//         });
+//         rightDoubleArrow.style.color = goToPage === pageCount ? 'gray' : 'black';
+//         rightDoubleArrow.innerHTML = '&#187;';
+//         rightDoubleArrow.classList = 'right page-arrows';
+//         rightArrowBox.appendChild(rightDoubleArrow);
+//         pageControlBar.appendChild(rightArrowBox);
+//         recordSection.appendChild(pageControlBar);
+//     }
+//     resizeTableColumns();
+//     aggregateRecords();
+// };
 
 const createHandleListeners = (handle) => {
     let pageX, currentColumn, nextColumn, currentColumnWidth, nextColumnWidth;
@@ -1717,7 +2231,8 @@ const refreshFilterResults = () => {
     refreshedApps = removedApps.length > 0 ? true : false;
     createAppFilter(updatedApps);
     filterTitle = '';
-    grabRecords(globalRecords);
+    createTable('record');
+    //grabRecords(globalRecords);
 }
 
 const filterBoxRechecked = () => {
@@ -1823,7 +2338,9 @@ const createAppFilter = (apps) => {
                 removedApps = [...document.getElementsByClassName('hidden')].map(h => h.id.substring('hidden-'.length));
                 refreshFilterResults();
             }
-            grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+            filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
+            createTable('record');
+            //grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
         });
         unselectAllLabel.addEventListener('click', () => {
             let checkbox = document.getElementById('unselect-all-apps');
@@ -1840,7 +2357,9 @@ const createAppFilter = (apps) => {
                 removedApps = [...document.getElementsByClassName('hidden')].map(h => h.id.substring('hidden-'.length));
                 refreshFilterResults();
             }
-            grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
+            filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
+            createTable('record');
+            // grabRecords(filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords);
         });
         unselectAllDiv.appendChild(unselectAllInput);
         unselectAllDiv.appendChild(unselectAllLabel);
