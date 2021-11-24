@@ -21,6 +21,8 @@ Tagging
   - Prioritize after implementing local storage / database to allow preferences to persist
 - Ability to toggle chart from displaying results by Apps to Tags
 - Table of top tags by duration
+- Tag all within the Tags table using an Add button found in the tags column
+  - Will include same search bar found inline when tagging from Record table row
 
 Styling
 
@@ -41,6 +43,9 @@ Table Creation
 - Dry out code for record and tag table creation
 
 ### To Do List
+
+- Add/Delete tag to all Zoom meetings. Iterate the events, updating filtered tags zoomTags.start-zoomTags.end
+- Draw newly added/removed tags to other tables
 
 ### Defects
 
