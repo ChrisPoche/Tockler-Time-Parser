@@ -4,13 +4,10 @@ let removedApps = [];
 let globalRecords = [];
 // let filterBoxRechecked = false;
 let chartIncludeRemoved = true;
-let showCount = 10;
-let goToPage = 1;
-let pageCount = 1;
-let showCountTags = 10;
-let goToPageTags = 1;
-let pageCountTags = 1;
-let tableTop, tableLeft, tagTableTop, tagTableLeft;
+let showCount = 10, goToPage = 1, pageCount = 1;
+let showCountTags = 10, goToPageTags = 1, pageCountTags = 1;
+let showCountZoom = 10, goToPageZoom = 1, pageCountZoom = 1;
+let tableTop, tableLeft, tagTableTop, tagTableLeft, zoomTableTop, zoomTableLeft;
 let tableTab = document.createElement('div');
 let filterTitle = '';
 let editMode = false;
@@ -28,9 +25,10 @@ let sortByHeaderTags = {
 }
 let tags = [];
 let dWR = []; // Days With Records
-let visibleRecords, tagVisibleRecords;
+let visibleRecords, tagVisibleRecords, zoomVisibleRecords;
 let tagID;
 let dragTag, dropTag;
+let zoomTags = [];
 
 const dateInputHandler = (e) => {
     // console.log(e.type);
@@ -285,6 +283,7 @@ const parseFile = (files) => {
 
 const addTagsToZoomMeetings = (zoomOrigin, row) => {
     // console.log(row.id, 'Zoom Origin', zoomOrigin)
+    zoomTags[zoomTags.length - 1].end = row.id;
     let title = `Zoom from: ${zoomOrigin.app}`;
     if (zoomOrigin.tags.length > 0) zoomOrigin.tags.forEach(t => row.tags.push(t));
     if (zoomOrigin.tags.length === 0) {
@@ -299,6 +298,262 @@ const addTagsToZoomMeetings = (zoomOrigin, row) => {
     if (tags.filter(tag => tag.name === title).length > 0 && !globalRecords[row.id].tags.includes(tags.filter(tag => tag.name === title)[0].id)) {
         globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
         if (visibleRecords.includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
+    }
+}
+
+const createZoomTable = () => {
+    if (!document.getElementById('zoom-section')) {
+        let zoomSection = document.createElement('div');
+        zoomSection.id = 'zoom-section';
+        document.getElementById('container').appendChild(zoomSection);
+    }
+
+    pageCountZoom = zoomTags.length === 0 ? 1 : Math.ceil(zoomTags.length / showCountZoom);
+    goToPageZoom = goToPageZoom > pageCountZoom ? pageCountZoom : goToPageZoom;
+    if (document.getElementById('go-to-page-zoom')) document.getElementById('go-to-page-zoom').value = goToPageZoom;
+    if (document.getElementById('go-to-page-zoom')) document.getElementById('go-to-page-zoom').max = pageCountZoom;
+    if (document.getElementById('page-numbering-zoom')) document.getElementById('page-numbering-zoom').innerText = `Page ${goToPageZoom} of ${pageCountZoom}`;
+    if (document.getElementsByClassName('page-arrows-zoom').length > 0) {
+        [...document.getElementsByClassName('left')].forEach(arrow => {
+            arrow.style.color = goToPageZoom === 1 ? 'gray' : 'black';
+        });
+        [...document.getElementsByClassName('right')].forEach(arrow => {
+            arrow.style.color = goToPageZoom === pageCountZoom ? 'gray' : 'black';
+        });
+    }
+
+    let zoomSection = document.getElementById('zoom-section');
+    zoomSection.style.position = 'absolute';
+    zoomSection.style.top = zoomTableTop || '41vh';
+    zoomSection.style.left = zoomTableLeft || '800px';
+    let table = document.createElement('table');
+    table.id = 'zoom-table';
+    let thead = document.createElement('thead');
+    let hr = document.createElement('tr');
+    hr.id = 'zoom-table-header';
+    let header = ['tags', 'duration', 'start', 'end'];
+    header.forEach(h => {
+        let th = document.createElement('th');
+        th.innerHTML = `${h.replace(h[0], h[0].toUpperCase())}`;
+        th.id = `zoom-header-${h}`;
+        if (h === 'tags') {
+            th.id = 'zoom-tl-th';
+            th.style.cursor = 'move';
+            // Make Record Table Draggable
+            var clickX, clickY, dragX, dragY;
+            zoomSection.addEventListener('mousedown', (e) => {
+                if (e.target.id === 'zoom-tl-th') {
+                    e = e || window.event;
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    clickX = e.clientX;
+                    clickY = e.clientY;
+                    document.addEventListener('mousemove', calcTableLoc)
+                }
+            });
+            const calcTableLoc = (e) => {
+                e = e || window.event;
+                e.preventDefault();
+                dragX = clickX - e.clientX;
+                dragY = clickY - e.clientY;
+                clickX = e.clientX;
+                clickY = e.clientY;
+                zoomTableTop = (zoomSection.offsetTop - dragY) + 'px';
+                zoomTableLeft = (zoomSection.offsetLeft - dragX) + 'px';
+                zoomSection.style.top = zoomTableTop;
+                zoomSection.style.left = zoomTableLeft;
+            }
+            zoomSection.addEventListener('mouseup', (e) => {
+                document.removeEventListener('mousemove', calcTableLoc);
+                zoomSection.removeEventListener('mouseup', calcTableLoc);
+                let maxHeight;
+                if (zoomTableTop) maxHeight = window.innerHeight - parseInt(zoomTableTop.replace('px', '')) - (window.innerHeight * .05)
+                zoomSection.style.maxHeight = maxHeight + 'px';
+            });
+        }
+        if (h === 'end') {
+            let closeButton = document.createElement('div');
+            closeButton.id = `close-zoom-section`;
+            closeButton.innerText = 'X';
+            closeButton.classList = 'close-button close-zooms';
+            closeButton.style.removeProperty('left');
+            closeButton.addEventListener('click', (e) => {
+                e.stopImmediatePropagation();
+                document.getElementById('zoom-section').remove();
+            });
+            th.appendChild(closeButton);
+        }
+        hr.appendChild(th);
+    });
+    thead.appendChild(hr);
+    table.appendChild(thead);
+    let tbody = document.createElement('tbody');
+
+    zoomVisibleRecords = [];
+    for (let i = (goToPageZoom - 1) * showCountZoom; i < (goToPageZoom * showCountZoom) - (goToPageZoom === pageCountZoom ? showCountZoom - (zoomTags.length % showCountZoom) : 0); i++) {
+        let tr = document.createElement('tr');
+        tr.id = `zoom-${zoomTags[i].start}`;
+        zoomVisibleRecords.push(zoomTags[i].start);
+        tr.classList = 'zoom-row';
+        header.forEach((val, index) => {
+
+            let td = document.createElement('td');
+            if (index === 0) { // Tags
+                td.classList = 'tags-col';
+                td.addEventListener('mouseenter', (e) => {
+                    if (!document.getElementById('tag-search')) {
+                        let addTag = document.createElement('span');
+                        addTag.classList = 'add-tag';
+                        addTag.innerText = '+';
+                        td.appendChild(addTag);
+                        addTag.addEventListener('click', (e) => {
+                            let addTagDiv = document.createElement('div');
+                            addTagDiv.style.display = 'inline-block';
+                            let tagSearch = document.createElement('input');
+                            tagSearch.id = 'tag-search';
+                            tagSearch.type = 'text';
+                            tagSearch.addEventListener('focus', searchTags);
+                            tagSearch.addEventListener('keyup', searchTags);
+                            tagSearch.addEventListener('blur', removeSearchTagsDropdown);
+                            addTagDiv.appendChild(tagSearch);
+                            td.appendChild(addTagDiv);
+                            document.getElementById('tag-search').focus();
+                            addTag.remove();
+                        });
+                    }
+                });
+                td.addEventListener('mouseleave', (e) => {
+                    let addTag = document.getElementsByClassName('add-tag')[0];
+                    if (addTag) addTag.remove();
+                });
+            }
+            if (index === 1) { // Duration
+                let dur = (Date.parse(globalRecords[zoomTags[i].end].end) - Date.parse(globalRecords[zoomTags[i].start].start)) / 1000;
+                let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
+                let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
+                let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
+                td.innerText = `${hh}:${mm}:${ss}`;
+            }
+            if (index > 0) td.classList = 'time-col';
+            if (index === 2) td.innerText = globalRecords[zoomTags[i].start].start;
+            if (index === 3) td.innerText = globalRecords[zoomTags[i].end].end;
+            tr.appendChild(td);
+        })
+        tbody.appendChild(tr);
+    }
+    table.appendChild(tbody);
+    if (document.getElementById('zoom-table')) document.getElementById('zoom-table').remove();
+    zoomSection.prepend(table);
+    // Draw tags after table is drawn
+    document.getElementById('zoom-table').childNodes[1].childNodes.forEach(row => {
+        let val = globalRecords[row.id.split('-')[1]].tags;
+        drawTag(val, row.id);
+    })
+
+    if (document.getElementById('zoom-page-controls') === null) {
+        let pageControlBar = document.createElement('div');
+        pageControlBar.id = 'zoom-page-controls';
+        // Go to Page
+        let goToPageLabel = document.createElement('label');
+        let goToPageInput = document.createElement('input');
+        goToPageLabel.innerText = 'Go to Page:';
+        goToPageInput.type = 'number';
+        goToPageInput.id = 'go-to-page-zoom';
+        goToPageInput.value = goToPageZoom;
+        goToPageInput.min = 1;
+        goToPageInput.max = pageCountZoom;
+        goToPageInput.addEventListener('change', (e) => {
+            goToPageZoom = e.target.value > pageCountZoom ? parseInt(pageCountZoom) : parseInt(e.target.value);
+            if (!isNaN(goToPageZoom)) document.getElementById('go-to-page-zoom').value = goToPageZoom;
+            if (goToPageZoom < 1 || isNaN(goToPageZoom)) {
+                goToPageZoom = 1;
+                document.getElementById('go-to-page-zoom').value = 1;
+            }
+            createZoomTable();
+        });
+        pageControlBar.appendChild(goToPageLabel);
+        pageControlBar.appendChild(goToPageInput);
+        // Page # of #
+        let pageNumLabel = document.createElement('label');
+        pageNumLabel.innerText = `Page ${goToPageZoom} of ${pageCountZoom}`;
+        pageNumLabel.id = 'page-numbering-zoom';
+        pageControlBar.prepend(pageNumLabel);
+        // Left Arrows
+        let leftArrowBox = document.createElement('div');
+        leftArrowBox.id = 'left-arrows-zoom';
+        let leftSingleArrow = document.createElement('label');
+        leftSingleArrow.id = 'previous-page-arrow-zoom';
+        leftSingleArrow.addEventListener('click', (e) => {
+            goToPageZoom = goToPageZoom !== 1 ? goToPageZoom - 1 : 1;
+            document.getElementById('go-to-page-zoom').value = goToPageZoom;
+            createZoomTable();
+        });
+        leftSingleArrow.style.color = goToPageZoom === 1 ? 'gray' : 'black';
+        leftSingleArrow.innerHTML = '&#8249;';
+        leftSingleArrow.classList = 'left page-arrows';
+        leftArrowBox.prepend(leftSingleArrow);
+
+        let leftDoubleArrow = document.createElement('label');
+        leftDoubleArrow.id = 'first-page-arrow-zoom';
+        leftDoubleArrow.addEventListener('click', (e) => {
+            goToPageZoom = 1;
+            document.getElementById('go-to-page-zoom').value = goToPageZoom;
+            createZoomTable();
+        });
+        leftDoubleArrow.style.color = goToPageZoom === 1 ? 'gray' : 'black';
+        leftDoubleArrow.innerHTML = '&#171;';
+        leftDoubleArrow.classList = 'left page-arrows';
+        leftArrowBox.prepend(leftDoubleArrow);
+        pageControlBar.prepend(leftArrowBox);
+        // Show # dropdown
+        let showDropdown = document.createElement('select');
+        showDropdown.id = 'show-record-count-zoom';
+        showDropdown.value = showCountZoom;
+        for (let i = 10; i <= 50; i += 10) {
+            let option = document.createElement('option');
+            option.value = i;
+            option.innerText = i;
+            option.id = `show-${i}`;
+            if (showCountZoom === i) option.selected = 'selected';
+            showDropdown.appendChild(option);
+        }
+        showDropdown.addEventListener('change', (e) => {
+            showCountZoom = parseInt(e.target.value);
+            document.getElementById('go-to-page-zoom').max = Math.ceil(zoomTags.length / showCountZoom);
+            createZoomTable();
+        })
+        let showLabel = document.createElement('label');
+        showLabel.innerText = 'Show ';
+        pageControlBar.appendChild(showLabel);
+        pageControlBar.appendChild(showDropdown);
+        // Right Arrows
+        let rightArrowBox = document.createElement('div');
+        rightArrowBox.id = 'right-arrows-zoom';
+        let rightSingleArrow = document.createElement('label');
+        rightSingleArrow.id = 'next-page-arrow-zoom';
+        rightSingleArrow.addEventListener('click', (e) => {
+            goToPageZoom = goToPageZoom !== pageCountZoom ? goToPageZoom + 1 : pageCountZoom;
+            document.getElementById('go-to-page-zoom').value = goToPageZoom;
+            createZoomTable();
+        });
+        rightSingleArrow.style.color = goToPageZoom === pageCountZoom ? 'gray' : 'black';
+        rightSingleArrow.innerHTML = '&#8250;';
+        rightSingleArrow.classList = 'right page-arrows';
+        rightArrowBox.appendChild(rightSingleArrow);
+
+        let rightDoubleArrow = document.createElement('label');
+        rightDoubleArrow.id = 'last-page-arrow-zoom';
+        rightDoubleArrow.addEventListener('click', (e) => {
+            goToPageZoom = pageCountZoom;
+            document.getElementById('go-to-page-zoom').value = goToPageZoom;
+            createZoomTable();
+        });
+        rightDoubleArrow.style.color = goToPageZoom === pageCountZoom ? 'gray' : 'black';
+        rightDoubleArrow.innerHTML = '&#187;';
+        rightDoubleArrow.classList = 'right page-arrows';
+        rightArrowBox.appendChild(rightDoubleArrow);
+        pageControlBar.appendChild(rightArrowBox);
+        zoomSection.appendChild(pageControlBar);
     }
 }
 
@@ -348,6 +603,7 @@ const postDataRetrieval = (records) => {
         let zoomConnectionId;
         if ((row.app === 'Zoom' && (row.title === 'Connecting…' || (row.title === 'Zoom Meeting' && !zoomOrigin))) || (row.app !== 'Zoom')) {
             zoomConnectionId = row.id
+            zoomTags.push({ 'start': zoomConnectionId, 'end': 0 });
             for (let i = zoomConnectionId > 5 ? zoomConnectionId - 6 : 0; i < zoomConnectionId; i++) {
                 if ((globalRecords[i].app === 'Outlook' && !globalRecords[i].title.match(/Reminder\(s\)/)) || (globalRecords[i].app === 'Slack')) zoomOrigin = globalRecords[i];
             }
@@ -389,6 +645,14 @@ const postDataRetrieval = (records) => {
         });
         downloadBttn.innerText = 'Download CSV';
         document.body.appendChild(downloadBttn);
+    }
+
+    if (!document.getElementById('zoom-table-button')) {
+        let zTB = document.createElement('button');
+        zTB.id = 'zoom-table-button';
+        zTB.innerText = 'Zoom Table'
+        zTB.addEventListener('click', createZoomTable);
+        document.body.appendChild(zTB);
     }
 
 }
@@ -433,7 +697,7 @@ const searchTags = (e) => {
                 let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
                 if (sortedTags[i].name !== 'Add Tag') {
                     record.tags.push(tags.filter(tag => tag.name === e.target.innerText)[0].id);
-                    drawTag(record.tags, `record-${record.id}`);
+                    drawTag(record.tags, `${visibleRecords.includes(record.id) ? 'record' : 'zoom'}-${record.id}`);
                 }
                 if (sortedTags[i].name === 'Add Tag' && document.getElementById('tag-search').value.length > 0 && document.getElementById('tag-search').value.toLowerCase() !== 'add tag' && tags.filter(tag => tag.name === document.getElementById('tag-search').value.trim().toLowerCase()).length === 0) handleAddTag(td);
             });
@@ -483,7 +747,7 @@ const removeSearchTagsDropdown = () => {
     document.getElementById('tag-search').parentNode.remove();
 }
 const drawTag = (val, rowID) => {
-    let td = document.getElementById(rowID).childNodes.length > 5 ? document.getElementById(rowID).childNodes[6] : document.getElementById(rowID).childNodes[4];
+    let td = document.getElementById(rowID).childNodes.length > 5 ? document.getElementById(rowID).childNodes[6] : document.getElementById(rowID).childNodes.length > 4 ? document.getElementById(rowID).childNodes[4] : document.getElementById(rowID).childNodes[0];
     let existingTags = [...td.childNodes].filter(tag => tag.className.includes('tag-'));
     val.forEach((tid) => {
         if (existingTags.filter(tag => tag.className.includes(tid)).length === 0) {
@@ -593,7 +857,7 @@ const mergeTagModal = () => {
                             let title = input.value.length === 0 ? input.placeholder : input.value;
                             if (tags.filter(tag => tag.name === title).length === 0) {
                                 createNewTag(title);
-                                replaceTags(tags.filter(tag => tag.name === title)[0].id,[parseInt(dropTag.split('-')[1]),parseInt(dragTag.split('-')[1])]);
+                                replaceTags(tags.filter(tag => tag.name === title)[0].id, [parseInt(dropTag.split('-')[1]), parseInt(dragTag.split('-')[1])]);
                                 modalBackground.click();
                             }
                             else {
@@ -602,8 +866,8 @@ const mergeTagModal = () => {
                                 error.id = 'tag-exists-error';
                                 error.innerText = `A tag named "${title}" already exists`;
                                 error.addEventListener('animationend', () => error.remove());
-                                error.style.top = `${modalBoundary.bottom-130}px`;
-                                error.style.left = `${modalBoundary.left + (width*.325)}px`;
+                                error.style.top = `${modalBoundary.bottom - 130}px`;
+                                error.style.left = `${modalBoundary.left + (width * .325)}px`;
                                 modal.appendChild(error);
                             }
                         }
@@ -636,10 +900,10 @@ const mergeTagModal = () => {
     document.body.appendChild(modal);
 };
 
-const replaceTags = (mergedID,oldTagIDs) => {
+const replaceTags = (mergedID, oldTagIDs) => {
     let records = globalRecords.filter(r => r.tags.includes(oldTagIDs[0]) || r.tags.includes(oldTagIDs[1]))
     records.forEach(r => {
-        globalRecords[r.id].tags = [...globalRecords[r.id].tags,mergedID].filter(tag => tag !== oldTagIDs[0] && tag !== oldTagIDs[1]);
+        globalRecords[r.id].tags = [...globalRecords[r.id].tags, mergedID].filter(tag => tag !== oldTagIDs[0] && tag !== oldTagIDs[1]);
     });
     grabRecords(globalRecords);
     if (document.getElementById('tag-section')) {

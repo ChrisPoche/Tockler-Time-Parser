@@ -14,10 +14,14 @@
     left: 20px;
 }
 
-#download-csv {
+#download-csv, #zoom-table-button {
     position: fixed;
     top: 90vh;
     left: 20px;
+}
+
+#zoom-table-button {
+    top: 80vh;
 }
 
 body {
@@ -131,7 +135,7 @@ body {
     margin-top: 5vh;
 }
 
-#record-section, #tag-section {
+#record-section, #tag-section, #zoom-section {
     /* margin: 40px 0 0; */
     max-height: 90vh;
     overflow-y: auto;
@@ -143,7 +147,7 @@ body {
     top: 0;
 }
 
-#table-header {
+#table-header, #zoom-table-header {
     text-transform: capitalize;
     font-weight: bolder;
     color: black;
@@ -164,7 +168,7 @@ tr {
     height: 2em;
 }
 
-.record-row:hover, .tag-row:hover {
+.record-row:hover, .tag-row:hover, .zoom-row:hover {
     background-color: gray;
     border: 1px solid black;
 }
@@ -235,7 +239,7 @@ thead {
     white-space: nowrap;
 }
 
-#page-controls, #tag-page-controls {
+#page-controls, #tag-page-controls, #zoom-page-controls {
     display: block;
     height: 29.78px;
     text-align: center;
@@ -291,21 +295,27 @@ thead {
     justify-content: flex-end;
 }
 
-#go-to-page, #page-numbering, #go-to-page-tags, #page-numbering-tags {
+#go-to-page, #page-numbering, 
+#go-to-page-tags, #page-numbering-tags, 
+#go-to-page-zoom, #page-numbering-zoom {
     width: 39px;
     margin-right: 20px;
 }
 
-#go-to-page::-webkit-outer-spin-button, #go-to-page::-webkit-inner-spin-button, #go-to-page-tags::-webkit-outer-spin-button, #go-to-page-tags::-webkit-inner-spin-button {
+#go-to-page::-webkit-outer-spin-button, #go-to-page::-webkit-inner-spin-button, 
+#go-to-page-tags::-webkit-outer-spin-button, #go-to-page-tags::-webkit-inner-spin-button, 
+#go-to-page-zoom::-webkit-outer-spin-button, #go-to-page-zoom::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-#go-to-page[type=number], #go-to-page-tags[type=number] {
+#go-to-page[type=number], 
+#go-to-page-tags[type=number],
+#go-to-page-zoom[type=number] {
     -moz-appearance: textfield;
 }
 
-#go-to-page, #go-to-page-tags, select {
+#go-to-page, #go-to-page-tags, #go-to-page-zoom, select {
     background-color: lightgrey;
     outline: none;
     border: none;
@@ -317,7 +327,9 @@ thead {
     margin: 0 10px;
 }
 
-#right-arrows, #left-arrows, #right-arrows-tags, #left-arrows-tags {
+#right-arrows, #left-arrows, 
+#right-arrows-tags, #left-arrows-tags,
+#right-arrows-zoom, #left-arrows-zoom {
     position: absolute;
     /* bottom: 9px; */
     margin-top: -24px;
@@ -325,12 +337,12 @@ thead {
     display: flex;
 }
 
-#right-arrows, #right-arrows-tags {
+#right-arrows, #right-arrows-tags, #right-arrows-zoom {
     right: 0;
     justify-content: flex-end;
 }
 
-#left-arrows, #left-arrows-tags {
+#left-arrows, #left-arrows-tags, #left-arrows-zoom {
     margin-top: 1px;
     left: 0;
     justify-content: flex-start;
