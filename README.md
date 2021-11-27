@@ -38,10 +38,6 @@ Local Storage
 
 - Extend existing Tockler sqlite database with tables for user preference and settings in this app
 
-Table Creation
-
-- Dry out code for record and tag table creation
-
 ### To Do List
 
 - Add/Delete tag to all Zoom meetings. Iterate the events, updating filtered tags zoomTags.start-zoomTags.end
@@ -49,6 +45,4 @@ Table Creation
 
 ### Defects
 
-- Tags fail to draw on Record table if only one row
-  - Likely the same no-row issue as Tag table
-- Clicking tag on Zoom table removes close button
+- Clicking tag on Zoom table removes close button. Workaround, drag table redraw on drop recreates the close button
