@@ -2,6 +2,146 @@
     box-sizing: border-box;
 }
 
+#icon {
+    width: 2.7em;
+    height: 2.7em;
+    margin-right: 10px;
+    background-size: 1.5em;
+}
+
+.dark-mode #icon {
+    filter: brightness(100);
+}
+
+#titlebar {
+    display: block;
+    position: fixed;
+    height: 3em;
+    margin-left: 0;
+    width: 100vw;
+    padding: 4px;
+    background: #FFF;
+    color: #000000;
+    top: 0;
+}
+
+.dark-mode #titlebar {
+    background: #000000;
+    color: #FFF;
+}
+
+#window-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 46px);
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+}
+
+#window-controls .button {
+    grid-row: 1 / span 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+#min-button {
+    grid-column: 1;
+}
+
+#max-button, #restore-button {
+    grid-column: 2;
+}
+
+#close-button {
+    grid-column: 3;
+}
+
+#titlebar #drag-region {
+    width: 100%;
+    height: 100%;
+    -webkit-app-region: drag;
+}
+
+@media (-webkit-device-pixel-ratio: 1.5), (device-pixel-ratio: 1.5),
+(-webkit-device-pixel-ratio: 2), (device-pixel-ratio: 2),
+(-webkit-device-pixel-ratio: 3), (device-pixel-ratio: 3) {
+    #window-controls .icon {
+        width: 10px;
+        height: 10px;
+    }
+}
+
+#window-controls {
+    -webkit-app-region: no-drag;
+}
+
+#window-controls .button:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#window-controls .button:active {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+#close-button:hover {
+    background: #E81123 !important;
+}
+
+#close-button:active {
+    background: #F1707A !important;
+}
+
+#close-button:active .icon {
+    filter: invert(1);
+}
+
+#restore-button {
+    display: none !important;
+}
+
+.dark-mode .icon {
+    filter: invert();
+}
+
+#titlebar #drag-region {
+    display: grid;
+    grid-template-columns: auto 138px;
+}
+
+#window-title {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    margin-left: 8px;
+    overflow: hidden;
+    font-family: "Segoe UI", sans-serif;
+    font-size: 12px;
+}
+
+#window-title span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.5;
+    font-size: 1.8em;
+}
+
+.maximized #window-title {
+    margin-left: 12px;
+}
+
+.maximized #restore-button {
+    display: flex !important;
+}
+
+.maximized #max-button {
+    display: none;
+}
+
 #date-input.center {
     position: absolute;
     left: 45%;
@@ -14,7 +154,19 @@
     left: 20px;
 }
 
-#download-csv, #zoom-table-button {
+.dark-mode #date-input.data-loaded {
+    background-color: #444444;
+    color: rgb(190, 190, 190);
+}
+
+.dark-mode input::-webkit-datetime-edit-day-field:focus,
+input::-webkit-datetime-edit-month-field:focus,
+input::-webkit-datetime-edit-year-field:focus {
+    background-color: black;
+    outline: none;
+}
+
+#download-csv, #zoom-table-button, #toggle-dark-mode {
     position: fixed;
     top: 90vh;
     left: 20px;
@@ -24,9 +176,12 @@
     top: 80vh;
 }
 
+#toggle-dark-mode {
+    top: 95vh;
+}
+
 body {
     margin: 0;
-    padding: 0 0 0 20px;
     overflow: hidden;
     height: 100vh;
     width: 100vw;
@@ -34,6 +189,11 @@ body {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+}
+
+body.dark-mode {
+    background-color: #3a3a3a;
+    color: white;
 }
 
 #app-chart {
@@ -45,16 +205,18 @@ body {
 #duration {
     position: absolute;
     left: 300px;
-    top: 2%;
+    top: 4em;
 }
 
 #container {
     display: flex;
     flex-direction: initial;
     text-align: center;
-    height: 100vh;
+    margin-top: 3em;
+    height: calc(100vh - 3em);
     justify-content: center;
     align-items: center;
+    padding-left: 20px;
 }
 
 .error {
@@ -95,6 +257,10 @@ body {
     color: rgba(0, 0, 0, .4);
 }
 
+.dark-mode .app-filter:hover {
+    color: rgba(255, 255, 255, .4);
+}
+
 #refresh-button {
     width: fit-content;
     margin-top: 8px;
@@ -117,6 +283,10 @@ body {
     display: block;
 }
 
+.dark-mode #prev-removed {
+    color: white;
+}
+
 .hidden {
     display: none;
 }
@@ -132,13 +302,13 @@ body {
 #app-drawer-border {
     border-right: 1px solid black;
     height: 90vh;
-    margin-top: 5vh;
+    margin-top: 2.5vh;
 }
 
 #record-section, #tag-section, #zoom-section {
-    /* margin: 40px 0 0; */
-    max-height: 90vh;
+    max-height: 87vh;
     overflow-y: auto;
+    color: black;
 }
 
 ::-webkit-scrollbar {
@@ -295,21 +465,21 @@ thead {
     justify-content: flex-end;
 }
 
-#record-go-to-page, #record-page-numbering, 
-#tag-go-to-page, #tag-page-numbering, 
+#record-go-to-page, #record-page-numbering,
+#tag-go-to-page, #tag-page-numbering,
 #zoom-go-to-page, #zoom-page-numbering {
     width: 39px;
     margin-right: 20px;
 }
 
-#record-go-to-page::-webkit-outer-spin-button, #record-go-to-page::-webkit-inner-spin-button, 
-#tag-go-to-page::-webkit-outer-spin-button, #tag-go-to-page::-webkit-inner-spin-button, 
+#record-go-to-page::-webkit-outer-spin-button, #record-go-to-page::-webkit-inner-spin-button,
+#tag-go-to-page::-webkit-outer-spin-button, #tag-go-to-page::-webkit-inner-spin-button,
 #zoom-go-to-page::-webkit-outer-spin-button, #zoom-go-to-page::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-#record-go-to-page[type=number], 
+#record-go-to-page[type=number],
 #tag-go-to-page[type=number],
 #zoom-go-to-page[type=number] {
     -moz-appearance: textfield;
@@ -327,7 +497,7 @@ thead {
     margin: 0 10px;
 }
 
-#right-arrows-record, #left-arrows-record, 
+#right-arrows-record, #left-arrows-record,
 #right-arrows-tag, #left-arrows-tag,
 #right-arrows-zoom, #left-arrows-zoom {
     position: absolute;
@@ -545,9 +715,9 @@ thead {
 }
 
 #merge-button {
-    display : inline-block;
-    width : fit-content;
-    padding : .4rem;
-    border-radius : .4rem;
+    display: inline-block;
+    width: fit-content;
+    padding: .4rem;
+    border-radius: .4rem;
     font-size: large;
 }
