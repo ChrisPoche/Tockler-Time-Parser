@@ -1,5 +1,5 @@
 const { Chart } = require('chart.js');
-const { contextBridge, ipcRenderer, ipcMain } = require('electron');
+const { contextBridge, ipcRenderer, ipcMain, BrowserWindow } = require('electron');
 
 let chartTop, chartLeft, chartSize = .3;
 let chartVisible = true;
@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld(
   "api", {
   send: (channel, data) => {
     // whitelist channels
-    let validChannels = ["toRead", "createChart", "write-csv", "askForDates", 'retrieve-events-by-date'];
+    let validChannels = ["toRead", "createChart", "write-csv", "askForDates", 'retrieve-events-by-date','title-bar-interaction'];
     if (channel === "createChart" && chartVisible) {
       const createChart = () => {
         if (document.getElementById('app-chart')) document.getElementById('app-chart').remove();
@@ -106,14 +106,14 @@ contextBridge.exposeInMainWorld(
     }
   },
   receive: (channel, func) => {
-    let validChannels = ['fromRead', 'return-csv', 'returnDates','return-events-by-date'];
+    let validChannels = ['fromRead', 'return-csv', 'returnDates', 'return-events-by-date', 'toggle-maximize'];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
-      if(channel === 'return-events-by-date') {
+      if (channel === 'return-events-by-date') {
         ipcRenderer.once(channel, (event, ...args) => {
           return func(args)
         })
-      } 
+      }
       else ipcRenderer.once(channel, (event, ...args) => func(args));
     }
   }
