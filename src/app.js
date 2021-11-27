@@ -123,7 +123,6 @@ window.addEventListener('load', () => {
             downloadCSV();
         }
         if ((e.key === 'f' && e.ctrlKey)) {
-            console.log(document.getElementById('titlebar').style.visibility);
             document.getElementById('titlebar').style.visibility.length > 0 ? document.getElementById('titlebar').style.removeProperty('visibility') : document.getElementById('titlebar').style.visibility = 'hidden';
         }
         if (e.key === 'M' && e.ctrlKey && e.shiftKey) {
@@ -153,7 +152,7 @@ const createTitlebar = () => {
     span.innerText = 'Time Parser';
     windowTitle.appendChild(span);
     let windowControls = document.createElement('div');
-    ['min-button','max-button','restore-button','close-button'].forEach(id => {
+    ['min-button', 'max-button', 'restore-button', 'close-button'].forEach(id => {
         let button = document.createElement('div');
         button.id = id;
         button.classList = 'button';
@@ -210,6 +209,10 @@ const grabRecordsFromDatePicker = (date) => {
 
         });
         tags = [];
+        if (document.getElementById('tag-section')) document.getElementById('tag-section').remove();
+        zoomTags = [];
+        if (document.getElementById('zoom-section')) document.getElementById('zoom-section').remove();
+        filteredRecords = [];
         postDataRetrieval(records);
     });
 };
@@ -392,6 +395,16 @@ const addTagsToZoomMeetings = (zoomOrigin, row) => {
     }
 }
 
+const modifySort = (e, type) => {
+    let val = e.target.id.includes('zoom-tl-th') ? 'tags' : e.target.id.split('-')[2];
+    if (val !== 'bar' && val) {
+        sortByHeader[type][val] = sortByHeader[type][val] === '' ? 'asc' : sortByHeader[type][val] === 'asc' ? 'desc' : '';
+        table[`${type}-go-to-page`] = 1;
+        filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
+        createTable(type);
+    }
+}
+
 const createTable = (type) => {
     if (!document.getElementById(`${type}-section`)) {
         let section = document.createElement('div');
@@ -457,14 +470,11 @@ const createTable = (type) => {
         };
         header[type].forEach((h, index) => {
             let th = document.createElement('th');
-            let thText = {
-                'record': `${h}<span style="line-height: 1.2">${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>`,
-                'tag': `${h}<span style="line-height: 1.2">${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>`,
-                'zoom': h
-            }
-            th.innerHTML = thText[type];
+            th.innerHTML = `${h}<span>${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>`;
             th.id = `${type}-header-${h}`;
-            if (index === header[type].length - 2 || (index === header[type].length -1 && type === 'zoom')) { // Close Button Tag and Zoom
+            th.classList = 'header';
+            th.addEventListener('click', (e) => modifySort(e, type));
+            if (index === header[type].length - 2 || (index === header[type].length - 1 && type === 'zoom')) { // Close Button Tag and Zoom
                 let closeButton = document.createElement('div');
                 closeButton.id = `close-${type}-section`;
                 closeButton.innerText = 'X';
@@ -479,7 +489,8 @@ const createTable = (type) => {
             }
             if (index === 0) {
                 th.id = `${type}-tl-th`;
-                th.innerText = type === 'zoom' ? 'tags' : '';
+                th.classList = 'header';
+                th.innerHTML = type === 'zoom' ? `tags<span>${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>` : '';
                 th.style.cursor = 'move';
                 // Make table draggable
                 var clickX, clickY, dragX, dragY;
@@ -683,6 +694,7 @@ const createTable = (type) => {
                         let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
                         let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
                         td.innerText = `${hh}:${mm}:${ss}`;
+                        results[i].duration = dur;
                     }
                     if (index > 0) td.classList = 'time-col';
                     if (index === 2) td.innerText = globalRecords[results[i].start].start;
@@ -1167,7 +1179,7 @@ const postDataRetrieval = (records) => {
         let zoomConnectionId;
         if ((row.app === 'Zoom' && (row.title === 'Connecting…' || (row.title === 'Zoom Meeting' && !zoomOrigin))) || (row.app !== 'Zoom')) {
             zoomConnectionId = row.id
-            zoomTags.push({ 'start': zoomConnectionId, 'end': 0 });
+            zoomTags.push({ 'start': zoomConnectionId, 'end': 0, 'duration': 0 });
             for (let i = zoomConnectionId > 5 ? zoomConnectionId - 6 : 0; i < zoomConnectionId; i++) {
                 if ((globalRecords[i].app === 'Outlook' && !globalRecords[i].title.match(/Reminder\(s\)/)) || (globalRecords[i].app === 'Slack')) zoomOrigin = globalRecords[i];
             }
