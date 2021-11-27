@@ -317,21 +317,21 @@ body.dark-mode {
     top: 0;
 }
 
-#record-table-header, #tag-table-header, #zoom-table-header {
-    text-transform: capitalize;
-    font-weight: bolder;
-    color: black;
-}
-
 td, th {
     padding: .4em 1em;
     text-align: left;
 }
 
-th {
+.header {
+    font-weight: bolder;
+    color: black;
     font-size: initial;
     height: 2em;
     text-transform: capitalize;
+}
+
+.header span {
+    line-height: 1.2;
 }
 
 tr {
