@@ -28,6 +28,7 @@ let tags = [];
 let dWR = []; // Days With Records
 let dragTag, dropTag;
 let filteredRecords = [], tagID, zoomTags = []; // Global table trackers
+let activeTables = [];
 
 
 let table = ['record', 'tag', 'zoom'].reduce((prev, t) => ({ ...prev, [`${t}-show`]: 10, [`${t}-go-to-page`]: 1, [`${t}-page-count`]: 1, [`${t}-top`]: '', [`${t}-left`]: '' }), {});
@@ -405,7 +406,19 @@ const modifySort = (e, type) => {
     }
 }
 
+const bindBringToFrontClick = (tables) => {
+    tables.forEach(table => {
+        let tbl = document.getElementById(`${table.type}-section`);
+        tbl.addEventListener('click', (e) => {
+            document.querySelectorAll('.bring-to-front').forEach(t => t.classList.remove('bring-to-front'));
+            tbl.classList.add('bring-to-front');
+        })
+        activeTables[activeTables.indexOf(table)].clickBound = true;
+    })
+}
+
 const createTable = (type) => {
+    if (!activeTables.includes(type)) activeTables.push({type, 'clickBound': false});
     if (!document.getElementById(`${type}-section`)) {
         let section = document.createElement('div');
         section.id = `${type}-section`;
@@ -462,7 +475,7 @@ const createTable = (type) => {
             th.id = `${type}-header-${h}`;
             th.classList = 'header';
             th.addEventListener('click', (e) => modifySort(e, type));
-            if (index === header[type].length - 2 || (index === header[type].length - 1 && type === 'zoom')) { // Close Button Tag and Zoom
+            if ((index === header[type].length - 2 && type === 'tag') || (index === header[type].length - 1 && type === 'zoom')) { // Close Button Tag and Zoom
                 let closeButton = document.createElement('div');
                 closeButton.id = `close-${type}-section`;
                 closeButton.innerText = 'X';
@@ -471,7 +484,7 @@ const createTable = (type) => {
                 closeButton.addEventListener('click', (e) => {
                     e.stopImmediatePropagation();
                     document.getElementById(`${type}-section`).remove();
-                    aggregateRecords();
+                    activeTables = activeTables.filter(t => t.type !== type);
                 });
                 th.appendChild(closeButton);
             }
@@ -860,6 +873,8 @@ const createTable = (type) => {
         }
         if (type === 'record') resizeTableColumns();
         aggregateRecords();
+        let boundIsFalse = activeTables.filter(t => !t.clickBound);
+        if (boundIsFalse.length > 0) bindBringToFrontClick(boundIsFalse);
     }
 }
 
@@ -1188,16 +1203,16 @@ const postDataRetrieval = (records) => {
         document.body.appendChild(downloadBttn);
     }
 
-    if (!document.getElementById('zoom-table-button')) {
-        let zTB = document.createElement('button');
-        zTB.id = 'zoom-table-button';
-        zTB.innerText = 'Zoom Table'
-        // zTB.addEventListener('click', createZoomTable);
-        zTB.addEventListener('click', () => {
-            createTable('zoom');
-        });
-        document.body.appendChild(zTB);
-    }
+    if (document.getElementById('zoom-table-button')) document.getElementById('zoom-table-button').remove();
+    let zTB = document.createElement('button');
+    zTB.id = 'zoom-table-button';
+    zTB.innerText = 'Zoom Table';
+    zTB.addEventListener('click', () => {
+        createTable('zoom');
+    });
+    zTB.disabled = zoomTags.length < 1 ? true : false;
+    document.body.appendChild(zTB);
+
     if (!document.getElementById('toggle-dark-mode')) {
         let tDM = document.createElement('button');
         tDM.id = 'toggle-dark-mode';
