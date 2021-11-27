@@ -722,3 +722,7 @@ thead {
     border-radius: .4rem;
     font-size: large;
 }
+
+.bring-to-front {
+    z-index: 1000;
+}
