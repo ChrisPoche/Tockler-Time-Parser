@@ -459,16 +459,16 @@ const createTable = (type) => {
             let th = document.createElement('th');
             let thText = {
                 'record': `${h}<span style="line-height: 1.2">${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>`,
-                'tag': `${h.replace(h[0], h[0].toUpperCase())}<span style="line-height: 1.2">${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>`,
-                'zoom': `${h.replace(h[0], h[0].toUpperCase())}`
+                'tag': `${h}<span style="line-height: 1.2">${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>`,
+                'zoom': h
             }
             th.innerHTML = thText[type];
             th.id = `${type}-header-${h}`;
-            if (index === header[type].length - 2) { // Close Button Tag and Zoom
+            if (index === header[type].length - 2 || (index === header[type].length -1 && type === 'zoom')) { // Close Button Tag and Zoom
                 let closeButton = document.createElement('div');
                 closeButton.id = `close-${type}-section`;
                 closeButton.innerText = 'X';
-                closeButton.classList = `close-button close-${type}`;
+                closeButton.classList = `close-button close-section`;
                 closeButton.style.removeProperty('left');
                 closeButton.addEventListener('click', (e) => {
                     e.stopImmediatePropagation();
@@ -479,7 +479,7 @@ const createTable = (type) => {
             }
             if (index === 0) {
                 th.id = `${type}-tl-th`;
-                th.innerText = '';
+                th.innerText = type === 'zoom' ? 'tags' : '';
                 th.style.cursor = 'move';
                 // Make table draggable
                 var clickX, clickY, dragX, dragY;
