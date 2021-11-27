@@ -522,7 +522,7 @@ thead {
 #download-success, #tag-exists-error {
     position: fixed;
     width: 200px;
-    top: 92vh;
+    top: 72vh;
     left: 20px;
     color: red;
     opacity: 0;
