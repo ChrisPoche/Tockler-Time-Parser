@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu } = require('electron')
 const contextMenu = require('electron-context-menu');
 const path = require('path');
 const fs = require('fs');
@@ -34,7 +34,7 @@ ipcMain.on('askForDates', (e, arg) => {
 
 
 ipcMain.on('retrieve-events-by-date', (e, arg) => {
-  let date = new Date(new Date(arg).getTime() + new Date(arg).getTimezoneOffset()*60000);
+  let date = new Date(new Date(arg).getTime() + new Date(arg).getTimezoneOffset() * 60000);
   let startDate = date.getTime();
   let endDate = date.setDate(date.getDate() + 1);
 
@@ -71,6 +71,7 @@ function createWindow() {
   let mainWindow = new BrowserWindow({
     width: 1400,//800,
     height: 740,//600,
+    frame: false,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -78,6 +79,97 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     }
   })
+
+  let menu = Menu.buildFromTemplate([
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Exit',
+          accelerator: 'CmdOrCtrl+W',
+          click() {
+            app.quit();
+          }
+        }
+      ]
+    },
+    {
+      label: 'View',
+      submenu: [
+        {
+          label: 'Reload',
+          accelerator: 'CmdOrCtrl+R',
+          click() {
+            mainWindow.webContents.reloadIgnoringCache();
+          }
+        },
+        {
+          label: 'Force Reload',
+          accelerator: 'CmdOrCtrl+Shift+R',
+          click() {
+            mainWindow.webContents.reload();
+          }
+        },
+        {
+          label: 'Toggle Developer Tools',
+          accelerator: 'CmdOrCtrl+Shift+I',
+          click() {
+            mainWindow.webContents.toggleDevTools();
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Actual Size',
+          accelerator: 'CmdOrCtrl+0',
+          click() {
+            mainWindow.webContents.setZoomLevel(1);
+          }
+        },
+        {
+          label: 'Zoom In',
+          accelerator: 'CmdOrCtrl+=',
+          click() {
+            mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() + .2);
+          }
+        },
+        {
+          label: 'Zoom Out',
+          accelerator: 'CmdOrCtrl+-',
+          click() {
+            mainWindow.webContents.setZoomLevel(mainWindow.webContents.getZoomLevel() - .2);
+          }
+        }
+      ],
+    },
+    {
+      label: 'Window',
+      submenu: [
+        {
+          label: 'Minimize',
+          accelerator: 'CmdOrCtrl+M',
+          click() {
+            mainWindow.minimize();
+          }
+        },
+        {
+          label: 'Maximize',
+          accelerator: 'CmdOrCtrl+Shift+M',
+          click() {
+            mainWindow.maximize();
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Toggle Full Screen',
+          accelerator: 'CmdOrCtrl+F',
+          click() {
+            mainWindow.setFullScreen(!mainWindow.isFullScreen());
+          }
+        }
+      ]
+    }
+  ])
+  Menu.setApplicationMenu(menu);
 
   mainWindow.loadFile('./src/index.html');
 
@@ -151,4 +243,18 @@ ipcMain.on('write-csv', (event, arg) => {
   })
   writeStream.end();
   event.reply('return-csv', res);
+})
+
+ipcMain.on('title-bar-interaction', (event, arg) => {
+  let mainWindow = BrowserWindow.getFocusedWindow();
+  if (arg === 'min-button') {
+    mainWindow.minimize();
+  };
+  if (arg === 'close-button') {
+    mainWindow.close();
+  };
+  if (arg === 'max-button' || arg === 'restore-button') {
+    arg === 'max-button' ? mainWindow.maximize() : mainWindow.unmaximize();
+    event.reply('toggle-maximize', mainWindow.isMaximized());
+  };
 })
