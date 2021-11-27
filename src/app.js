@@ -421,25 +421,13 @@ const createTable = (type) => {
         if (document.getElementById(`${type}-go-to-page`)) document.getElementById(`${type}-go-to-page`).value = table[`${type}-go-to-page`];
         if (document.getElementById(`${type}-go-to-page`)) document.getElementById(`${type}-go-to-page`).max = table[`${type}-page-count`];
         if (document.getElementById(`${type}-page-numbering`)) document.getElementById(`${type}-page-numbering`).innerText = `Page ${table[`${type}-go-to-page`]} of ${table[`${type}-page-count`]}`;
-        if (document.getElementsByClassName(`${type}-page-arrows`).length > 0) {
+        if (document.getElementsByClassName(`page-arrows`).length > 0) {
             [...document.getElementsByClassName('left')].forEach(arrow => {
-                // arrow.style.color = goToPage === 1 ? 'gray' : 'black';
                 arrow.style.color = table[`${type}-go-to-page`] === 1 ? 'gray' : 'black';
             });
             [...document.getElementsByClassName('right')].forEach(arrow => {
-                // arrow.style.color = goToPage === pageCount ? 'gray' : 'black';
                 arrow.style.color = table[`${type}-go-to-page`] === table[`${type}-page-count`] ? 'gray' : 'black';
             });
-            if (document.getElementsByClassName(`${type}-page-arrows`).length > 0) {
-                [...document.getElementsByClassName('left')].forEach(arrow => {
-                    // arrow.style.color = goToPage === 1 ? 'gray' : 'black';
-                    arrow.style.color = table[`${type}-go-to-page`] === 1 ? 'gray' : 'black';
-                });
-                [...document.getElementsByClassName('right')].forEach(arrow => {
-                    // arrow.style.color = goToPage === pageCount ? 'gray' : 'black';
-                    arrow.style.color = table[`${type}-go-to-page`] === table[`${type}-page-count`] ? 'gray' : 'black';
-                });
-            }
         }
         let section = document.getElementById(`${type}-section`);
         section.style.position = 'absolute';
