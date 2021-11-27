@@ -331,6 +331,7 @@ td, th {
 th {
     font-size: initial;
     height: 2em;
+    text-transform: capitalize;
 }
 
 tr {
@@ -437,7 +438,7 @@ thead {
     top: 0;
 }
 
-.close-tag, .close-record {
+.close-section {
     right: 4px;
     top: 4px;
     background-color: gray;
