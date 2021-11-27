@@ -75,6 +75,7 @@ const dateInputHandler = (e) => {
 
 
 window.addEventListener('load', () => {
+    createTitlebar();
     createDragAndDropArea();
     let dateInput = document.getElementById('date-input');
     window.api.send('askForDates', 'no-options');
@@ -113,16 +114,75 @@ window.addEventListener('load', () => {
             editMode = !editMode;
             // console.log('Edit Mode:', editMode);
             toggleCloseButtons();
-        };
-        if (e.key === 'M' && e.ctrlKey && e.shiftKey && dataLoaded) {
-            console.log('Minimizing All');
         }
-        if ((e.key === '-' && e.ctrlKey) || (e.key === '+' && e.ctrlKey && e.shiftKey)) {
+        if (((e.key === '-' && e.ctrlKey) || (e.key === '=' && e.ctrlKey)) && document.getElementById('record-table')) {
             // console.log('resize font');
             resizeTableColumns();
         }
+        if ((e.key === 'd' && e.ctrlKey) && document.getElementById('record-table')) {
+            downloadCSV();
+        }
+        if ((e.key === 'f' && e.ctrlKey)) {
+            console.log(document.getElementById('titlebar').style.visibility);
+            document.getElementById('titlebar').style.visibility.length > 0 ? document.getElementById('titlebar').style.removeProperty('visibility') : document.getElementById('titlebar').style.visibility = 'hidden';
+        }
+        if (e.key === 'M' && e.ctrlKey && e.shiftKey) {
+            let id = document.getElementById('window-controls').classList.length > 0 ? 'restore-button' : 'max-button';
+            titleBarInteraction(id);
+        }
+    });
+    document.getElementById('window-controls').addEventListener('click', (e) => {
+        let id = e.target.id ? e.target.id : e.target.parentNode.id;
+        titleBarInteraction(id);
     });
 });
+const createTitlebar = () => {
+    let header = document.createElement('header');
+    header.id = 'titlebar';
+    let dragRegion = document.createElement('div');
+    dragRegion.id = 'drag-region';
+    header.appendChild(dragRegion);
+    let windowTitle = document.createElement('div');
+    windowTitle.id = 'window-title';
+    let img = document.createElement('img');
+    img.id = 'icon';
+    img.src = '../assets/icons/win/icon.png';
+    img.alt = 'icon';
+    windowTitle.appendChild(img);
+    let span = document.createElement('span');
+    span.innerText = 'Time Parser';
+    windowTitle.appendChild(span);
+    let windowControls = document.createElement('div');
+    ['min-button','max-button','restore-button','close-button'].forEach(id => {
+        let button = document.createElement('div');
+        button.id = id;
+        button.classList = 'button';
+        let type = id.split('-')[0];
+        let icon = document.createElement('img');
+        icon.classList = 'icon';
+        icon.srcset = `icons/${type}-k-10.png 1x, icons/${type}-k-12.png 1.25x, icons/${type}-k-15.png 1.5x, icons/${type}-k-15.png 1.75x, icons/${type}-k-20.png 2x, icons/${type}-k-20.png 2.25x, icons/${type}-k-24.png 2.5x, icons/${type}-k-30.png 3x, icons/${type}-k-30.png 3.5x`
+        icon.draggable = false;
+        button.appendChild(icon);
+        windowControls.appendChild(button);
+    })
+    windowControls.id = 'window-controls';
+    dragRegion.appendChild(windowTitle);
+    dragRegion.appendChild(windowControls);
+    document.body.prepend(header);
+}
+
+
+const titleBarInteraction = (id) => {
+    window.api.send('title-bar-interaction', id);
+    window.api.receive('toggle-maximize', (arr) => {
+        if (arr[0]) {
+            document.getElementById('window-controls').classList.add('maximized');
+        } else {
+            document.getElementById('window-controls').classList.remove('maximized');
+        }
+    })
+}
+
 
 const grabRecordsFromDatePicker = (date) => {
     document.getElementById('date-input').classList = 'data-loaded';
@@ -338,7 +398,6 @@ const createTable = (type) => {
         section.id = `${type}-section`;
         document.getElementById('container').appendChild(section);
     }
-    
     let results;
     if (type === 'record') results = filteredRecords.filter(r => !removedApps.includes(r.app));
     if (type === 'tag') results = globalRecords.filter(r => r.tags.includes(parseInt(tagID)));
@@ -372,9 +431,9 @@ const createTable = (type) => {
         let section = document.getElementById(`${type}-section`);
         section.style.position = 'absolute';
         let top = {
-            'record': '5vh',
-            'tag': '41vh',
-            'zoom': '41vh'
+            'record': 'calc(5vh + 3em)',
+            'tag': 'calc(41vh + 3em)',
+            'zoom': 'calc(41vh + 3em)'
         };
         let left = {
             'record': '300px',
@@ -394,7 +453,7 @@ const createTable = (type) => {
             // 'zoom': [...Object.keys(sortByHeader['zoom'])]
             'record': [`${type}-tl-th`, 'app', 'title', 'start', 'end', 'duration', 'tags'],
             'tag': [`${type}-tl-th`, 'app', 'title', 'duration', 'tags'],
-            'zoom': ['tags','duration','start','end']
+            'zoom': ['tags', 'duration', 'start', 'end']
         };
         header[type].forEach((h, index) => {
             let th = document.createElement('th');
@@ -405,7 +464,7 @@ const createTable = (type) => {
             }
             th.innerHTML = thText[type];
             th.id = `${type}-header-${h}`;
-            if (index === header[type].length-2) { // Close Button Tag and Zoom
+            if (index === header[type].length - 2) { // Close Button Tag and Zoom
                 let closeButton = document.createElement('div');
                 closeButton.id = `close-${type}-section`;
                 closeButton.innerText = 'X';
@@ -454,7 +513,7 @@ const createTable = (type) => {
                     document.removeEventListener('mousemove', calcTableLoc);
                     section.removeEventListener('mouseup', calcTableLoc);
                     let maxHeight;
-                    if (top[type]) maxHeight = window.innerHeight - parseInt(top[type].replace('px', '')) - (window.innerHeight * .05)
+                    if (table[`${type}-top`]) maxHeight = window.innerHeight - parseInt(table[`${type}-top`].replace('px', '')) - (window.innerHeight * .05)
                     section.style.maxHeight = maxHeight + 'px';
                 });
             }
@@ -1124,30 +1183,7 @@ const postDataRetrieval = (records) => {
 
         let downloadBttn = document.createElement('button');
         downloadBttn.id = 'download-csv';
-        downloadBttn.addEventListener('click', (e) => {
-            let filteredResults = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked);
-            let exportVals = 'app,title,start,end,dur,duration,tags\n' + filteredResults.map(r => `${r.app},${r.title.replace(/,/g, ';')},${r.start},${r.end},${r.dur},${r.duration},${r.tags.map(id => tags.filter(t => t.id === id)[0].name + ';').join('')}\n`).join('');
-            let subject = filteredResults[0].start.split(' ')[0].split('-')[1] + '-' + filteredResults[0].start.split(' ')[0].split('-')[2] + '_' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[1] + '-' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[2] + '_time_tracking';
-            window.api.send('write-csv', exportVals);
-            window.api.receive('return-csv', (data) => {
-                if (data[0] === 'write complete') {
-                    let a = document.createElement('a');
-                    a.href = '../time.csv'; //local test
-                    // a.href = '../../../time.csv'; //desktop app test
-                    a.id = 'file-link';
-                    a.download = `${subject}.csv`;
-                    a.style.visibility = 'hidden';
-                    document.body.appendChild(a);
-                    document.getElementById('file-link').click();
-                    document.getElementById('file-link').remove();
-                    let downloadSuccess = document.createElement('p');
-                    downloadSuccess.innerText = 'CSV successfully downloaded to your desktop'
-                    downloadSuccess.id = 'download-success';
-                    document.body.appendChild(downloadSuccess);
-                    downloadSuccess.addEventListener('animationend', () => downloadSuccess.remove());
-                }
-            });
-        });
+        downloadBttn.addEventListener('click', downloadCSV);
         downloadBttn.innerText = 'Download CSV';
         document.body.appendChild(downloadBttn);
     }
@@ -1157,12 +1193,49 @@ const postDataRetrieval = (records) => {
         zTB.id = 'zoom-table-button';
         zTB.innerText = 'Zoom Table'
         // zTB.addEventListener('click', createZoomTable);
-        zTB.addEventListener('click', () => { 
+        zTB.addEventListener('click', () => {
             createTable('zoom');
         });
         document.body.appendChild(zTB);
     }
+    if (!document.getElementById('toggle-dark-mode')) {
+        let tDM = document.createElement('button');
+        tDM.id = 'toggle-dark-mode';
+        let status = document.body.classList.length > 0 ? 'Disable' : 'Enable';
+        tDM.innerText = `${status} Dark Mode`;
+        tDM.addEventListener('click', () => {
+            document.body.classList.length > 0 ? document.body.classList.remove('dark-mode') : document.body.classList.add('dark-mode');
+            status = document.body.classList.length > 0 ? 'Disable' : 'Enable';
+            tDM.innerText = `${status} Dark Mode`;
+        });
+        document.body.appendChild(tDM);
+    }
 
+}
+
+const downloadCSV = () => {
+    let filteredResults = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked);
+    let exportVals = 'app,title,start,end,dur,duration,tags\n' + filteredResults.map(r => `${r.app},${r.title.replace(/,/g, ';')},${r.start},${r.end},${r.dur},${r.duration},${r.tags.map(id => tags.filter(t => t.id === id)[0].name + ';').join('')}\n`).join('');
+    let subject = filteredResults[0].start.split(' ')[0].split('-')[1] + '-' + filteredResults[0].start.split(' ')[0].split('-')[2] + '_' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[1] + '-' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[2] + '_time_tracking';
+    window.api.send('write-csv', exportVals);
+    window.api.receive('return-csv', (data) => {
+        if (data[0] === 'write complete') {
+            let a = document.createElement('a');
+            a.href = '../time.csv'; //local test
+            // a.href = '../../../time.csv'; //desktop app test
+            a.id = 'file-link';
+            a.download = `${subject}.csv`;
+            a.style.visibility = 'hidden';
+            document.body.appendChild(a);
+            document.getElementById('file-link').click();
+            document.getElementById('file-link').remove();
+            let downloadSuccess = document.createElement('p');
+            downloadSuccess.innerText = 'CSV successfully downloaded to your desktop'
+            downloadSuccess.id = 'download-success';
+            document.body.appendChild(downloadSuccess);
+            downloadSuccess.addEventListener('animationend', () => downloadSuccess.remove());
+        }
+    });
 }
 
 const cleanUpAppName = (app) => {
