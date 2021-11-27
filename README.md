@@ -46,10 +46,11 @@ Table Creation
 
 - Add/Delete tag to all Zoom meetings. Iterate the events, updating filtered tags zoomTags.start-zoomTags.end
 - Draw newly added/removed tags to other tables
+- Fix Header Sort functionality
 
 ### Defects
 
 - Tag Table page arrows are incorrectly grayed out
 - Tags fail to draw on Record table if only one row
   - Likely the same no-row issue as Tag table
-  
+- Clicking tag on Zoom table removes close button
