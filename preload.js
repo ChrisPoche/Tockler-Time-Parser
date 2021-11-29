@@ -10,7 +10,7 @@ contextBridge.exposeInMainWorld(
   "api", {
   send: (channel, data) => {
     // whitelist channels
-    let validChannels = ["toRead", "createChart", "write-csv", "askForDates", 'retrieve-events-by-date','title-bar-interaction'];
+    let validChannels = ["toRead", "createChart", "write-csv", "askForDates", 'retrieve-events-by-date','title-bar-interaction','initial-zoom','get-zoom-level'];
     if (channel === "createChart" && chartVisible) {
       const createChart = () => {
         if (document.getElementById('app-chart')) document.getElementById('app-chart').remove();
@@ -106,7 +106,7 @@ contextBridge.exposeInMainWorld(
     }
   },
   receive: (channel, func) => {
-    let validChannels = ['fromRead', 'return-csv', 'returnDates', 'return-events-by-date', 'toggle-maximize'];
+    let validChannels = ['fromRead', 'return-csv', 'returnDates', 'return-events-by-date', 'toggle-maximize','return-zoom-level'];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
       if (channel === 'return-events-by-date') {
