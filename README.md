@@ -18,7 +18,6 @@ Tagging
   - Parent-child: need to insert tag values as objects to nest children
     - May need to include parent ID to allow easier traversing on merges or subsequent nesting
 - Enable user to create custom auto tag filters
-  - Prioritize after implementing local storage / database to allow preferences to persist
 - Ability to toggle chart from displaying results by Apps to Tags
 - Table of top tags by duration
 - Tag all within the Tags table using an Add button found in the tags column
