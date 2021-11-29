@@ -43,14 +43,16 @@
 .settings {
     margin: 1em 0 1em 1em;
     text-transform: capitalize;    
+    font-size: 1.3em;
 }
 
 .settings label:last-child {
     margin: 1em 0 1em .5em;
 }
 
-.settings {
-    font-size: 1.3em;
+.settings p {
+    margin-left: 20px;
+    text-transform: none;
 }
 
 #reset-default-settings {
@@ -613,10 +615,59 @@ thead {
     border: none;
 }
 
-.page-arrows {
+.page-arrows, .expand-arrow {
     font-size: 30px;
     line-height: .6;
     margin: 0 10px;
+}
+
+.expand-arrow {
+    margin: -10px 0;
+    line-height: normal;
+}
+
+.expand-arrow {
+    font-weight: bolder;
+    display: inline-block;
+}
+
+.expand-open {
+    transform: rotate(90deg);
+    transform-origin: left;
+    margin: -10px -5px 0 19px;
+}
+
+.add-custom-action {
+    filter: grayscale() brightness(0);
+    margin-left: 6px;
+}
+
+#edit-input {
+    margin-left: -20px;
+}
+
+.add-custom-input {
+    margin: 20px 0 0;
+    display: flex;
+    align-content: center;
+}
+
+.dark-mode .add-custom-action {
+    filter: grayscale() brightness(100);
+}
+
+.add-custom-action:hover {
+    filter: none;
+}
+
+.add-custom-action.delete {
+    color: rgb(163, 0, 0);
+}
+.add-custom-action.edit {
+    color: rgb(194, 143, 0);
+}
+.add-custom-action.approve {
+    color: rgb(1, 138, 24);
 }
 
 #right-arrows-record, #left-arrows-record,
