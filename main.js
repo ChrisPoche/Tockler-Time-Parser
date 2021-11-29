@@ -122,7 +122,7 @@ function createWindow() {
           label: 'Actual Size',
           accelerator: 'CmdOrCtrl+0',
           click() {
-            mainWindow.webContents.setZoomLevel(1);
+            mainWindow.webContents.setZoomLevel(0);
           }
         },
         {
@@ -258,3 +258,6 @@ ipcMain.on('title-bar-interaction', (event, arg) => {
     event.reply('toggle-maximize', mainWindow.isMaximized());
   };
 })
+
+ipcMain.on('initial-zoom', (event, arg) => BrowserWindow.getFocusedWindow().webContents.setZoomLevel(JSON.parse(arg)));
+ipcMain.on('get-zoom-level', (event, arg) => event.reply('return-zoom-level', BrowserWindow.getFocusedWindow().webContents.getZoomLevel()));
