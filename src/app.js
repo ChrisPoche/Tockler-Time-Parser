@@ -59,6 +59,7 @@ const dateInputHandler = (e) => {
 window.addEventListener('load', () => {
     createTitlebar();
     createDragAndDropArea();
+    createSettingsPage();
     let dateInput = document.getElementById('date-input');
     window.api.send('askForDates', 'no-options');
     window.api.receive('returnDates', (dates) => {
@@ -96,8 +97,9 @@ window.addEventListener('load', () => {
             editMode = !editMode;
             toggleCloseButtons();
         }
-        if (((e.key === '-' && e.ctrlKey) || (e.key === '=' && e.ctrlKey)) && document.getElementById('record-table')) {
-            resizeTableColumns();
+        if (((e.key === '-' && e.ctrlKey) || (e.key === '=' && e.ctrlKey) || (e.key === '0' && e.ctrlKey))) {
+            if (document.getElementById('record-table')) resizeTableColumns();
+            updateZoomLevels();
         }
         if ((e.key === 'd' && e.ctrlKey) && document.getElementById('record-table')) {
             downloadCSV();
@@ -112,9 +114,91 @@ window.addEventListener('load', () => {
     });
     document.getElementById('window-controls').addEventListener('click', (e) => {
         let id = e.target.id ? e.target.id : e.target.parentNode.id;
-        titleBarInteraction(id);
+        if (id !== 'window-controls' || id !== 'settings-cog') titleBarInteraction(id);
+        if (id === 'settings-cog') toggleSettingsPage();
     });
 });
+
+const updateZoomLevels = () => {
+    window.api.send('get-zoom-level', 'zoom')
+    window.api.receive('return-zoom-level', (zmlvl) => {
+        window.localStorage.setItem('zoom-level', zmlvl);
+        let zoomInput = document.querySelector('#zoom-level input');
+        zoomInput.value = JSON.parse(zmlvl).toFixed(1);
+    });
+}
+
+const toggleSettingsPage = () => {
+    let settingsPage = document.getElementById('settings-page')
+    settingsPage.classList.toggle('settings-closed');
+    if (settingsPage.classList.length === 0) document.getElementById('container').addEventListener('click', toggleSettingsPage);
+    if (settingsPage.classList.length > 0) document.getElementById('container').removeEventListener('click', toggleSettingsPage);
+}
+
+const createSettingsPage = () => {
+    if (document.getElementById('settings-page')) document.getElementById('settings-page').remove();
+    let settingsPage = document.createElement('div');
+    settingsPage.id = 'settings-page';
+    settingsPage.classList = 'settings-closed';
+    document.body.appendChild(settingsPage);
+    ['toggle-dark-mode'].forEach(toggle => {
+        if (!document.getElementById(toggle)) {
+            let toggleVal = toggle.replace('toggle-', '');
+            let bool = JSON.parse(window.localStorage.getItem(toggleVal));
+            document.body.classList = bool ? toggleVal : '';
+            let row = document.createElement('div');
+            row.classList = 'settings';
+            let sliderContainer = document.createElement('label');
+            sliderContainer.classList = 'switch';
+            sliderContainer.id = toggle;
+            let input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = bool;
+            let slider = document.createElement('span');
+            slider.classList = 'slider round';
+            sliderContainer.appendChild(input);
+            sliderContainer.appendChild(slider);
+            let label = document.createElement('label');
+            label.innerText = toggleVal.replace('-', ' ');
+            input.addEventListener('click', () => {
+                document.body.classList.toggle(toggleVal);
+                window.localStorage.setItem(toggleVal, [...document.body.classList].includes(toggleVal));
+            });
+            row.appendChild(sliderContainer);
+            row.appendChild(label);
+            settingsPage.appendChild(row);
+        }
+    });
+    let zoomRow = document.createElement('div');
+    zoomRow.id = 'zoom-level';
+    zoomRow.classList = 'settings';
+    let zoomInput = document.createElement('input');
+    zoomInput.type = 'number';
+    zoomInput.step = 0.2;
+    let zoomLevel = window.localStorage.getItem('zoom-level') !== null ? JSON.parse(window.localStorage.getItem('zoom-level')) : 0;
+    zoomInput.value = zoomLevel.toFixed(1);
+    zoomInput.addEventListener('change', (e) => {
+        window.api.send('initial-zoom', e.target.value);
+        updateZoomLevels();
+    })
+    let zoomLabel = document.createElement('label');
+    zoomLabel.innerText = 'zoom level';
+    window.api.send('initial-zoom', zoomLevel);
+    zoomRow.appendChild(zoomInput);
+    zoomRow.appendChild(zoomLabel);
+    settingsPage.appendChild(zoomRow);
+
+    let resetDefault = document.createElement('button');
+    resetDefault.classList = 'settings';
+    resetDefault.id = 'reset-default-settings';
+    resetDefault.innerText = 'Restore Default Settings';
+    resetDefault.addEventListener('click', () => {
+        window.localStorage.clear();
+        createSettingsPage();
+    });
+    settingsPage.appendChild(resetDefault);
+}
+
 const createTitlebar = () => {
     let header = document.createElement('header');
     header.id = 'titlebar';
@@ -132,6 +216,12 @@ const createTitlebar = () => {
     span.innerText = 'Time Parser';
     windowTitle.appendChild(span);
     let windowControls = document.createElement('div');
+    let settingsCog = document.createElement('img');
+    settingsCog.id = 'settings-cog';
+    settingsCog.classList = 'icon';
+    settingsCog.src = 'icons/settings-cog.png';
+    settingsCog.draggable = false;
+    windowControls.appendChild(settingsCog);
     ['min-button', 'max-button', 'restore-button', 'close-button'].forEach(id => {
         let button = document.createElement('div');
         button.id = id;
@@ -390,7 +480,7 @@ const bindBringToFrontClick = (tables) => {
 }
 
 const createTable = (type) => {
-    if (!activeTables.includes(type)) activeTables.push({type, 'clickBound': false});
+    if (!activeTables.includes(type)) activeTables.push({ type, 'clickBound': false });
     if (!document.getElementById(`${type}-section`)) {
         let section = document.createElement('div');
         section.id = `${type}-section`;
@@ -444,7 +534,7 @@ const createTable = (type) => {
             th.id = `${type}-header-${h}`;
             th.classList = 'header';
             th.addEventListener('click', (e) => modifySort(e, type));
-            if (index === header[type].length - 2  || (index === header[type].length - 1 && type === 'zoom')) { // Close Button Tag and Zoom
+            if (index === header[type].length - 2 || (index === header[type].length - 1 && type === 'zoom')) { // Close Button Tag and Zoom
                 let closeButton = document.createElement('div');
                 closeButton.id = `close-${type}-section`;
                 closeButton.innerText = 'X';
@@ -570,7 +660,7 @@ const createTable = (type) => {
                 tr.appendChild(firstCol);
                 let row = [];
                 header[type].forEach((col, index) => index > 0 && results.length > 0 ? row.push(results[i][col]) : row.push(''));
-                row.shift(); 
+                row.shift();
                 row.map((val, index) => {
                     let td = document.createElement('td');
                     td.innerText = val;
@@ -917,20 +1007,6 @@ const postDataRetrieval = (records) => {
     });
     zTB.disabled = zoomTags.length < 1 ? true : false;
     document.body.appendChild(zTB);
-
-    if (!document.getElementById('toggle-dark-mode')) {
-        let tDM = document.createElement('button');
-        tDM.id = 'toggle-dark-mode';
-        let status = document.body.classList.length > 0 ? 'Disable' : 'Enable';
-        tDM.innerText = `${status} Dark Mode`;
-        tDM.addEventListener('click', () => {
-            document.body.classList.length > 0 ? document.body.classList.remove('dark-mode') : document.body.classList.add('dark-mode');
-            status = document.body.classList.length > 0 ? 'Disable' : 'Enable';
-            tDM.innerText = `${status} Dark Mode`;
-        });
-        document.body.appendChild(tDM);
-    }
-
 }
 
 const downloadCSV = () => {
