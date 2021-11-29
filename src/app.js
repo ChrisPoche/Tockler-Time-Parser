@@ -167,8 +167,8 @@ const createSettingsPage = () => {
                 if (toggleVal === 'dark-mode') document.body.classList.toggle(toggleVal);
                 let nextVal = !JSON.parse(window.localStorage.getItem(toggleVal));
                 label.innerHTML = (nextVal ? `<span class="expand-arrow">&#8250;</span> ` : '') + toggleVal.replace('-', ' ');
-                dropDown = nextVal;     
-                if (!nextVal && document.getElementById('add-custom-filter-container')) document.getElementById('add-custom-filter-container').remove();        
+                dropDown = nextVal;
+                if (!nextVal && document.getElementById('add-custom-filter-container')) document.getElementById('add-custom-filter-container').remove();
                 window.localStorage.setItem(toggleVal, nextVal);
             });
             label.addEventListener('click', (e) => {
@@ -281,7 +281,7 @@ const addExpandOptions = (expandable, toggleVal, type) => {
             approve.remove();
         }
     });
-    
+
     expandDiv.appendChild(addCustomDiv);
     let values = window.localStorage.getItem(toggleVal + '-values') ? window.localStorage.getItem(toggleVal + '-values').split(',') : [];
     values.forEach((val, index) => {
@@ -1373,8 +1373,8 @@ const mergeTagModal = () => {
                         const newTagName = () => {
                             let input = modal.querySelector('input');
                             let title = input.value.length === 0 ? input.placeholder : input.value;
-                            if (tags.filter(tag => tag.name === title).length === 0) {
-                                createNewTag(title);
+                            if (tags.filter(tag => tag.name === title).length <= 1) {
+                                if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title);
                                 replaceTags(tags.filter(tag => tag.name === title)[0].id, [parseInt(dropTag.split('-')[1]), parseInt(dragTag.split('-')[1])]);
                                 modalBackground.click();
                             }
@@ -1421,7 +1421,7 @@ const mergeTagModal = () => {
 const replaceTags = (mergedID, oldTagIDs) => {
     let records = globalRecords.filter(r => r.tags.includes(oldTagIDs[0]) || r.tags.includes(oldTagIDs[1]))
     records.forEach(r => {
-        globalRecords[r.id].tags = [...globalRecords[r.id].tags, mergedID].filter(tag => tag !== oldTagIDs[0] && tag !== oldTagIDs[1]);
+        globalRecords[r.id].tags = [...globalRecords[r.id].tags.filter(tag => tag !== oldTagIDs[0] && tag !== oldTagIDs[1]), mergedID];
     });
     createTable('record');
     if (document.getElementById('tag-section')) {
