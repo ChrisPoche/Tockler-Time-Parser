@@ -19,6 +19,7 @@ Tagging
     - May need to include parent ID to allow easier traversing on merges or subsequent nesting
 - Ability to toggle chart from displaying results by Apps to Tags
 - Table of top tags by duration
+- Double click tag to rename in tags table
 
 Styling
 
@@ -39,7 +40,6 @@ Local Storage
 - Add/Delete tag to all Zoom meetings. Iterate the events, updating filtered tags zoomTags.start-zoomTags.end
 - Draw newly added/removed tags to other tables
 - Editing auto-tag value finds existing filter, updates tags object and redraws tables
-- Merge tags allows you to choose existing name if one of the two being merged
 
 ### Defects
 
