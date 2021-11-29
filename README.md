@@ -39,9 +39,9 @@ Local Storage
 - Add/Delete tag to all Zoom meetings. Iterate the events, updating filtered tags zoomTags.start-zoomTags.end
 - Draw newly added/removed tags to other tables
 - Editing auto-tag value finds existing filter, updates tags object and redraws tables
-- Merge tags allows you to choose existing name if one of the two being merged 
+- Merge tags allows you to choose existing name if one of the two being merged
 
 ### Defects
 
 - Clicking tag on Zoom table removes close button. Workaround, drag table redraw on drop recreates the close button
-- QueryAll and clear all drag-and-drops when removing to prevent multiple elements with drag-and-drop id 
+- QueryAll and clear all drag-and-drops when removing to prevent multiple elements with drag-and-drop id
