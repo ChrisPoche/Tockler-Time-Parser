@@ -12,8 +12,7 @@ let table = 'TrackItems';
 
 ipcMain.on('askForDates', (e, arg) => {
   let db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
-    if (err) console.log(err.message);
-    // else console.log('Connected to Tracker db for askForDates.');
+    if (err) e.reply('returnDates', err.message);
   });
   let sql = `SELECT DISTINCT date(beginDate/1000, 'unixepoch', 'localtime') as start
             FROM ${table}`;
@@ -27,7 +26,6 @@ ipcMain.on('askForDates', (e, arg) => {
 
     db.close(err => {
       if (err) console.log(err)
-      // else console.log('db closed f');
     });
   });
 });
