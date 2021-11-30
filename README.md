@@ -40,8 +40,10 @@ Local Storage
 - Add/Delete tag to all Zoom meetings. Iterate the events, updating filtered tags zoomTags.start-zoomTags.end
 - Draw newly added/removed tags to other tables
 - Editing auto-tag value finds existing filter, updates tags object and redraws tables
+- Add show row count and chart visibility to local storage
+  - Create button to toggle chart visibility
 
 ### Defects
 
 - Clicking tag on Zoom table removes close button. Workaround, drag table redraw on drop recreates the close button
-- QueryAll and clear all drag-and-drops when removing to prevent multiple elements with drag-and-drop id
+- Empty search results need to return no rows for user feedback
