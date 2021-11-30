@@ -11,6 +11,7 @@ let dWR = []; // Days With Records
 let dragTag, dropTag;
 let filteredRecords = [], tagID, zoomTags = []; // Global table trackers
 let activeTables = [];
+let sqlConnected = false;
 
 
 let table = ['record', 'tag', 'zoom'].reduce((prev, t) => ({ ...prev, [`${t}-show`]: 10, [`${t}-go-to-page`]: 1, [`${t}-page-count`]: 1, [`${t}-top`]: '', [`${t}-left`]: '' }), {});
@@ -58,13 +59,22 @@ window.addEventListener('load', () => {
     createTitlebar();
     createDragAndDropArea();
     createSettingsPage();
-    let dateInput = document.getElementById('date-input');
+    let dateInput = document.createElement('input');
+    dateInput.id = 'date-input';
+    dateInput.classList = 'center hidden';
+    dateInput.type = 'date';
+    dateInput.name = 'select-date';
+    document.body.appendChild(dateInput);
     window.api.send('askForDates', 'no-options');
     window.api.receive('returnDates', (dates) => {
-        dWR = dates[0];
-        dateInput.min = dWR[0];
-        dateInput.max = dWR[dWR.length - 1];
-        dateInput.value = dWR[dWR.length - 1];
+        if (typeof dates[0] === 'object') {
+            sqlConnected = true;
+            dateInput.classList.remove('hidden');
+            dWR = dates[0];
+            dateInput.min = dWR[0];
+            dateInput.max = dWR[dWR.length - 1];
+            dateInput.value = dWR[dWR.length - 1];
+        }
     });
     dateInput.addEventListener('blur', dateInputHandler);
     dateInput.addEventListener('keyup', dateInputHandler);
@@ -529,7 +539,7 @@ const aggregateRecords = () => {
 }
 
 const parseFile = (files) => {
-    document.getElementById('date-input').classList = 'data-loaded';
+    document.getElementById('date-input').classList = sqlConnected ? 'data-loaded' : 'data-loaded hidden';
     window.api.send('toRead', files[0].path);
     window.api.receive('fromRead', (str) => {
         let csv = str[0];
