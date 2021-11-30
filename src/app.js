@@ -543,35 +543,43 @@ const parseFile = (files) => {
     window.api.send('toRead', files[0].path);
     window.api.receive('fromRead', (str) => {
         let csv = str[0];
-        let arr = csv.split('\n')
-        if (arr[0] !== 'App;Type;Title;Begin;End') {
+        let arr = csv.split('\n');
+        if (arr[0] !== 'App;Type;Title;Begin;End' && arr[0] !== 'app,title,start,end,dur,duration,tags') {
             let err = document.createElement('p');
             err.id = 'error-invalid';
             err.classList = 'error'
-            err.innerText = 'Invalid file uploaded. Please select a Tockler CSV.';
+            err.innerText = 'Invalid file uploaded. Please select a CSV exported from Tockler or this application.';
             document.getElementById('container').appendChild(err);
         }
         else {
+            let fromTockler = arr[0] === 'App;Type;Title;Begin;End';
             removedApps = [];
             document.getElementById('instructions').remove();
             document.getElementById('csv-input').remove();
             if (arr[arr.length - 1].trim().length < 1) arr.pop();
             arr.shift();
             let records = arr.map((r, id) => {
-                let rec = r.split(';');
-                let dur = (Date.parse(rec[4]) - Date.parse(rec[3])) / 1000;
+                let rec = r.split(fromTockler ? ';' : ',');
+                let dur = (Date.parse(rec[fromTockler ? 4 : 3]) - Date.parse(rec[fromTockler ? 3 : 2])) / 1000;
                 let mm = ((Math.floor(dur / 60) < 10) ? ("0" + Math.floor(dur / 60)) : Math.floor(dur / 60));
                 let ss = ((Math.floor(dur % 60) < 10) ? ("0" + Math.floor(dur % 60)) : Math.floor(dur % 60));
+                let tagsScoped = [];
+                if (!fromTockler) {
+                    rec[6].split(';').filter(tag => tag.length > 0).forEach(title => {
+                        if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title);
+                        tagsScoped.push(tags.filter(tag => tag.name === title)[0].id);      
+                    })
+                }
                 return {
                     id,
                     'checked': true,
                     'app': cleanUpAppName(rec[0]),
-                    'title': rec[2].replace(/"/g, '').replace(/●/g, '').replace(/\%2f?F?/g, '/').trim(),
-                    'start': rec[3],
-                    'end': rec[4],
+                    'title': rec[fromTockler ? 2 : 1].replace(/"/g, '').replace(/●/g, '').replace(/\%2f?F?/g, '/').trim(),
+                    'start': rec[fromTockler ? 3 : 2],
+                    'end': rec[fromTockler ? 4 : 3],
                     dur,
                     'duration': `${mm}:${ss}`,
-                    tags: []
+                    tags: tagsScoped
                 }
             });
             postDataRetrieval(records);
@@ -1084,7 +1092,8 @@ const runTaggingFilter = (filter) => {
         title = title.replace(/-$/, '').trim();
         if (title.match(/[P-p]ower [A-a]utomate/) || title.match(/\b[F-f]low[s]?\b/)) title = 'Automation';
         if (title.match(/jira/) || title.match(/salesforce/)) title = title[0].toUpperCase() + title.substring(1);
-        tags.filter(tag => tag.name === title).length === 0 ? createNewTag(title, row.tags, row.id) : globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
+        if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title, row.tags, row.id) 
+        if(!globalRecords[row.id].tags.includes(tags.filter(tag => tag.name === title)[0].id)) globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
     });
 }
 
