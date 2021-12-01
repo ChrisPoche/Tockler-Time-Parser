@@ -567,7 +567,7 @@ const parseFile = (files) => {
                 if (!fromTockler) {
                     rec[6].split(';').filter(tag => tag.length > 0).forEach(title => {
                         if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title);
-                        tagsScoped.push(tags.filter(tag => tag.name === title)[0].id);      
+                        tagsScoped.push(tags.filter(tag => tag.name === title)[0].id);
                     })
                 }
                 return {
@@ -620,15 +620,18 @@ const bindBringToFrontClick = (tables) => {
     tables.forEach(table => {
         let tbl = document.getElementById(`${table.type}-section`);
         tbl.addEventListener('click', (e) => {
-            document.querySelectorAll('.bring-to-front').forEach(t => t.classList.remove('bring-to-front'));
-            tbl.classList.add('bring-to-front');
+            let targetType = e.target.parentNode.parentNode.id.split('-')[0];
+            if (document.querySelector('.bring-to-front').id.split('-')[0] !== targetType) {
+                document.querySelectorAll('.bring-to-front').forEach(t => t.classList.remove('bring-to-front'));
+                document.getElementById('tag-section') && [...e.target.classList].includes('tags') ? document.getElementById('tag-section').classList.add('bring-to-front') : tbl.classList.add('bring-to-front');
+            }
         })
         activeTables[activeTables.indexOf(table)].clickBound = true;
     })
 }
 
 const createTable = (type) => {
-    if (!activeTables.includes(type)) activeTables.push({ type, 'clickBound': false });
+    if (activeTables.filter(t => t.type.includes(type)).length < 1) activeTables.push({ type, 'clickBound': false });
     if (!document.getElementById(`${type}-section`)) {
         let section = document.createElement('div');
         section.id = `${type}-section`;
@@ -1015,7 +1018,7 @@ const createTable = (type) => {
             leftDoubleArrow.addEventListener('click', (e) => {
                 table[`${type}-go-to-page`] = 1;
                 document.getElementById(`${type}-go-to-page`).value = table[`${type}-go-to-page`];
-                createTable();
+                createTable(type);
             });
             leftDoubleArrow.style.color = table[`${type}-go-to-page`] === 1 ? 'gray' : 'black';
             leftDoubleArrow.innerHTML = '&#171;';
@@ -1076,6 +1079,7 @@ const createTable = (type) => {
         aggregateRecords();
         let boundIsFalse = activeTables.filter(t => !t.clickBound);
         if (boundIsFalse.length > 0) bindBringToFrontClick(boundIsFalse);
+        section.classList.add('bring-to-front');
     }
 }
 
@@ -1092,8 +1096,8 @@ const runTaggingFilter = (filter) => {
         title = title.replace(/-$/, '').trim();
         if (title.match(/[P-p]ower [A-a]utomate/) || title.match(/\b[F-f]low[s]?\b/)) title = 'Automation';
         if (title.match(/jira/) || title.match(/salesforce/)) title = title[0].toUpperCase() + title.substring(1);
-        if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title, row.tags, row.id) 
-        if(!globalRecords[row.id].tags.includes(tags.filter(tag => tag.name === title)[0].id)) globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
+        if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title, row.tags, row.id)
+        if (!globalRecords[row.id].tags.includes(tags.filter(tag => tag.name === title)[0].id)) globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
     });
 }
 
