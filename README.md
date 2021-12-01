@@ -19,7 +19,6 @@ Tagging
     - May need to include parent ID to allow easier traversing on merges or subsequent nesting
 - Ability to toggle chart from displaying results by Apps to Tags
 - Table of top tags by duration
-- Double click tag to rename in tags table
 
 Styling
 
@@ -37,7 +36,6 @@ Local Storage
 
 ### To Do List
 
-- Add/Delete tag to all Zoom meetings. Iterate the events, updating filtered tags zoomTags.start-zoomTags.end
 - Draw newly added/removed tags to other tables
 - Editing auto-tag value finds existing filter, updates tags object and redraws tables
 - Add show row count and chart visibility to local storage
@@ -46,4 +44,3 @@ Local Storage
 ### Defects
 
 - Clicking tag on Zoom table removes close button. Workaround, drag table redraw on drop recreates the close button
-- Empty search results need to return no rows for user feedback
