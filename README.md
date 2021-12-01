@@ -44,3 +44,4 @@ Local Storage
 ### Defects
 
 - Clicking tag on Zoom table removes close button. Workaround, drag table redraw on drop recreates the close button
+- Clicking on header for sort clears filtered records
