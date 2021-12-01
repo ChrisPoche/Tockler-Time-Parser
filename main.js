@@ -1,11 +1,9 @@
 const { app, BrowserWindow, ipcMain, Menu } = require('electron')
-const contextMenu = require('electron-context-menu');
+// const contextMenu = require('electron-context-menu');
 const path = require('path');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 
-let userDir = app.getPath('userData');
-// let dbPath = path.join(userDir, 'tracker.db');
 let user = app.getPath('userData').split('Users')[1].split('\\')[1];
 let dbPath = `C:/Users/${user}/AppData/Roaming/tockler/tracker.db`;
 let table = 'TrackItems';
