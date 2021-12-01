@@ -608,7 +608,7 @@ const addTagsToZoomMeetings = (zoomOrigin, row) => {
 
 const modifySort = (e, type) => {
     let val = e.target.id.includes('zoom-tl-th') ? 'tags' : e.target.id.split('-')[2];
-    if (val !== 'bar' && val) {
+    if (!['bar','th'].includes(val) && val) {
         sortByHeader[type][val] = sortByHeader[type][val] === '' ? 'asc' : sortByHeader[type][val] === 'asc' ? 'desc' : '';
         table[`${type}-go-to-page`] = 1;
         filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
