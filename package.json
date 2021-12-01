@@ -5,7 +5,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "package-win": "electron-packager . tockler-time-parser --overwrite --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --out=release-builds --version-string.CompanyName=CP --version-string.FileDescription=CP --version-string.ProductName=\"Tockler Time Parser\""
+    "package-win": "electron-packager . tockler-time-parser --overwrite --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --out=../\"Time Parser\" --version-string.CompanyName=CP --version-string.FileDescription=CP --version-string.ProductName=\"Tockler Time Parser\""
   },
   "author": "Chris Poche",
   "license": "ISC",

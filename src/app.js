@@ -12,6 +12,7 @@ let dragTag, dropTag;
 let filteredRecords = [], tagID, zoomTags = []; // Global table trackers
 let activeTables = [];
 let sqlConnected = false;
+let isProd;
 
 
 let table = ['record', 'tag', 'zoom'].reduce((prev, t) => ({ ...prev, [`${t}-show`]: 10, [`${t}-go-to-page`]: 1, [`${t}-page-count`]: 1, [`${t}-top`]: '', [`${t}-left`]: '' }), {});
@@ -56,6 +57,7 @@ const dateInputHandler = (e) => {
 
 
 window.addEventListener('load', () => {
+    window.api.receive('is-prod', (prodCheck) => isProd = prodCheck[0]);
     createTitlebar();
     createDragAndDropArea();
     createSettingsPage();
@@ -1168,8 +1170,7 @@ const downloadCSV = () => {
     window.api.receive('return-csv', (data) => {
         if (data[0] === 'write complete') {
             let a = document.createElement('a');
-            a.href = '../time.csv'; //local test
-            // a.href = '../../../time.csv'; //desktop app test
+            isProd ? a.href = '../../../time.csv' : a.href = '../time.csv';
             a.id = 'file-link';
             a.download = `${subject}.csv`;
             a.style.visibility = 'hidden';

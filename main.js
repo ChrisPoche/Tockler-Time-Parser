@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, ipcRenderer } = require('electron')
 // const contextMenu = require('electron-context-menu');
 const path = require('path');
 const fs = require('fs');
@@ -76,6 +76,10 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     }
   })
+
+  ipcMain.once('check-prod', (e, arg) =>  {
+    e.reply('is-prod', app.isPackaged)
+  });
 
   let menu = Menu.buildFromTemplate([
     {
@@ -170,7 +174,7 @@ function createWindow() {
 
   mainWindow.loadFile('./src/index.html');
 
-  mainWindow.webContents.openDevTools();
+  if(!app.isPackaged) mainWindow.webContents.openDevTools();
 
   mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
     console.log('attempting to download');

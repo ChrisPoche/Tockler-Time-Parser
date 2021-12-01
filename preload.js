@@ -1,5 +1,5 @@
 const { Chart } = require('chart.js');
-const { contextBridge, ipcRenderer, ipcMain, BrowserWindow } = require('electron');
+const { contextBridge, ipcRenderer, ipcMain, BrowserWindow, app } = require('electron');
 
 let chartTop, chartLeft, chartSize = .3;
 let chartVisible = true;
@@ -106,7 +106,7 @@ contextBridge.exposeInMainWorld(
     }
   },
   receive: (channel, func) => {
-    let validChannels = ['fromRead', 'return-csv', 'returnDates', 'return-events-by-date', 'toggle-maximize','return-zoom-level'];
+    let validChannels = ['fromRead', 'return-csv', 'returnDates', 'return-events-by-date', 'toggle-maximize','return-zoom-level','is-prod'];
     if (validChannels.includes(channel)) {
       // Deliberately strip event as it includes `sender`
       if (channel === 'return-events-by-date') {
@@ -129,4 +129,5 @@ window.addEventListener('DOMContentLoaded', () => {
   for (const dependency of ['chrome', 'node', 'electron']) {
     replaceText(`${dependency}-version`, process.versions[dependency])
   }
+  ipcRenderer.send('check-prod','check');
 });
