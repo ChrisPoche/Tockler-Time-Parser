@@ -173,10 +173,11 @@ const createSettingsPage = () => {
             input.addEventListener('click', () => {
                 if (toggleVal === 'dark-mode') document.body.classList.toggle(toggleVal);
                 let nextVal = !JSON.parse(window.localStorage.getItem(toggleVal));
-                label.innerHTML = (nextVal && dropDown ? `<span class="expand-arrow">&#8250;</span> ` : '') + toggleVal.replace('-', ' ');
+                label.innerHTML = (nextVal && (dropDown || toggleVal === 'auto-tagging') ? `<span class="expand-arrow">&#8250;</span> ` : '') + toggleVal.replace('-', ' ');
                 dropDown = nextVal;
                 if (!nextVal && document.getElementById('add-custom-filter-container')) document.getElementById('add-custom-filter-container').remove();
                 window.localStorage.setItem(toggleVal, nextVal);
+                if (toggleVal === 'auto-tagging' && nextVal) autoTag();
             });
             label.addEventListener('click', (e) => {
                 if (dropDown) {
@@ -259,7 +260,7 @@ const addExpandOptions = (expandable, toggleVal, type) => {
                 newVals = oldVals;
             }
             runTaggingFilter(new RegExp(filter));
-            createTable('record');
+            if (document.getElementById('record-section')) createTable('record');
             window.localStorage.setItem(toggleVal + '-values', newVals);
             addExpandOptions(expandable, toggleVal, type);
         })
@@ -1084,29 +1085,7 @@ const runTaggingFilter = (filter) => {
     });
 }
 
-const postDataRetrieval = (records) => {
-    document.getElementById('date-input').value = records[0].start.split(' ')[0];
-    globalRecords = records;
-    filteredRecords = records;
-    let apps = [...new Set(records.map(r => r.app))];
-    dataLoaded = true;
-
-    if (!document.getElementById('record-section')) {
-        let recordSection = document.createElement('div');
-        recordSection.id = 'record-section';
-        document.getElementById('container').appendChild(recordSection);
-    }
-
-    // Populate most useful apps
-    apps.forEach(app => {
-        let prefApps = ['Slack', 'Chrome', 'Zoom', 'Excel', 'Outlook', 'OneDrive', 'Winword'];
-        if (prefApps.filter(a => a === app).length < 1) removedApps.push(app);
-    });
-    refreshedApps = true;
-
-    createAppFilter(apps);
-    createTable('record');
-
+const autoTag = () => {
     if (JSON.parse(window.localStorage.getItem('auto-tagging'))) {
         // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
         let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/, / [T-t]ransition/, /\(?rca|RCA\)?/, /[P-p]ager[D-d]uty/]
@@ -1134,6 +1113,32 @@ const postDataRetrieval = (records) => {
             }
         });
     }
+}
+
+
+const postDataRetrieval = (records) => {
+    document.getElementById('date-input').value = records[0].start.split(' ')[0];
+    globalRecords = records;
+    filteredRecords = records;
+    let apps = [...new Set(records.map(r => r.app))];
+    dataLoaded = true;
+
+    if (!document.getElementById('record-section')) {
+        let recordSection = document.createElement('div');
+        recordSection.id = 'record-section';
+        document.getElementById('container').appendChild(recordSection);
+    }
+
+    // Populate most useful apps
+    apps.forEach(app => {
+        let prefApps = ['Slack', 'Chrome', 'Zoom', 'Excel', 'Outlook', 'OneDrive', 'Winword'];
+        if (prefApps.filter(a => a === app).length < 1) removedApps.push(app);
+    });
+    refreshedApps = true;
+
+    createAppFilter(apps);
+    createTable('record');
+    autoTag();
 
     if (!document.getElementById('download-csv')) {
 
