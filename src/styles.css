@@ -827,7 +827,7 @@ thead {
     left: 0;
 }
 
-#merge-tag-modal {
+#tag-modal {
     background-color: rgb(199, 199, 199);
     position: absolute;
     border-radius: .75vw;
@@ -836,19 +836,20 @@ thead {
     align-content: center;
     justify-content: center;
     text-align: center;
+    color: black;
 }
 
-#merge-tag-modal div {
+#tag-modal div {
     text-align: left;
     padding: 2%;
     border-radius: .6rem;
 }
 
-#merge-tag-modal div h3 {
+#tag-modal div h3 {
     color: rgb(77, 77, 77)
 }
 
-#merge-tag-modal div.tag-option:hover {
+#tag-modal div.tag-option:hover {
     background-color: gray;
 }
 
@@ -887,7 +888,7 @@ thead {
     }
 }
 
-#merge-button {
+#tag-modal-button {
     display: inline-block;
     width: fit-content;
     padding: .4rem;
@@ -897,4 +898,23 @@ thead {
 
 .bring-to-front {
     z-index: 1000;
+}
+
+#custom-context-menu {
+    width: 170px;
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    background-color: white;
+    color: black;
+    box-shadow: 6px 6px 4px -2px rgba(0, 0, 0, .4);
+    outline: 2px solid rgba(0, 0, 0, .05);
+    z-index: 2000;
+}
+.context-menu-option {
+    padding: .6em;
+    margin: .35em 0;
+}
+.context-menu-option:hover {
+    background-color: rgba(0, 0, 0, .07);
 }
