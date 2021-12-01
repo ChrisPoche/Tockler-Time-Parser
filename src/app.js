@@ -641,7 +641,7 @@ const createTable = (type) => {
     if (type === 'record') results = filteredRecords.filter(r => !removedApps.includes(r.app));
     if (type === 'tag') results = globalRecords.filter(r => r.tags.includes(parseInt(tagID)));
     if (type === 'zoom') results = zoomTags;
-    if (results.length > 0) {
+    if (results.length >= 0) {
         table[`${type}-page-count`] = results.length === 0 ? 1 : Math.ceil(results.length / table[`${type}-show`])
         table[`${type}-go-to-page`] = table[`${type}-go-to-page`] > table[`${type}-page-count`] ? table[`${type}-page-count`] : table[`${type}-go-to-page`];
         if (document.getElementById(`${type}-go-to-page`)) document.getElementById(`${type}-go-to-page`).value = table[`${type}-go-to-page`];
