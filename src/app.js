@@ -98,9 +98,6 @@ window.addEventListener('load', () => {
         document.getElementById('csv-input').click();
     });
     document.addEventListener('keyup', (e) => {
-        // if (e.key === 'e' && !dataLoaded && !e.ctrlKey) {
-        //     document.getElementById('csv-input').click();
-        // }
         if (e.key === 'e' && e.ctrlKey && dataLoaded) {
             editMode = !editMode;
             toggleCloseButtons();
@@ -176,7 +173,7 @@ const createSettingsPage = () => {
             input.addEventListener('click', () => {
                 if (toggleVal === 'dark-mode') document.body.classList.toggle(toggleVal);
                 let nextVal = !JSON.parse(window.localStorage.getItem(toggleVal));
-                label.innerHTML = (nextVal ? `<span class="expand-arrow">&#8250;</span> ` : '') + toggleVal.replace('-', ' ');
+                label.innerHTML = (nextVal && dropDown ? `<span class="expand-arrow">&#8250;</span> ` : '') + toggleVal.replace('-', ' ');
                 dropDown = nextVal;
                 if (!nextVal && document.getElementById('add-custom-filter-container')) document.getElementById('add-custom-filter-container').remove();
                 window.localStorage.setItem(toggleVal, nextVal);
@@ -620,7 +617,8 @@ const bindBringToFrontClick = (tables) => {
     tables.forEach(table => {
         let tbl = document.getElementById(`${table.type}-section`);
         tbl.addEventListener('click', (e) => {
-            let targetType = e.target.parentNode.parentNode.id.split('-')[0];
+            let target = [...e.target.classList].includes('add-tag') ? document.getElementById('tag-search').parentNode : e.target.parentNode;
+            let targetType = target.parentNode.id.split('-')[0];
             if (document.querySelector('.bring-to-front')) {
                 if (document.querySelector('.bring-to-front').id.split('-')[0] !== targetType) {
                     document.querySelectorAll('.bring-to-front').forEach(t => t.classList.remove('bring-to-front'));
@@ -691,7 +689,6 @@ const createTable = (type) => {
                 arrow.style.color = table[`${type}-go-to-page`] === table[`${type}-page-count`] ? 'gray' : 'black';
             });
         }
-        if (document.getElementById('download-csv')) document.getElementById('download-csv').disabled = (type === 'record' && results.length === 0);
         let section = document.getElementById(`${type}-section`);
         section.style.position = 'absolute';
         let top = {
