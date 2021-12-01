@@ -608,7 +608,7 @@ const addTagsToZoomMeetings = (zoomOrigin, row) => {
 
 const modifySort = (e, type) => {
     let val = e.target.id.includes('zoom-tl-th') ? 'tags' : e.target.id.split('-')[2];
-    if (!['bar','th'].includes(val) && val) {
+    if (!['bar', 'th'].includes(val) && val) {
         sortByHeader[type][val] = sortByHeader[type][val] === '' ? 'asc' : sortByHeader[type][val] === 'asc' ? 'desc' : '';
         table[`${type}-go-to-page`] = 1;
         filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
@@ -621,13 +621,49 @@ const bindBringToFrontClick = (tables) => {
         let tbl = document.getElementById(`${table.type}-section`);
         tbl.addEventListener('click', (e) => {
             let targetType = e.target.parentNode.parentNode.id.split('-')[0];
-            if (document.querySelector('.bring-to-front').id.split('-')[0] !== targetType) {
-                document.querySelectorAll('.bring-to-front').forEach(t => t.classList.remove('bring-to-front'));
-                document.getElementById('tag-section') && [...e.target.classList].includes('tags') ? document.getElementById('tag-section').classList.add('bring-to-front') : tbl.classList.add('bring-to-front');
+            if (document.querySelector('.bring-to-front')) {
+                if (document.querySelector('.bring-to-front').id.split('-')[0] !== targetType) {
+                    document.querySelectorAll('.bring-to-front').forEach(t => t.classList.remove('bring-to-front'));
+                    document.getElementById('tag-section') && [...e.target.classList].includes('tags') ? document.getElementById('tag-section').classList.add('bring-to-front') : tbl.classList.add('bring-to-front');
+                }
             }
         })
         activeTables[activeTables.indexOf(table)].clickBound = true;
     })
+}
+
+const createTagSearch = (td) => {
+    let addTagDiv = document.createElement('div');
+    addTagDiv.style.display = 'inline-block';
+    let tagSearch = document.createElement('input');
+    tagSearch.id = 'tag-search';
+    tagSearch.type = 'text';
+    tagSearch.addEventListener('focus', searchTags);
+    tagSearch.addEventListener('keyup', searchTags);
+    tagSearch.addEventListener('blur', removeSearchTagsDropdown);
+    addTagDiv.appendChild(tagSearch);
+    td.appendChild(addTagDiv);
+}
+
+const createAddTagButton = (td) => {
+    td.classList = 'tags-col';
+    td.addEventListener('mouseenter', () => {
+        if (!document.getElementById('tag-search')) {
+            let addTag = document.createElement('span');
+            addTag.classList = 'add-tag';
+            addTag.innerText = '+';
+            td.appendChild(addTag);
+            addTag.addEventListener('click', (e) => {
+                createTagSearch(td)
+                document.getElementById('tag-search').focus();
+                addTag.remove();
+            });
+        }
+    });
+    td.addEventListener('mouseleave', (e) => {
+        let addTag = document.getElementsByClassName('add-tag')[0];
+        if (addTag) addTag.remove();
+    });
 }
 
 const createTable = (type) => {
@@ -655,6 +691,7 @@ const createTable = (type) => {
                 arrow.style.color = table[`${type}-go-to-page`] === table[`${type}-page-count`] ? 'gray' : 'black';
             });
         }
+        if (document.getElementById('download-csv')) document.getElementById('download-csv').disabled = (type === 'record' && results.length === 0);
         let section = document.getElementById(`${type}-section`);
         section.style.position = 'absolute';
         let top = {
@@ -831,33 +868,7 @@ const createTable = (type) => {
                     if (index === 2 || (type === 'record' && index === 3 || index === 4)) td.classList = 'time-col';
                     if ((type === 'tag' && index === 3) || (type === 'record' && index === 5)) {
                         td.innerText = '';
-                        td.classList = 'tags-col';
-                        td.addEventListener('mouseenter', () => {
-                            if (!document.getElementById('tag-search')) {
-                                let addTag = document.createElement('span');
-                                addTag.classList = 'add-tag';
-                                addTag.innerText = '+';
-                                td.appendChild(addTag);
-                                addTag.addEventListener('click', (e) => {
-                                    let addTagDiv = document.createElement('div');
-                                    addTagDiv.style.display = 'inline-block';
-                                    let tagSearch = document.createElement('input');
-                                    tagSearch.id = 'tag-search';
-                                    tagSearch.type = 'text';
-                                    tagSearch.addEventListener('focus', searchTags);
-                                    tagSearch.addEventListener('keyup', searchTags);
-                                    tagSearch.addEventListener('blur', removeSearchTagsDropdown);
-                                    addTagDiv.appendChild(tagSearch);
-                                    td.appendChild(addTagDiv);
-                                    document.getElementById('tag-search').focus();
-                                    addTag.remove();
-                                });
-                            }
-                        });
-                        td.addEventListener('mouseleave', (e) => {
-                            let addTag = document.getElementsByClassName('add-tag')[0];
-                            if (addTag) addTag.remove();
-                        });
+                        createAddTagButton(td);
                     }
                     tr.appendChild(td);
                 })
@@ -867,33 +878,7 @@ const createTable = (type) => {
                 header[type].forEach((val, index) => {
                     let td = document.createElement('td');
                     if (index === 0) { // Tags
-                        td.classList = 'tags-col';
-                        td.addEventListener('mouseenter', () => {
-                            if (!document.getElementById('tag-search')) {
-                                let addTag = document.createElement('span');
-                                addTag.classList = 'add-tag';
-                                addTag.innerText = '+';
-                                td.appendChild(addTag);
-                                addTag.addEventListener('click', (e) => {
-                                    let addTagDiv = document.createElement('div');
-                                    addTagDiv.style.display = 'inline-block';
-                                    let tagSearch = document.createElement('input');
-                                    tagSearch.id = 'tag-search';
-                                    tagSearch.type = 'text';
-                                    tagSearch.addEventListener('focus', searchTags);
-                                    tagSearch.addEventListener('keyup', searchTags);
-                                    tagSearch.addEventListener('blur', removeSearchTagsDropdown);
-                                    addTagDiv.appendChild(tagSearch);
-                                    td.appendChild(addTagDiv);
-                                    document.getElementById('tag-search').focus();
-                                    addTag.remove();
-                                });
-                            }
-                        });
-                        td.addEventListener('mouseleave', (e) => {
-                            let addTag = document.getElementsByClassName('add-tag')[0];
-                            if (addTag) addTag.remove();
-                        });
+                        createAddTagButton(td);
                     }
                     if (index === 1) { // Duration
                         let dur = (Date.parse(globalRecords[results[i].end].end) - Date.parse(globalRecords[results[i].start].start)) / 1000;
@@ -1080,6 +1065,7 @@ const createTable = (type) => {
         let boundIsFalse = activeTables.filter(t => !t.clickBound);
         if (boundIsFalse.length > 0) bindBringToFrontClick(boundIsFalse);
         section.classList.add('bring-to-front');
+        if (results.length === 0 && type !== 'record') section.remove();
     }
 }
 
@@ -1234,10 +1220,19 @@ const searchTags = (e) => {
             result.classList = 'tag-search-result';
             result.innerText = sortedTags[i].name;
             result.addEventListener('mousedown', (e) => {
-                let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
-                if (sortedTags[i].name !== 'Add Tag') {
-                    record.tags.push(tags.filter(tag => tag.name === e.target.innerText)[0].id);
-                    drawTag(record.tags, `${visibleRecords['record'].includes(record.id) ? 'record' : 'zoom'}-${record.id}`);
+                if (td.id === 'unknown-tag') {
+                    let parent = document.getElementById('unknown-tag').parentNode;
+                    td.remove();
+                    parent.innerText = e.target.innerText + parent.innerText;
+                    dropTag = 'tag-' + tags.filter(t => t.name === e.target.innerText)[0].id;
+                    document.getElementById('merge').click();
+                }
+                if (td.id !== 'unknown-tag') {
+                    let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
+                    if (sortedTags[i].name !== 'Add Tag') {
+                        record.tags.push(tags.filter(tag => tag.name === e.target.innerText)[0].id);
+                        drawTag(record.tags, `${visibleRecords['record'].includes(record.id) ? 'record' : 'zoom'}-${record.id}`);
+                    }
                 }
                 if (sortedTags[i].name === 'Add Tag' && document.getElementById('tag-search').value.length > 0 && document.getElementById('tag-search').value.toLowerCase() !== 'add tag' && tags.filter(tag => tag.name === document.getElementById('tag-search').value.trim().toLowerCase()).length === 0) handleAddTag(td);
             });
@@ -1270,17 +1265,26 @@ const searchTags = (e) => {
 
 const handleAddTag = (td) => {
     let searchVal = hover >= 0 && document.querySelectorAll('.tag-search-result').length > 0 && document.querySelectorAll('.tag-search-result')[hover].innerText.toLowerCase() !== 'add tag' ? document.querySelectorAll('.tag-search-result')[hover].innerText : document.getElementById('tag-search').value.trim();
-    let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
-    let existingTag = tags.filter(tag => tag.name.toLowerCase() === searchVal.toLowerCase());
-    if (existingTag.length === 0) createNewTag(searchVal, record.tags, record.id)
-    if (existingTag.length > 0) {
-        let tagID = existingTag[0].id;
-        if (globalRecords[record.id].tags.filter(t => t === tagID).length === 0) {
-            globalRecords[record.id].tags.push(tagID);
-            drawTag(globalRecords[record.id].tags, `record-${record.id}`);
-        }
+    if (td.id === 'unknown-tag') {
+        let parent = document.getElementById('unknown-tag').parentNode;
+        td.remove();
+        parent.innerText = searchVal + parent.innerText;
+        dropTag = 'tag-' + tags.filter(t => t.name === searchVal)[0].id;
+        document.getElementById('merge').click();
     }
-    if (document.getElementById('tag-search')) document.getElementById('tag-search').blur();
+    if (td.id !== 'unknown-tag') {
+        let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
+        let existingTag = tags.filter(tag => tag.name.toLowerCase() === searchVal.toLowerCase());
+        if (existingTag.length === 0) createNewTag(searchVal, record.tags, record.id)
+        if (existingTag.length > 0) {
+            let tagID = existingTag[0].id;
+            if (globalRecords[record.id].tags.filter(t => t === tagID).length === 0) {
+                globalRecords[record.id].tags.push(tagID);
+                drawTag(globalRecords[record.id].tags, `record-${record.id}`);
+            }
+        }
+        if (document.getElementById('tag-search')) document.getElementById('tag-search').blur();
+    }
 }
 
 const removeSearchTagsDropdown = () => {
@@ -1325,6 +1329,43 @@ const drawTag = (val, rowID) => {
                 let x = tag.childNodes[tag.childNodes.length - 1];
                 x.remove();
             })
+            tag.addEventListener('contextmenu', (e) => {
+                let tagID = [...e.target.classList].filter(c => c.includes('tag-'))[0].split('-')[1];
+                let contextMenu = document.createElement('div');
+                contextMenu.id = 'custom-context-menu';
+                contextMenu.style.left = `${e.x}px`;
+                contextMenu.style.top = `${e.y}px`;
+                ['Edit Tag', 'Merge Tags', 'Remove Tag From All'].forEach(option => {
+                    let menuOption = document.createElement('div');
+                    menuOption.classList = 'context-menu-option';
+                    menuOption.innerText = option;
+                    contextMenu.appendChild(menuOption);
+                    menuOption.addEventListener('click', (e) => {
+                        let action = e.target.innerText;
+                        blurContextMenu();
+                        switch (action) {
+                            case 'Edit Tag':
+                                openTagModal('edit', tagID);
+                                break;
+                            case 'Merge Tags':
+                                openTagModal('merge', tagID);
+                                break;
+                            case 'Remove Tag From All':
+                                openTagModal('remove-all', tagID);
+                                break;
+                            default:
+                                break;
+                        }
+                    })
+                });
+                const blurContextMenu = () => {
+                    contextMenu.remove();
+                    document.getElementById('container').removeEventListener('click', blurContextMenu);
+                }
+                if (!document.getElementById('custom-context-menu')) document.getElementById('container').addEventListener('click', blurContextMenu);
+                if (document.getElementById('custom-context-menu')) document.getElementById('custom-context-menu').remove();
+                document.body.appendChild(contextMenu);
+            })
             tag.addEventListener('click', (e) => {
                 tagID = [...e.target.classList].filter(t => t.includes('tag-'))[0].split('-')[1];
                 createTable('tag')
@@ -1344,24 +1385,26 @@ const drawTag = (val, rowID) => {
                 e.preventDefault();
                 dropTag = e.target.classList[1];
                 if (!dropTag || dragTag === dropTag) dragTag = null;
-                if (dragTag && dropTag) mergeTagModal();
+                if (dragTag && dropTag) openTagModal('merge');
             })
             td.appendChild(tag);
         }
     })
 }
 
-const mergeTagModal = () => {
+const openTagModal = (action, tagID = null) => {
     document.querySelectorAll('.bring-to-front').forEach(t => t.classList.remove('bring-to-front'));
     let modalBackground = document.createElement('div');
     modalBackground.id = 'modal-background';
     modalBackground.addEventListener('click', () => {
         modalBackground.remove();
-        if (document.getElementById('merge-tag-modal')) document.getElementById('merge-tag-modal').remove();
+        if (document.getElementById('tag-modal')) document.getElementById('tag-modal').remove();
+        dropTag = null;
+        dragTag = null;
     })
     document.body.appendChild(modalBackground);
     let modal = document.createElement('div');
-    modal.id = 'merge-tag-modal';
+    modal.id = 'tag-modal';
     let winWidth = window.innerWidth - 240;
     let width = winWidth * .6 > 800 ? 800 : winWidth * .6;
     let height = width * .66;
@@ -1370,82 +1413,144 @@ const mergeTagModal = () => {
     modal.style.left = `${(window.innerWidth / 2) - (width / 2) + 240}px`;
     modal.style.top = `${(window.innerHeight / 2) - (height / 2)}px`;
     let text = document.createElement('h1');
-    text.innerText = 'What would you like to do?';
+    switch (action) {
+        case 'merge':
+            text.innerText = 'How would you like to merge tags?';
+            break;
+        case 'edit':
+            text.innerText = 'Rename tag:';
+            break;
+        case 'remove-all':
+            text.innerHTML = 'This will remove this tag from all records.<br><br>Are you sure?';
+            break;
+        default:
+            break;
+    }
     text.style.marginBottom = `${height * .1}px`;
     modal.appendChild(text);
-    let tagOptions = ['merge', 'parent-child'];
-    tagOptions.forEach(id => {
-        let p = document.createElement('div');
-        p.style.width = `${width * .8}px`;
-        p.style.marginLeft = `${width * .1}px`;
-        p.id = id;
-        p.classList = 'tag-option'
-        p.innerHTML = id === 'merge' ? `<h2>Merge tags: combine tags with the option to rename</h2> <h3>${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name} &#8594;&#8592; ${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}</h3>` : `<span style='color:darkgray;'><h2>Parent-child tagging: Coming Soon</h2> <h3 style='color:darkgray;'>${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name} <br><span style='line-height:1.5;margin-left:${width * .04}px;'>&#8627; ${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}</span></h3></span>`;
-        modal.appendChild(p);
-        p.addEventListener('click', (e) => {
-            let id = e.target.parentNode.id === 'merge-tag-modal' ? e.target.id : e.target.parentNode.id ? e.target.parentNode.id : e.target.parentNode.parentNode.id ? e.target.parentNode.parentNode.id : e.target.parentNode.parentNode.parentNode.id;
-            if (id === 'merge') {
-                document.getElementById(id).style.backgroundColor = 'gray';
-                tagOptions.filter(o => o !== id).forEach(o => {
-                    document.getElementById(o).addEventListener('animationend', () => {
-                        document.getElementById(o).style.visibility = 'hidden';
-                        let tagName = document.createElement('input');
-                        tagName.type = 'text';
-                        tagName.style.width = `${width * .56}px`;
-                        tagName.placeholder = `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}`;
-                        const newTagName = () => {
-                            let input = modal.querySelector('input');
-                            let title = input.value.length === 0 ? input.placeholder : input.value;
-                            if (tags.filter(tag => tag.name === title).length <= 1) {
-                                if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title);
-                                replaceTags(tags.filter(tag => tag.name === title)[0].id, [parseInt(dropTag.split('-')[1]), parseInt(dragTag.split('-')[1])]);
-                                modalBackground.click();
-                            }
-                            else {
-                                let modalBoundary = modal.getBoundingClientRect();
-                                let error = document.createElement('p');
-                                error.id = 'tag-exists-error';
-                                error.innerText = `A tag named "${title}" already exists`;
-                                error.addEventListener('animationend', () => error.remove());
-                                error.style.top = `${modalBoundary.bottom - 130}px`;
-                                error.style.left = `${modalBoundary.left + (width * .325)}px`;
-                                modal.appendChild(error);
-                            }
-                        }
-                        tagName.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter') newTagName();
-                        })
-                        let tagLabel = document.createElement('label');
-                        tagLabel.innerText = 'Merged tag name:'
-                        let tagDiv = document.createElement('div');
-                        tagDiv.id = 'merge-tag-input';
-                        tagDiv.appendChild(tagLabel);
-                        tagDiv.appendChild(tagName);
-                        tagDiv.style.width = `${width * .8}px`;
-                        tagDiv.style.marginLeft = `${width * .1}px`;
-                        document.getElementById(o).remove();
-                        modal.appendChild(tagDiv);
-                        tagName.focus();
-                        let button = document.createElement('button');
-                        button.innerText = 'Merge';
-                        button.id = 'merge-button';
-                        button.style.margin = `${width * .05}px 0 0 ${width * .87}px`;
-                        button.addEventListener('click', newTagName)
-                        modal.appendChild(button);
-                    })
-                    document.getElementById(o).classList.add('hide-option');
-                })
+    const createRenameInput = () => {
+        let tagName = document.createElement('input');
+        tagName.type = 'text';
+        tagName.style.width = action === 'merge' ? `${width * .56}px` : '95%';
+        tagName.placeholder = action === 'merge' ? `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}` : tags.filter(t => t.id === parseInt(tagID))[0].name;
+        if (action === 'edit') tagName.value = tags.filter(t => t.id === parseInt(tagID))[0].name;
+        const newTagName = () => {
+            let input = modal.querySelector('input');
+            let title = input.value.length === 0 ? input.placeholder : input.value;
+            if (tags.filter(tag => tag.name === title).length <= 1) {
+                if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title);
+                let newTagID = tags.filter(tag => tag.name === title)[0].id;
+                modifyTags(newTagID, action === 'edit' ? [parseInt(tagID)] : [parseInt(dropTag.split('-')[1]), parseInt(dragTag.split('-')[1])]);
+                modalBackground.click();
             }
+            else {
+                let modalBoundary = modal.getBoundingClientRect();
+                let error = document.createElement('p');
+                error.id = 'tag-exists-error';
+                error.innerText = `A tag named "${title}" already exists`;
+                error.addEventListener('animationend', () => error.remove());
+                error.style.top = `${modalBoundary.bottom - 130}px`;
+                error.style.left = `${modalBoundary.left + (width * .325)}px`;
+                modal.appendChild(error);
+            }
+        }
+        tagName.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') newTagName();
         })
-    })
+        let tagLabel = document.createElement('label');
+        tagLabel.innerText = action === 'merge' ? 'Merged tag name:' : '';
+        let tagDiv = document.createElement('div');
+        tagDiv.id = 'merge-tag-input';
+        tagDiv.appendChild(tagLabel);
+        tagDiv.appendChild(tagName);
+        tagDiv.style.width = `${width * .8}px`;
+        tagDiv.style.marginLeft = `${width * .1}px`;
+        if (action !== 'remove-all') {
+            modal.appendChild(tagDiv);
+            tagName.focus();
+        }
+        let button = document.createElement('button');
+        switch (action) {
+            case 'merge':
+                button.innerText = 'Merge';
+                break;
+            case 'edit':
+                button.innerText = 'Save';
+                break;
+            case 'remove-all':
+                button.innerHTML = 'Remove Tag';
+                break;
+            default:
+                break;
+        }
+        button.id = 'tag-modal-button';
+        button.style.margin = `${width * .05}px 0 0 ${width * .87}px`;
+        if (action === 'edit') {
+            button.style.position = 'absolute';
+            button.style.top = '78%';
+        }
+        if (action === 'remove-all') {
+            button.style.margin = '0 auto';
+            button.style.backgroundColor = '#7d0000';
+            button.style.color = 'white';
+            const deleteTag = (e) => {
+                if (e.key === 'Enter' || e.code === 'Space' || e.type === 'click') {
+                    modifyTags(-1, [parseInt(tagID)]);
+                    modalBackground.click();
+                    document.body.removeEventListener('keyup', deleteTag);
+                }
+            }
+            button.addEventListener('click', deleteTag);
+            document.body.addEventListener('keyup', deleteTag);
+        }
+        if (action !== 'remove-all') button.addEventListener('click', newTagName);
+        modal.appendChild(button);
+    }
+    if (action === 'edit' || action === 'remove-all') {
+        createRenameInput();
+    }
+    if (action === 'merge') {
+        let tagOptions = ['merge', 'parent-child'];
+        tagOptions.forEach(id => {
+            let p = document.createElement('div');
+            p.style.width = `${width * .8}px`;
+            p.style.marginLeft = `${width * .1}px`;
+            p.id = id;
+            p.classList = 'tag-option';
+            if (!dragTag) dragTag = 'tag-' + tagID;
+            p.innerHTML = id === 'merge' ?
+                `<h2>Merge tags: combine tags with the option to rename</h2> <h3>${dropTag ? tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name : '<span id="unknown-tag"></span>'} &#8594;&#8592; ${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}</h3>` :
+                `<span style='color:darkgray;'><h2>Parent-child tagging: Coming Soon</h2> <h3 style='color:darkgray;'>${dropTag ? tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name : '???'} <br><span style='line-height:1.5;margin-left:${width * .04}px;'>&#8627; ${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}</span></h3></span>`;
+            modal.appendChild(p);
+            p.addEventListener('click', (e) => {
+                let id = e.target.parentNode.id === 'tag-modal' ? e.target.id : e.target.parentNode.id ? e.target.parentNode.id : e.target.parentNode.parentNode.id ? e.target.parentNode.parentNode.id : e.target.parentNode.parentNode.parentNode.id;
+                if (id === 'merge') {
+                    document.getElementById(id).style.backgroundColor = 'gray';
+                    tagOptions.filter(o => o !== id).forEach(o => {
+                        document.getElementById(o).addEventListener('animationend', () => {
+                            p.style.pointerEvents = 'none';
+                            document.getElementById(o).style.visibility = 'hidden';
+                            createRenameInput();
+                            document.getElementById(o).remove();
+                        })
+                        document.getElementById(o).classList.add('hide-option');
+                    })
+                }
+            })
+        })
+    }
     document.body.appendChild(modal);
+    if (!dropTag && action === 'merge') createTagSearch(document.getElementById('unknown-tag'));
 };
 
-const replaceTags = (mergedID, oldTagIDs) => {
-    let records = globalRecords.filter(r => r.tags.includes(oldTagIDs[0]) || r.tags.includes(oldTagIDs[1]))
+const modifyTags = (mergedID, oldTagIDs) => {
+    let deleteTags = mergedID === -1;
+    let records = globalRecords.filter(r => r.tags.includes(oldTagIDs[0]) || r.tags.includes(oldTagIDs[oldTagIDs.length - 1]));
     records.forEach(r => {
-        globalRecords[r.id].tags = [...globalRecords[r.id].tags.filter(tag => tag !== oldTagIDs[0] && tag !== oldTagIDs[1]), mergedID];
+        globalRecords[r.id].tags = deleteTags ? globalRecords[r.id].tags.filter(tag => tag !== oldTagIDs[0]) : [...globalRecords[r.id].tags.filter(tag => tag !== oldTagIDs[0] && tag !== oldTagIDs[oldTagIDs.length - 1]), mergedID];
     });
+    dragTag = null;
+    dropTag = null;
     createTable('record');
     if (document.getElementById('tag-section')) {
         tagID = mergedID;
