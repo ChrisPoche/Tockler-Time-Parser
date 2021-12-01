@@ -224,7 +224,7 @@ app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit()
 })
 
-contextMenu({});
+// contextMenu({});
 
 ipcMain.on('toRead', (e, arg) => {
   fs.readFile(arg, 'utf8', (error, data) => {
