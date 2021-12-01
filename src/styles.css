@@ -312,6 +312,7 @@ body {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+    background-color: white;
 }
 
 body.dark-mode {
@@ -477,7 +478,6 @@ table {
 thead {
     position: sticky;
     top: 0;
-    /* inset-block-start: 0; */
 }
 
 .handle {

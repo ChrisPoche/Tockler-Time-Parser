@@ -70,6 +70,7 @@ function createWindow() {
     width: 1400,//800,
     height: 740,//600,
     frame: false,
+    backgroundColor: '#3a3a3a',
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
