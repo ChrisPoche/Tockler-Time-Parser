@@ -10,6 +10,14 @@ In the project directory, you can run:
 
 Initializes a new Electron browser window.
 
+### `npm run package-win`
+
+Builds application .exe.
+
+### `npm run create-installer`
+
+Runs package-win for new build, copies app details from package.json into build_details.json file, initializes creation of msi installer through WiX. Instructions to configure machine for this can be found: [here](https://ourcodeworld.com/articles/read/927/how-to-create-a-msi-installer-in-windows-for-an-electron-framework-application)
+
 ### Planned features
 
 Tagging
@@ -17,7 +25,6 @@ Tagging
 - Ability to combine tags: merge (complete) & parent-child
   - Parent-child: need to insert tag values as objects to nest children
     - May need to include parent ID to allow easier traversing on merges or subsequent nesting
-- Ability to toggle chart from displaying results by Apps to Tags
 - Table of top tags by duration
 
 Styling
@@ -33,15 +40,17 @@ Tabs
 Local Storage
 
 - Extend existing Tockler sqlite database with tables for user preference and settings in this app
+- Add show row count to local storage
+- Default Save Location
+  - Currently set to download to Desktop, but allow user to set preferred location from dropdown, keep in local storage
 
 ### To Do List
 
 - Draw newly added/removed tags to other tables
 - Editing auto-tag value finds existing filter, updates tags object and redraws tables
-- Add show row count and chart visibility to local storage
-  - Create button to toggle chart visibility
 
 ### Defects
 
 - Clicking tag on Zoom table removes close button. Workaround, drag table redraw on drop recreates the close button
 - Clicking on header for sort clears filtered records
+- Indeterminate checkbox not working, may be prevented due to column sorting instead
