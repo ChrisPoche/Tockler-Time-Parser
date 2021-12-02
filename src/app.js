@@ -513,13 +513,6 @@ const aggregateRecords = () => {
             }
         }
     };
-    window.api.send('createChart', opt);
-
-    let appChart = document.getElementById('app-chart');
-    appChart.addEventListener('dblclick', (e) => {
-        chartIncludeRemoved = !chartIncludeRemoved;
-        aggregateRecords();
-    });
 
     let all = globalRecords.map(r => r.dur).reduce((a, b) => a + b);
     let active = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked).map(r => r.dur);
@@ -1168,9 +1161,9 @@ const downloadCSV = () => {
     let subject = filteredResults[0].start.split(' ')[0].split('-')[1] + '-' + filteredResults[0].start.split(' ')[0].split('-')[2] + '_' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[1] + '-' + filteredResults[filteredResults.length - 1].start.split(' ')[0].split('-')[2] + '_time_tracking';
     window.api.send('write-csv', exportVals);
     window.api.receive('return-csv', (data) => {
-        if (data[0] === 'write complete') {
+        if (data[0][0] === 'write complete') {
             let a = document.createElement('a');
-            isProd ? a.href = '../../../time.csv' : a.href = '../time.csv';
+            a.href = data[0][1];
             a.id = 'file-link';
             a.download = `${subject}.csv`;
             a.style.visibility = 'hidden';

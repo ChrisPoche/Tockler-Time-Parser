@@ -320,12 +320,6 @@ body.dark-mode {
     color: white;
 }
 
-#app-chart {
-    position: absolute;
-    transform: scale(.3);
-    visibility: hidden;
-}
-
 #duration {
     position: absolute;
     left: 300px;
@@ -570,7 +564,7 @@ thead {
     line-height: 2.1;
 }
 
-#chart-tab, #table-tab {
+#table-tab {
     border: 1px solid black;
     background-color: darkgray;
     border-radius: 5px;
