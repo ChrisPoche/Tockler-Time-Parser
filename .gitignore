@@ -4,3 +4,4 @@
 /.gitignore
 /release-builds
 /assets/icons/win/
+/build_details.json
