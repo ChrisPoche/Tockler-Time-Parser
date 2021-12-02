@@ -6,7 +6,7 @@
   "scripts": {
     "start": "electron .",
     "package-win": "electron-packager . \"Time Parser\" --overwrite --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --out=../\"Time Parser\" --version-string.CompanyName=CP --version-string.FileDescription=CP --version-string.ProductName=\"Tockler Time Parser\"",
-    "create-installer": "cscript export_details.vbs && node build_installer.js"
+    "create-installer": "npm run package-win && cscript export_details.vbs && node build_installer.js"
   },
   "author": "Chris Poche",
   "license": "ISC",
