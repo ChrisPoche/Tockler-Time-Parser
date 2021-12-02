@@ -1,5 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, ipcRenderer } = require('electron')
-// const contextMenu = require('electron-context-menu');
+const { app, BrowserWindow, ipcMain, Menu } = require('electron')
 const path = require('path');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
@@ -65,8 +64,8 @@ ipcMain.on('retrieve-events-by-date', (e, arg) => {
 
 function createWindow() {
   let mainWindow = new BrowserWindow({
-    width: 1400,//800,
-    height: 740,//600,
+    width: 1400,
+    height: 740,
     frame: false,
     backgroundColor: '#3a3a3a',
     webPreferences: {
@@ -178,7 +177,7 @@ function createWindow() {
 
   mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
     console.log('attempting to download');
-    item.setSavePath(app.getPath("desktop") + "/" + item.getFilename());
+    item.setSavePath(path.join(app.getPath("desktop"),item.getFilename()));
 
     console.log(fs.existsSync(item.getSavePath()));
     if (fs.existsSync(item.getSavePath())) {
@@ -186,7 +185,7 @@ function createWindow() {
       while (exist) {
         let copyNumber = item.getSavePath().indexOf('(') >= 0 ? parseInt(item.getSavePath().split('(')[1].split(')')[0]) : 0;
         copyNumber++;
-        item.setSavePath(app.getPath("desktop") + "/" + item.getFilename().replace(/.csv/, '') + `(${copyNumber}).csv`);
+        item.setSavePath(join.path(app.getPath("desktop"),item.getFilename().replace(/.csv/, '') + `(${copyNumber}).csv`));
         exist = fs.existsSync(item.getSavePath()) ? true : false;
       }
     }
@@ -226,8 +225,6 @@ app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit()
 })
 
-// contextMenu({});
-
 ipcMain.on('toRead', (e, arg) => {
   fs.readFile(arg, 'utf8', (error, data) => {
     if (error) throw error;
@@ -236,14 +233,16 @@ ipcMain.on('toRead', (e, arg) => {
 });
 
 ipcMain.on('write-csv', (event, arg) => {
-  let writeStream = fs.createWriteStream('time.csv', 'utf8');
-  writeStream.write(arg);
-  let res = 'write complete';
-  writeStream.on('error', (err) => {
-    res = err;
-  })
-  writeStream.end();
-  event.reply('return-csv', res);
+  fs.mkdir(path.join(app.getPath('temp'), 'Time Parser'),{ recursive: true }, (err, directory) => {
+    let writeStream = fs.createWriteStream(path.join(app.getPath('temp'), 'Time Parser','time.csv'), 'utf8');
+    writeStream.write(arg);
+    let res = ['write complete',path.join(app.getPath('temp'), 'Time Parser','time.csv')];
+    writeStream.on('error', (err) => {
+      res = err;
+    })
+    writeStream.end();
+    event.reply('return-csv', res);
+  });
 })
 
 ipcMain.on('title-bar-interaction', (event, arg) => {
