@@ -4,9 +4,10 @@
   "description": "Parse the time tracking records of open source app, Tockler.",
   "main": "main.js",
   "scripts": {
+    "minify": "uglifyjs src/app.js --compress --output src/app-min.js",
     "start": "electron .",
-    "package-win": "electron-packager . \"Time Parser\" --overwrite --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --out=../\"Time Parser\" --version-string.CompanyName=CP --version-string.FileDescription=CP --version-string.ProductName=\"Tockler Time Parser\"",
-    "create-installer": "npm run package-win && cscript export_details.vbs && node build_installer.js"
+    "package-win": "npm run minify && cscript ./scripts/prep_build.vbs && electron-packager . \"Time Parser\" --overwrite --platform=win32 --arch=ia32 --icon=assets/icons/win/icon.ico --prune=true --out=../\"Time Parser\" --version-string.CompanyName=CP --version-string.FileDescription=CP --version-string.ProductName=\"Tockler Time Parser\" && cscript ./scripts/post_cleanup.vbs && cscript ./scripts/cleanup_build.vbs",
+    "create-installer": "npm run package-win && cscript ./scripts/prep_installer.vbs && node build_installer.js && cscript ./scripts/post_cleanup.vbs"
   },
   "author": "Chris Poche",
   "license": "ISC",
@@ -17,6 +18,7 @@
   },
   "dependencies": {
     "electron-context-menu": "^3.1.1",
-    "sqlite3": "^5.0.2"
+    "sqlite3": "^5.0.2",
+    "uglify-js": "^3.14.4"
   }
 }
