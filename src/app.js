@@ -458,62 +458,6 @@ const toggleCloseButtons = () => {
 };
 
 const aggregateRecords = () => {
-    if (document.getElementsByClassName('close-button')[0] && document.getElementsByClassName('close-button')[0].id !== 'close-tag-section') document.getElementsByClassName('close-button')[0].remove();
-    let apps = [...new Set(globalRecords.filter(r => r.checked && !removedApps.includes(r.app)).map(r => r.app))].sort();
-    let appAgg = [];
-    apps.forEach((app, index) => {
-        let dur = globalRecords.filter(r => r.app === app && r.checked).map(r => r.dur).reduce((a, b) => a + b);
-        let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
-        let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
-        let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
-        let duration = `${hh}:${mm}:${ss}`;
-        appAgg.push({ app, dur, duration });
-        if (index === (apps.length - 1) && removedApps.length > 0 && chartIncludeRemoved) {
-            dur = globalRecords.filter(r => removedApps.includes(r.app)).map(r => r.dur).reduce((a, b) => a + b);
-            hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
-            mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
-            ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
-            duration = `${hh}:${mm}:${ss}`;
-            appAgg.push({ app: '[Redacted]', dur, duration });
-            apps.push('[Redacted]');
-        }
-    });
-    let opt = {
-        type: 'doughnut',
-        data: {
-            labels: apps,
-            datasets: [{
-                data: appAgg.map(a => a.dur / 3600),
-                backgroundColor: [
-                    'rgba(255, 99, 132, 0.4)',
-                    'rgba(54, 162, 235, 0.4)',
-                    'rgba(255, 206, 86, 0.4)',
-                    'rgba(75, 192, 192, 0.4)',
-                    'rgba(153, 102, 255, 0.4)',
-                    'rgba(255, 159, 64, 0.4)'
-                ],
-                hoverOffset: 4
-            }]
-        },
-        options: {
-            animation: false,
-            plugins: {
-                tooltip: {
-                    usePointStyle: true,
-                    bodyFont: {
-                        size: 30,
-                    },
-                    bodyAlign: 'right',
-                    padding: 12,
-                    boxWidth: 50
-                },
-                legend: {
-                    display: false
-                }
-            }
-        }
-    };
-
     let all = globalRecords.map(r => r.dur).reduce((a, b) => a + b);
     let active = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked).map(r => r.dur);
     active = active.length > 0 ? active.reduce((a, b) => a + b) : 0;
@@ -601,11 +545,13 @@ const addTagsToZoomMeetings = (zoomOrigin, row) => {
 
 const modifySort = (e, type) => {
     let val = e.target.id.includes('zoom-tl-th') ? 'tags' : e.target.id.split('-')[2];
-    if (!['bar', 'th'].includes(val) && val) {
-        sortByHeader[type][val] = sortByHeader[type][val] === '' ? 'asc' : sortByHeader[type][val] === 'asc' ? 'desc' : '';
-        table[`${type}-go-to-page`] = 1;
-        filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
-        createTable(type);
+    if (val !== 'tags' || type !== 'zoom') {
+        if (!['visible','bar', 'th'].includes(val) && val) {
+            sortByHeader[type][val] = sortByHeader[type][val] === '' ? 'asc' : sortByHeader[type][val] === 'asc' ? 'desc' : '';
+            table[`${type}-go-to-page`] = 1;
+            filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
+            createTable(type);
+        }
     }
 }
 
@@ -715,7 +661,7 @@ const createTable = (type) => {
             th.id = `${type}-header-${h}`;
             th.classList = 'header';
             th.addEventListener('click', (e) => modifySort(e, type));
-            if (index === header[type].length - 2 || (index === header[type].length - 1 && type === 'zoom')) { // Close Button Tag and Zoom
+            if (index === header[type].length - 1 && type !== 'record') { // Close Button Tag and Zoom
                 let closeButton = document.createElement('div');
                 closeButton.id = `close-${type}-section`;
                 closeButton.innerText = 'X';

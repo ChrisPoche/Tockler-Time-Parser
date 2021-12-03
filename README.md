@@ -8,7 +8,7 @@ In the project directory, you can run:
 
 ### `npm run minify`
 
-Uses Uglify to minify the app.js file. 
+Uses Uglify to minify the app.js file.
 
 ### `npm run start`
 
@@ -64,7 +64,3 @@ Reports
 - Add app.user to the export file name
 
 ### Defects
-
-- Clicking tag on Zoom table removes close button. Workaround, drag table redraw on drop recreates the close button
-- Clicking on header for sort clears filtered records
-- Indeterminate checkbox not working, may be prevented due to column sorting instead
