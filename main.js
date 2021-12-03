@@ -3,8 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 
-let user = app.getPath('userData').split('Users')[1].split('\\')[1];
-let dbPath = `C:/Users/${user}/AppData/Roaming/tockler/tracker.db`;
+let dbPath = path.join(app.getPath('appData'),'tockler/tracker.db');
 let table = 'TrackItems';
 
 ipcMain.on('askForDates', (e, arg) => {
@@ -35,7 +34,6 @@ ipcMain.on('retrieve-events-by-date', (e, arg) => {
 
   let db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
     if (err) console.log(err.message);
-    // else console.log('Connected to Tracker db for retrieve-events-by-date.');
   });
 
   let sql = `SELECT app,
@@ -56,7 +54,6 @@ ipcMain.on('retrieve-events-by-date', (e, arg) => {
 
     db.close(err => {
       if (err) console.log(err)
-      // else console.log('db closed for retrieve-events-by-date');
     });
   });
 });
