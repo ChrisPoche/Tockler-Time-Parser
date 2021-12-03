@@ -2,7 +2,7 @@ let dataLoaded = false;
 let refreshedApps = false;
 let removedApps = [];
 let globalRecords = [];
-let chartIncludeRemoved = true;
+let includeTotalTime = true;
 let tableTab = document.createElement('div');
 let filterTitle = '';
 let editMode = false;
@@ -469,10 +469,9 @@ const aggregateRecords = () => {
         let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
         return `${hh}:${mm}:${ss}`;
     });
-
     let tagDur = document.getElementById('tag-section') ? `&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;${tags.filter(tag => tag.id === parseInt(tagID)).map(tag => tag.name)[0]}: ${durationVals[2]}` : '';
     let durationDiv = document.getElementById('duration');
-    durationDiv.innerHTML = chartIncludeRemoved ? `Duration (hh:mm:ss): ${durationVals[0]} / ${durationVals[1]}` + tagDur : `Duration (hh:mm:ss): ${durationVals[0]}` + tagDur;
+    durationDiv.innerHTML = includeTotalTime ? `Duration (hh:mm:ss): ${durationVals[0]} / ${durationVals[1]}` + tagDur : `Duration (hh:mm:ss): ${durationVals[0]}` + tagDur;
 }
 
 const parseFile = (files) => {
@@ -881,6 +880,7 @@ const createTable = (type) => {
                             }
                         }
                     }
+                    aggregateRecords();
                 })
             })
             hr.childNodes[0].appendChild(selectAllVisible)
@@ -1076,6 +1076,17 @@ const postDataRetrieval = (records) => {
         if (prefApps.filter(a => a === app).length < 1) removedApps.push(app);
     });
     refreshedApps = true;
+
+    if (!document.getElementById('duration')) {
+        let durationDiv = document.createElement('div');
+        durationDiv.id = 'duration';
+        document.getElementById('container').appendChild(durationDiv);
+        durationDiv.addEventListener('dblclick', () => {
+            includeTotalTime = !includeTotalTime;
+            console.log(includeTotalTime);
+            aggregateRecords();
+        });
+    }
 
     createAppFilter(apps);
     createTable('record');
