@@ -6,13 +6,17 @@ Using the active window capture of [Tockler](https://maygo.github.io/tockler/), 
 
 In the project directory, you can run:
 
+### `npm run minify`
+
+Uses Uglify to minify the app.js file. 
+
 ### `npm run start`
 
 Initializes a new Electron browser window.
 
 ### `npm run package-win`
 
-Builds application .exe.
+Runs the minify script and points index.html toward that, builds the application .exe, and points index back toward app.js.  
 
 ### `npm run create-installer`
 
@@ -43,11 +47,21 @@ Local Storage
 - Add show row count to local storage
 - Default Save Location
   - Currently set to download to Desktop, but allow user to set preferred location from dropdown, keep in local storage
+  - Default Apps
+- Save details with tags and checked in SQLite file
+  - If rows counts differ compile difference between Tockler records and Time Parser
+
+Reports
+
+- Add report builder and export functionality
+- Click to compile stats across multiple dates for report
+  - If loading them in from csv group by user
 
 ### To Do List
 
 - Draw newly added/removed tags to other tables
 - Editing auto-tag value finds existing filter, updates tags object and redraws tables
+- Add app.user to the export file name
 
 ### Defects
 
