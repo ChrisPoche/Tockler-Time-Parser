@@ -1,6 +1,6 @@
 {
   "name": "time-parser",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Parse the time tracking records of open source app, Tockler.",
   "main": "main.js",
   "scripts": {

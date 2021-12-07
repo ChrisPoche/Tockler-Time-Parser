@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const sqlite3 = require('sqlite3').verbose();
 
-let dbPath = path.join(app.getPath('appData'),'tockler/tracker.db');
+let dbPath = path.join(app.getPath('appData'), 'tockler/tracker.db');
 let table = 'TrackItems';
 
 ipcMain.on('askForDates', (e, arg) => {
@@ -73,7 +73,7 @@ function createWindow() {
     }
   })
 
-  ipcMain.once('check-prod', (e, arg) =>  {
+  ipcMain.once('check-prod', (e, arg) => {
     e.reply('is-prod', app.isPackaged)
   });
 
@@ -170,11 +170,15 @@ function createWindow() {
 
   mainWindow.loadFile('./src/index.html');
 
-  if(!app.isPackaged) mainWindow.webContents.openDevTools();
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools();
+    const contextmenu = require('electron-context-menu');
+    contextmenu({});
+  }
 
   mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
     console.log('attempting to download');
-    item.setSavePath(path.join(app.getPath("desktop"),item.getFilename()));
+    item.setSavePath(path.join(app.getPath("desktop"), item.getFilename()));
 
     console.log(fs.existsSync(item.getSavePath()));
     if (fs.existsSync(item.getSavePath())) {
@@ -182,7 +186,7 @@ function createWindow() {
       while (exist) {
         let copyNumber = item.getSavePath().indexOf('(') >= 0 ? parseInt(item.getSavePath().split('(')[1].split(')')[0]) : 0;
         copyNumber++;
-        item.setSavePath(join.path(app.getPath("desktop"),item.getFilename().replace(/.csv/, '') + `(${copyNumber}).csv`));
+        item.setSavePath(join.path(app.getPath("desktop"), item.getFilename().replace(/.csv/, '') + `(${copyNumber}).csv`));
         exist = fs.existsSync(item.getSavePath()) ? true : false;
       }
     }
@@ -230,10 +234,10 @@ ipcMain.on('toRead', (e, arg) => {
 });
 
 ipcMain.on('write-csv', (event, arg) => {
-  fs.mkdir(path.join(app.getPath('temp'), 'Time Parser'),{ recursive: true }, (err, directory) => {
-    let writeStream = fs.createWriteStream(path.join(app.getPath('temp'), 'Time Parser','time.csv'), 'utf8');
+  fs.mkdir(path.join(app.getPath('temp'), 'Time Parser'), { recursive: true }, (err, directory) => {
+    let writeStream = fs.createWriteStream(path.join(app.getPath('temp'), 'Time Parser', 'time.csv'), 'utf8');
     writeStream.write(arg);
-    let res = ['write complete',path.join(app.getPath('temp'), 'Time Parser','time.csv')];
+    let res = ['write complete', path.join(app.getPath('temp'), 'Time Parser', 'time.csv'), app.getPath('userData')];
     writeStream.on('error', (err) => {
       res = err;
     })

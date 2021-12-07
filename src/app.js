@@ -1149,7 +1149,8 @@ const downloadCSV = () => {
             let a = document.createElement('a');
             a.href = data[0][1];
             a.id = 'file-link';
-            a.download = `${subject}.csv`;
+            let user = /[a-zA-Z]+\.[a-zA-Z]+/.exec(data[0][2])[0].replace(/\./g,'_');
+            a.download = `${subject}-${user}.csv`;
             a.style.visibility = 'hidden';
             document.body.appendChild(a);
             document.getElementById('file-link').click();
