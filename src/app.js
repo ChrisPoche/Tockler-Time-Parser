@@ -13,6 +13,7 @@ let filteredRecords = [], tagID, zoomTags = []; // Global table trackers
 let activeTables = [];
 let sqlConnected = false;
 let isProd;
+let pulledDate;
 
 
 let table = ['record', 'tag', 'zoom'].reduce((prev, t) => ({ ...prev, [`${t}-show`]: 10, [`${t}-go-to-page`]: 1, [`${t}-page-count`]: 1, [`${t}-top`]: '', [`${t}-left`]: '' }), {});
@@ -44,7 +45,7 @@ let visibleRecords = {
 
 const dateInputHandler = (e) => {
     if (e.type === 'blur') {
-        if (dWR.includes(e.target.value)) {
+        if (dWR.includes(e.target.value) && (pulledDate !== e.target.value || !dataLoaded)) {
             grabRecordsFromDatePicker(e.target.value)
         };
     }
@@ -78,6 +79,7 @@ window.addEventListener('load', () => {
             dateInput.value = dWR[dWR.length - 1];
         }
     });
+    dateInput.addEventListener('focus', (e) => pulledDate = e.target.value);
     dateInput.addEventListener('blur', dateInputHandler);
     dateInput.addEventListener('keyup', dateInputHandler);
     dateInput.addEventListener('change', (e) => {
@@ -423,6 +425,7 @@ const grabRecordsFromDatePicker = (date) => {
         zoomTags = [];
         if (document.getElementById('zoom-section')) document.getElementById('zoom-section').remove();
         filteredRecords = [];
+        activeTables = [];
         postDataRetrieval(records);
     });
 };
@@ -442,7 +445,6 @@ const toggleCloseButtons = () => {
                 closeButton.style.left = closeX + 'px';
                 closeButton.style.top = closeY + 'px';
                 closeButton.addEventListener('click', () => {
-                    console.log('Minimizing:', id);
                     element.style.visibility = 'hidden';
                     closeButton.remove();
                 })
@@ -523,29 +525,10 @@ const parseFile = (files) => {
     })
 };
 
-const addTagsToZoomMeetings = (zoomOrigin, row) => {
-    zoomTags[zoomTags.length - 1].end = row.id;
-    let title = `Zoom from: ${zoomOrigin.app}`;
-    if (zoomOrigin.tags.length > 0) zoomOrigin.tags.forEach(t => row.tags.push(t));
-    if (zoomOrigin.tags.length === 0) {
-        let title = zoomOrigin.app === 'Slack' ? `${zoomOrigin.title.split('|')[0].trim()} - ${zoomOrigin.title.split('|')[1].trim()}` : zoomOrigin.title
-        if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title, row.tags, row.id)
-        else {
-            globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
-            if (visibleRecords['record'].includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
-        }
-    }
-    if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title, row.tags, row.id)
-    if (tags.filter(tag => tag.name === title).length > 0 && !globalRecords[row.id].tags.includes(tags.filter(tag => tag.name === title)[0].id)) {
-        globalRecords[row.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
-        if (visibleRecords['record'].includes(row.id)) drawTag(globalRecords[row.id].tags, 'record-' + row.id);
-    }
-}
-
 const modifySort = (e, type) => {
     let val = e.target.id.includes('zoom-tl-th') ? 'tags' : e.target.id.split('-')[2];
     if (val !== 'tags' || type !== 'zoom') {
-        if (!['visible','bar', 'th'].includes(val) && val) {
+        if (!['visible', 'bar', 'th'].includes(val) && val) {
             sortByHeader[type][val] = sortByHeader[type][val] === '' ? 'asc' : sortByHeader[type][val] === 'asc' ? 'desc' : '';
             table[`${type}-go-to-page`] = 1;
             filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
@@ -887,13 +870,7 @@ const createTable = (type) => {
         }
         if (document.getElementById(`${type}-table`)) document.getElementById(`${type}-table`).remove();
         section.prepend(tableTag);
-        // Draw tags after table is drawn
-        document.getElementById(`${type}-table`).childNodes[1].childNodes.forEach(row => {
-            if (globalRecords[row.id.split('-')[1]]) {
-                let val = globalRecords[row.id.split('-')[1]].tags;
-                drawTag(val, row.id);
-            }
-        });
+        drawTag('createTable');
         if (document.getElementById(`${type}-page-controls`) === null) {
             let pageControlBar = document.createElement('div');
             pageControlBar.id = (`${type}-page-controls`);
@@ -1012,6 +989,7 @@ const runTaggingFilter = (filter) => {
     globalRecords.filter(r => filter.test(r.title)).forEach(row => {
         let title = row.title.match(filter)[0];
         if (title.match(/DRAFT \-/) || title.match(/\(?rca|RCA\)?/)) title = 'RCA';
+        if (title.match(/[P-p]ager[D-d]uty/)) title = 'PagerDuty';
         if (title.match(/relonemajorincidentmgrtransitions/) || title.match(/ [T-t]ransition/)) title = 'Ticket Transition';
         if (title.match(/[A-Z]{3,7}\-\d+/)) {
             let months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
@@ -1037,23 +1015,73 @@ const autoTag = () => {
             })
         };
         filters.forEach(filter => runTaggingFilter(filter));
-        // Zoom Meeting Tags
-        let zoomOrigin;
-        globalRecords.filter(r => r.app === 'Zoom' || (['Chrome', 'Firefox', 'Msedge'].includes(r.app) && r.title.includes('Launch Meeting - Zoom'))).forEach(row => {
-            let zoomConnectionId;
-            if ((row.app === 'Zoom' && (row.title === 'Connecting…' || (row.title === 'Zoom Meeting' && !zoomOrigin))) || (row.app !== 'Zoom')) {
-                zoomConnectionId = row.id
-                zoomTags.push({ 'start': zoomConnectionId, 'end': 0, 'duration': 0 });
-                for (let i = zoomConnectionId > 5 ? zoomConnectionId - 6 : 0; i < zoomConnectionId; i++) {
-                    if ((globalRecords[i].app === 'Outlook' && !globalRecords[i].title.match(/Reminder\(s\)/)) || (globalRecords[i].app === 'Slack')) zoomOrigin = globalRecords[i];
-                }
-            };
-            if (zoomOrigin) {
-                addTagsToZoomMeetings(zoomOrigin, row)
-                if (row.title === 'End Meeting or Leave Meeting?') zoomOrigin = null;
-            }
-        });
+        zoomTagging();
     }
+}
+
+const zoomTagging = () => {
+    let zoomOrigin;
+    let zoomConnectionId;
+    globalRecords.filter(r => r.app === 'Zoom' || (['Chrome', 'Firefox', 'Msedge'].includes(r.app) && /Launch Meeting - Zoom/.test(r.title))).forEach((row) => {
+        if ((zoomConnectionId !== row.id - 1 && row.app === 'Zoom' && (row.title === 'Connecting…' || (row.title === 'Zoom Meeting' && !zoomOrigin))) || (row.app !== 'Zoom')) {
+            zoomConnectionId = row.id
+            zoomTags.push({ 'start': zoomConnectionId, 'end': 0, 'duration': 0, 'origin': 0 });
+            for (let i = zoomConnectionId > 5 ? zoomConnectionId - 6 : 0; i < zoomConnectionId; i++) {
+                if ((globalRecords[i].app === 'Outlook' && !globalRecords[i].title.match(/Reminder\(s\)/)) || (globalRecords[i].app === 'Slack' && !/Unread Messages/.test(globalRecords[i].title))) zoomOrigin = globalRecords[i];
+            }
+        };
+        if (zoomOrigin) {
+            zoomTags[zoomTags.length - 1].end = row.id;
+            zoomTags[zoomTags.length - 1].origin = zoomOrigin.id;
+            if (['end meeting or leave meeting?', 'leave meeting'].includes(row.title.toLowerCase())) zoomOrigin = null;
+        };
+    });
+    zoomTags.forEach(z => modifyZoomTags(z.start, z.end, z.origin));
+}
+
+const modifyZoomTags = (startID, endID, originID, tagVal = null, tagAction = null) => {
+    let origin, titleFrom;
+    if (tagAction !== 'delete') {
+        origin = globalRecords[originID];
+        titleFrom = /team-on-call/.test(origin.title) ? 'Zoom from: Slack' : `Zoom from: ${origin.app}`;
+        if (/team-on-call/.test(origin.title)) {
+            let invalid = true;
+            let id = startID + 1;
+            while (invalid) {
+                if ((['Chrome', 'Firefox', 'Msedge'].includes(globalRecords[id].app) || globalRecords[id].app === 'Slack') && /0[2-3]\d{6}\s?\-?/.test(globalRecords[id].title)) {
+                    origin = globalRecords[id];
+                    zoomTags.filter(zt => zt.start === startID)[0].originID = id;
+                    invalid = false;
+                }
+                id++;
+            }
+        }
+    }
+    globalRecords.filter(r => r.id >= startID && r.id <= endID && (r.app === 'Zoom' || (['Chrome', 'Firefox', 'Msedge'].includes(r.app) && /Launch Meeting - Zoom/.test(r.title)))).forEach(z => {
+        if (tagVal) {
+            if (tags.filter(tag => tag.id === tagVal).length > 0) {
+                if (!globalRecords[z.id].tags.includes(tagVal) && tagAction === 'add') globalRecords[z.id].tags.push(tagVal)
+                if (globalRecords[z.id].tags.includes(tagVal) && tagAction === 'delete') globalRecords[z.id].tags = globalRecords[z.id].tags.filter(tag => tag !== tagVal);
+            }
+        }
+        if (!tagVal) {
+            z.tags = origin.tags;
+            if (origin.tags.length === 0) {
+                let title = origin.app === 'Slack' ? `${origin.title.split('|')[0].trim()} - ${origin.title.split('|')[1].trim()}` : origin.title;
+                if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title);
+                if (!globalRecords[z.id].tags.includes(tags.filter(tag => tag.name === title)[0].id)) globalRecords[z.id].tags.push(tags.filter(tag => tag.name === title)[0].id);
+            }
+            if (tags.filter(tag => tag.name === titleFrom).length === 0) createNewTag(titleFrom)
+            if (!globalRecords[z.id].tags.includes(tags.filter(tag => tag.name === titleFrom)[0].id)) globalRecords[z.id].tags.push(tags.filter(tag => tag.name === titleFrom)[0].id);
+            if (/team-on-call/.test(globalRecords[originID].title)) {
+                if (tags.filter(tag => tag.name === 'team-on-call').length === 0) createNewTag('team-on-call')
+                if (!globalRecords[z.id].tags.includes(tags.filter(tag => tag.name === 'team-on-call')[0].id)) globalRecords[z.id].tags.push(tags.filter(tag => tag.name === 'team-on-call')[0].id);
+            }
+        }
+        activeTables.forEach(table => {
+            if (visibleRecords[table.type].includes(z.id)) createTable(table.type);
+        });
+    })
 }
 
 
@@ -1083,7 +1111,6 @@ const postDataRetrieval = (records) => {
         document.getElementById('container').appendChild(durationDiv);
         durationDiv.addEventListener('dblclick', () => {
             includeTotalTime = !includeTotalTime;
-            console.log(includeTotalTime);
             aggregateRecords();
         });
     }
@@ -1147,12 +1174,9 @@ const createNewTag = (name, val = null, recordID = null) => {
     if (recordID && val) {
         let record = globalRecords[recordID];
         record.tags.push(tags.length - 1);
-        let rowID = `record-${recordID}`;
-        [...document.getElementById('record-table').childNodes[1].childNodes].forEach(row => {
-            if (row.id.includes(rowID)) {
-                drawTag(val, rowID)
-            }
-        })
+        let visibleRows = [];
+        activeTables.forEach(table => visibleRows = [...visibleRecords[table.type]]);
+        if (visibleRows.filter(r => r === recordID).length > 0) drawTag('createNewTag');
     }
 }
 
@@ -1172,7 +1196,7 @@ const searchTags = (e) => {
         if ((searchInput.trim().length > 0 && sortedTags[i].name === 'Add Tag') || (sortedTags[i].name !== 'Add Tag' && (searchInput.trim().length === 0 || sortedTags[i].name.toLowerCase().indexOf(searchInput) > -1))) {
             result.classList = 'tag-search-result';
             result.innerText = sortedTags[i].name;
-            result.addEventListener('mousedown', (e) => {
+            result.addEventListener('mousedown', (e) => { // Clicked to add tag
                 if (td.id === 'unknown-tag') {
                     let parent = document.getElementById('unknown-tag').parentNode;
                     td.remove();
@@ -1183,10 +1207,20 @@ const searchTags = (e) => {
                 if (td.id !== 'unknown-tag') {
                     let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
                     if (sortedTags[i].name !== 'Add Tag') {
-                        record.tags.push(tags.filter(tag => tag.name === e.target.innerText)[0].id);
-                        drawTag(record.tags, `${visibleRecords['record'].includes(record.id) ? 'record' : 'zoom'}-${record.id}`);
+                        let tagID = tags.filter(tag => tag.name === sortedTags[i].name)[0].id;
+                        if (record.tags.filter(t => t === tagID).length === 0) {
+                            globalRecords[record.id].tags.push(tagID);
+                            let zt = zoomTags.filter(zt => zt.start === record.id);
+                            if (zt.length > 0) {
+                                modifyZoomTags(zt[0].start, zt[0].end, zt[0].origin, tagID, 'add')
+                            }
+                            else {
+                                drawTag('searchTags');
+                            }
+                        }
                     }
                 }
+                // Clicked to add non-existent Tag
                 if (sortedTags[i].name === 'Add Tag' && document.getElementById('tag-search').value.length > 0 && document.getElementById('tag-search').value.toLowerCase() !== 'add tag' && tags.filter(tag => tag.name === document.getElementById('tag-search').value.trim().toLowerCase()).length === 0) handleAddTag(td);
             });
             resultsDropdown.appendChild(result);
@@ -1233,115 +1267,133 @@ const handleAddTag = (td) => {
             let tagID = existingTag[0].id;
             if (globalRecords[record.id].tags.filter(t => t === tagID).length === 0) {
                 globalRecords[record.id].tags.push(tagID);
-                drawTag(globalRecords[record.id].tags, `record-${record.id}`);
+                let zt = zoomTags.filter(zt => zt.start === record.id);
+                if (zt.length > 0) {
+                    modifyZoomTags(zt[0].start, zt[0].end, zt[0].origin, tagID, 'add');
+                }
+                else {
+                    drawTag('handleAddTag');
+                }
             }
         }
-        if (document.getElementById('tag-search')) document.getElementById('tag-search').blur();
+        if (document.getElementById('tag-search')) {
+            document.getElementById('tag-search').blur();
+        }
     }
 }
 
 const removeSearchTagsDropdown = () => {
     document.getElementById('tag-search').parentNode.remove();
 }
-const drawTag = (val, rowID) => {
-    let td = document.getElementById(rowID).childNodes.length > 5 ? document.getElementById(rowID).childNodes[6] : document.getElementById(rowID).childNodes.length > 4 ? document.getElementById(rowID).childNodes[4] : document.getElementById(rowID).childNodes[0];
-    let existingTags = [...td.childNodes].filter(tag => tag.className.includes('tag-'));
-    val.forEach((tid) => {
-        if (existingTags.filter(tag => tag.className.includes(tid)).length === 0) {
-            let t = tags.filter(tag => tag.id === tid)[0];
-            let tag = document.createElement('p');
-            tag.innerText = t.name;
-            tag.classList = `tags tag-${t.id}`;
-            tag.addEventListener('mouseenter', (e) => {
-                let x = document.createElement('span');
-                x.classList = 'delete-tag';
-                x.innerText = 'x'
-                tag.appendChild(x);
-                x.addEventListener('click', (e) => {
-                    e.stopImmediatePropagation();
-                    let idToRemove = parseInt(e.target.parentNode.classList[1].split('-')[1]);
-                    if (/^\d+$/.test(idToRemove)) {
-                        let id = e.target.parentNode.parentNode.parentNode.id;
-                        let fromTag = e.target.parentNode.parentNode.parentNode.id.includes('tag') ? true : false;
-                        id = id.substring(id.indexOf('-') + 1);
-                        globalRecords[id].tags = globalRecords[id].tags.filter(t => t !== idToRemove);
-                        tag.remove();
-                        if (fromTag && visibleRecords['record'].includes(parseInt(id))) {
-                            document.getElementById(`record-${id}`).childNodes[6].childNodes.forEach(t => {
-                                if ([...t.classList].includes(`tag-${idToRemove}`)) t.remove();
+
+const drawTag = () => {
+    activeTables.forEach(table => {
+        let type = table.type;
+        visibleRecords[type].forEach(rowID => {
+            let val = globalRecords[rowID].tags;
+            if (val.length > 0) {
+                const tableRowID = `${type}-${rowID}`;
+                const td = document.getElementById(tableRowID).querySelector('.tags-col');
+                let existingTags = [...td.childNodes].filter(tag => tag.className.includes('tag-'));
+                if (val.length !== existingTags.length) {
+                    val.forEach(tid => {
+                        if (existingTags.filter(tag => tag.className.includes(tid)).length === 0) {
+                            let t = tags.filter(tag => tag.id === tid)[0];
+                            let tag = document.createElement('p');
+                            tag.innerText = t.name;
+                            tag.classList = `tags tag-${t.id}`;
+                            tag.addEventListener('mouseenter', (e) => {
+                                let x = document.createElement('span');
+                                x.classList = 'delete-tag';
+                                x.innerText = 'x'
+                                tag.appendChild(x);
+                                x.addEventListener('click', (e) => {
+                                    e.stopImmediatePropagation();
+                                    let tagIDToRemove = parseInt(e.target.parentNode.classList[1].split('-')[1]);
+                                    if (/^\d+$/.test(tagIDToRemove)) {
+                                        let id = e.target.parentNode.parentNode.parentNode.id;
+                                        let fromZoom = id.split('-')[0] === 'zoom';
+                                        id = id.split('-')[1];
+                                        globalRecords[id].tags = globalRecords[id].tags.filter(t => t !== tagIDToRemove);
+                                        activeTables.forEach(table => {
+                                            if (visibleRecords[table.type].includes(parseInt(id))) createTable(table.type);
+                                        });
+                                        if (fromZoom) {
+                                            let zt = zoomTags.filter(zt => zt.start === parseInt(id))[0];
+                                            modifyZoomTags(zt.start, zt.end, zt.start, tagIDToRemove, 'delete')
+                                        }
+                                        if (document.getElementsByClassName('add-tag')[0]) document.getElementsByClassName('add-tag')[0].remove();
+                                    };
+                                })
+                            });
+                            tag.addEventListener('mouseleave', (e) => {
+                                let x = tag.childNodes[tag.childNodes.length - 1];
+                                x.remove();
                             })
-                        }
-                        if (visibleRecords['tag'].includes(parseInt(id)) && parseInt(tagID) === idToRemove) {
-                            visibleRecords['tag'].filter(r => r !== parseInt(id)).length > 0 ? createTable('tag') : document.getElementById('tag-section').remove();
-                        };
-                        if (document.getElementsByClassName('add-tag')[0]) document.getElementsByClassName('add-tag')[0].remove();
-                    };
-                })
-            });
-            tag.addEventListener('mouseleave', (e) => {
-                let x = tag.childNodes[tag.childNodes.length - 1];
-                x.remove();
-            })
-            tag.addEventListener('contextmenu', (e) => {
-                let tagID = [...e.target.classList].filter(c => c.includes('tag-'))[0].split('-')[1];
-                let contextMenu = document.createElement('div');
-                contextMenu.id = 'custom-context-menu';
-                contextMenu.style.left = `${e.x}px`;
-                contextMenu.style.top = `${e.y}px`;
-                ['Edit Tag', 'Merge Tags', 'Remove Tag From All'].forEach(option => {
-                    let menuOption = document.createElement('div');
-                    menuOption.classList = 'context-menu-option';
-                    menuOption.innerText = option;
-                    contextMenu.appendChild(menuOption);
-                    menuOption.addEventListener('click', (e) => {
-                        let action = e.target.innerText;
-                        blurContextMenu();
-                        switch (action) {
-                            case 'Edit Tag':
-                                openTagModal('edit', tagID);
-                                break;
-                            case 'Merge Tags':
-                                openTagModal('merge', tagID);
-                                break;
-                            case 'Remove Tag From All':
-                                openTagModal('remove-all', tagID);
-                                break;
-                            default:
-                                break;
+                            tag.addEventListener('contextmenu', (e) => {
+                                let tagID = [...e.target.classList].filter(c => c.includes('tag-'))[0].split('-')[1];
+                                let contextMenu = document.createElement('div');
+                                contextMenu.id = 'custom-context-menu';
+                                contextMenu.style.left = `${e.x}px`;
+                                contextMenu.style.top = `${e.y}px`;
+                                ['Edit Tag', 'Merge Tags', 'Remove Tag From All'].forEach(option => {
+                                    let menuOption = document.createElement('div');
+                                    menuOption.classList = 'context-menu-option';
+                                    menuOption.innerText = option;
+                                    contextMenu.appendChild(menuOption);
+                                    menuOption.addEventListener('click', (e) => {
+                                        let action = e.target.innerText;
+                                        blurContextMenu();
+                                        switch (action) {
+                                            case 'Edit Tag':
+                                                openTagModal('edit', tagID);
+                                                break;
+                                            case 'Merge Tags':
+                                                openTagModal('merge', tagID);
+                                                break;
+                                            case 'Remove Tag From All':
+                                                openTagModal('remove-all', tagID);
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                    })
+                                });
+                                const blurContextMenu = () => {
+                                    contextMenu.remove();
+                                    document.getElementById('container').removeEventListener('click', blurContextMenu);
+                                }
+                                if (!document.getElementById('custom-context-menu')) document.getElementById('container').addEventListener('click', blurContextMenu);
+                                if (document.getElementById('custom-context-menu')) document.getElementById('custom-context-menu').remove();
+                                document.body.appendChild(contextMenu);
+                            })
+                            tag.addEventListener('click', (e) => {
+                                tagID = [...e.target.classList].filter(t => t.includes('tag-'))[0].split('-')[1];
+                                createTable('tag')
+                            })
+                            tag.draggable = true;
+                            tag.addEventListener('drag', (e) => {
+                                dragTag = [...e.target.classList][1];
+                                dropTag = null;
+                            });
+                            tag.addEventListener('dragend', (e) => {
+                                if (!dropTag || dragTag === dropTag) dragTag = null; // drop isn't on another tag, clear value
+                            })
+                            tag.addEventListener('dragover', (e) => {
+                                e.preventDefault();
+                            })
+                            tag.addEventListener('drop', (e) => {
+                                e.preventDefault();
+                                dropTag = e.target.classList[1];
+                                if (!dropTag || dragTag === dropTag) dragTag = null;
+                                if (dragTag && dropTag) openTagModal('merge');
+                            })
+                            td.appendChild(tag);
                         }
                     })
-                });
-                const blurContextMenu = () => {
-                    contextMenu.remove();
-                    document.getElementById('container').removeEventListener('click', blurContextMenu);
                 }
-                if (!document.getElementById('custom-context-menu')) document.getElementById('container').addEventListener('click', blurContextMenu);
-                if (document.getElementById('custom-context-menu')) document.getElementById('custom-context-menu').remove();
-                document.body.appendChild(contextMenu);
-            })
-            tag.addEventListener('click', (e) => {
-                tagID = [...e.target.classList].filter(t => t.includes('tag-'))[0].split('-')[1];
-                createTable('tag')
-            })
-            tag.draggable = true;
-            tag.addEventListener('drag', (e) => {
-                dragTag = [...e.target.classList][1];
-                dropTag = null;
-            });
-            tag.addEventListener('dragend', (e) => {
-                if (!dropTag || dragTag === dropTag) dragTag = null; // drop isn't on another tag, clear value
-            })
-            tag.addEventListener('dragover', (e) => {
-                e.preventDefault();
-            })
-            tag.addEventListener('drop', (e) => {
-                e.preventDefault();
-                dropTag = e.target.classList[1];
-                if (!dropTag || dragTag === dropTag) dragTag = null;
-                if (dragTag && dropTag) openTagModal('merge');
-            })
-            td.appendChild(tag);
-        }
+            }
+        });
     })
 }
 
@@ -1504,11 +1556,8 @@ const modifyTags = (mergedID, oldTagIDs) => {
     });
     dragTag = null;
     dropTag = null;
-    createTable('record');
-    if (document.getElementById('tag-section')) {
-        tagID = mergedID;
-        createTable('tag');
-    }
+    if (document.getElementById('tag-section')) tagID = mergedID;
+    activeTables.forEach(table => createTable(table.type));
 }
 
 const createHandleListeners = (handle) => {
