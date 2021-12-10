@@ -14,9 +14,10 @@ let activeTables = [];
 let sqlConnected = false;
 let isProd;
 let pulledDate;
+let appSettings;
 
-
-let table = ['record', 'tag', 'zoom'].reduce((prev, t) => ({ ...prev, [`${t}-show`]: 10, [`${t}-go-to-page`]: 1, [`${t}-page-count`]: 1, [`${t}-top`]: '', [`${t}-left`]: '' }), {});
+let existingTables = ['record', 'tag', 'zoom'];
+let table = existingTables.reduce((prev, t) => ({ ...prev, [`${t}-show`]: 10, [`${t}-go-to-page`]: 1, [`${t}-page-count`]: 1, [`${t}-top`]: '', [`${t}-left`]: '' }), {});
 let sortByHeader = {
     'record': {
         'app': '',
@@ -59,9 +60,12 @@ const dateInputHandler = (e) => {
 
 window.addEventListener('load', () => {
     window.api.receive('is-prod', (prodCheck) => isProd = prodCheck[0]);
+    window.api.receive('config', (config) => {
+        appSettings = config[0];
+        createSettingsPage();
+    });
     createTitlebar();
     createDragAndDropArea();
-    createSettingsPage();
     let dateInput = document.createElement('input');
     dateInput.id = 'date-input';
     dateInput.classList = 'center hidden';
@@ -150,53 +154,56 @@ const createSettingsPage = () => {
     settingsPage.id = 'settings-page';
     settingsPage.classList = 'settings-closed';
     document.body.appendChild(settingsPage);
-    ['toggle-dark-mode', 'toggle-auto-tagging'].forEach(toggle => {
-        if (!document.getElementById(toggle)) {
-            let toggleVal = toggle.replace('toggle-', '');
-            let bool = window.localStorage.getItem(toggleVal) !== null ? JSON.parse(window.localStorage.getItem(toggleVal)) : true;
-            if (window.localStorage.getItem(toggleVal) === null) window.localStorage.setItem(toggleVal, bool);
-            if (toggleVal === 'dark-mode') document.body.classList = bool ? toggleVal : '';
-            let row = document.createElement('div');
-            row.classList = 'settings';
-            let sliderContainer = document.createElement('label');
-            sliderContainer.classList = 'switch';
-            sliderContainer.id = toggle;
-            let input = document.createElement('input');
-            input.type = 'checkbox';
-            input.checked = bool;
-            let slider = document.createElement('span');
-            slider.classList = 'slider round';
-            sliderContainer.appendChild(input);
-            sliderContainer.appendChild(slider);
-            let label = document.createElement('label');
-            label.id = toggleVal + '-label';
-            let dropDown = ['auto-tagging'].includes(toggleVal) && JSON.parse(window.localStorage.getItem(toggleVal));
-            label.innerHTML = (dropDown ? `<span class="expand-arrow">&#8250;</span> ` : '') + toggleVal.replace('-', ' ');
-            row.appendChild(sliderContainer);
-            row.appendChild(label);
-            input.addEventListener('click', () => {
-                if (toggleVal === 'dark-mode') document.body.classList.toggle(toggleVal);
-                let nextVal = !JSON.parse(window.localStorage.getItem(toggleVal));
-                label.innerHTML = (nextVal && (dropDown || toggleVal === 'auto-tagging') ? `<span class="expand-arrow">&#8250;</span> ` : '') + toggleVal.replace('-', ' ');
-                dropDown = nextVal;
-                if (!nextVal && document.getElementById('add-custom-filter-container')) document.getElementById('add-custom-filter-container').remove();
-                window.localStorage.setItem(toggleVal, nextVal);
-                if (toggleVal === 'auto-tagging' && nextVal) autoTag();
-            });
-            label.addEventListener('click', (e) => {
-                if (dropDown) {
-                    let expandable = document.getElementById(toggleVal + '-label').querySelector('.expand-arrow');
-                    expandable.classList.toggle('expand-open');
-                    let type = toggleVal === 'auto-tagging' ? 'Filter' : toggleVal;
-                    if ([...expandable.classList].includes('expand-open')) {
-                        addExpandOptions(expandable, toggleVal, type);
-                    }
-                    else {
-                        document.getElementById(`add-custom-${type.toLowerCase()}-container`).remove();
-                    }
-                };
-            })
-            settingsPage.appendChild(row);
+    appSettings.forEach(setting => {
+        if (setting.name !== 'save-location') {
+            let toggle = 'toggle-' + setting.name;
+            if (!document.getElementById(toggle)) {
+                setting.enabled = setting.enabled === 1;
+                if (setting.name === 'dark-mode' && setting.enabled) document.body.classList = 'dark-mode';
+                let row = document.createElement('div');
+                row.classList = 'settings';
+                let sliderContainer = document.createElement('label');
+                sliderContainer.classList = 'switch';
+                sliderContainer.id = toggle;
+                let input = document.createElement('input');
+                input.type = 'checkbox';
+                input.checked = setting.enabled;
+                let slider = document.createElement('span');
+                slider.classList = 'slider round';
+                sliderContainer.appendChild(input);
+                sliderContainer.appendChild(slider);
+                let label = document.createElement('label');
+                label.id = setting.name + '-label';
+                let dropDown = ['auto-tagging', 'save-location'].includes(setting.name) && setting.enabled || setting.name === 'row-count';
+                label.innerHTML = (dropDown ? `<span class="expand-arrow">&#8250;</span> ` : '') + setting.name.replace(/-/g, ' ');
+                row.appendChild(sliderContainer);
+                row.appendChild(label);
+                input.addEventListener('click', () => {
+                    if (setting.name === 'dark-mode') document.body.classList.toggle(setting.name);
+                    let enabledAfterClick = !setting.enabled;
+                    label.innerHTML = (enabledAfterClick && (dropDown || ['auto-tagging', 'save-location'].includes(setting.name)) || setting.name === 'row-count' ? `<span class="expand-arrow">&#8250;</span> ` : '') + setting.name.replace(/-/g, ' ');
+                    dropDown = setting.name === 'row-count' ? true : enabledAfterClick;
+                    if (!enabledAfterClick && setting.name === 'auto-tagging' && document.getElementById('add-custom-filter-container')) document.getElementById('add-custom-filter-container').remove();
+                    setting.enabled = enabledAfterClick;
+                    window.api.send('update-setting', [setting.name, 'enabled', enabledAfterClick ? 1 : 0]);
+                    if (setting.name === 'auto-tagging' && enabledAfterClick) autoTag();
+                    if (document.getElementById(`add-custom-${setting.name}-container`)) document.getElementById(`add-custom-${setting.name}-container`).remove();
+                });
+                label.addEventListener('click', (e) => {
+                    if (dropDown) {
+                        let expandable = document.getElementById(setting.name + '-label').querySelector('.expand-arrow');
+                        expandable.classList.toggle('expand-open');
+                        let type = setting.name === 'auto-tagging' ? 'Filter' : setting.name;
+                        if ([...expandable.classList].includes('expand-open')) {
+                            addExpandOptions(expandable, setting.name, type);
+                        }
+                        else {
+                            if (document.getElementById(`add-custom-${type.toLowerCase()}-container`)) document.getElementById(`add-custom-${type.toLowerCase()}-container`).remove();
+                        }
+                    };
+                })
+                settingsPage.appendChild(row);
+            }
         }
     });
     let zoomRow = document.createElement('div');
@@ -229,115 +236,188 @@ const createSettingsPage = () => {
     settingsPage.appendChild(resetDefault);
 }
 
-const addExpandOptions = (expandable, toggleVal, type) => {
+const addExpandOptions = (expandable, settingName, type) => {
+    let setting = appSettings.filter(s => s.name === settingName)[0];
     if (document.getElementById(`add-custom-${type.toLowerCase()}-container`)) document.getElementById(`add-custom-${type.toLowerCase()}-container`).remove();
     let expandDiv = document.createElement('div');
     expandDiv.id = `add-custom-${type.toLowerCase()}-container`;
     expandDiv.classList = 'add-custom';
-    let addCustomDiv = document.createElement('div');
-    addCustomDiv.classList = 'add-custom-input';
-    let addCustom = document.createElement('input');
-    addCustom.type = 'text';
-    addCustom.placeholder = `Add Custom ${type}`;
-    addCustomDiv.appendChild(addCustom);
-    let approvedBeforeBlur = false;
-    const addApprovedSymbol = (e, val) => {
-        let fromOptions = val !== 'add-new';
-        let approve = document.createElement('span');
-        approve.classList = `add-custom-action approve`;
-        approve.innerHTML = '&#10004;';
-        approve.addEventListener('mousedown', (e) => {
-            approvedBeforeBlur = true;
-            let lsValues = window.localStorage.getItem(toggleVal + '-values');
-            let oldVals = lsValues !== null ? lsValues.split(',').filter(v => v.trim().length > 0) : [];
-            let newVals = oldVals;
-            let filter;
-            if (fromOptions) {
-                let oldIndex = oldVals.indexOf(val);
-                let editInput = document.getElementById('edit-input');
-                filter = editInput.value;
-                newVals = oldVals.map((v, i) => i === oldIndex && filter.trim().length > 0 ? filter : v);
-            }
-            if (!fromOptions && addCustom.value.trim().length > 0) {
-                filter = addCustom.value;
-                oldVals.push(filter);
-                newVals = oldVals;
-            }
-            runTaggingFilter(new RegExp(filter));
-            if (document.getElementById('record-section')) createTable('record');
-            window.localStorage.setItem(toggleVal + '-values', newVals);
-            addExpandOptions(expandable, toggleVal, type);
-        })
-        if (fromOptions) {
-            document.getElementById(e.id).childNodes[0].appendChild(approve);
+    if (setting.name === 'row-count') {
+        // console.log(setting.details)
+        setting.details = typeof setting.details === 'string' ? JSON.parse(setting.details) : setting.details;
+        if (setting.enabled) {
+            let universalRowCount = document.createElement('div');
+            universalRowCount.id = 'universal-row-count';
+            let uRCInput = document.createElement('input');
+            uRCInput.type = 'number';
+            uRCInput.step = 10;
+            uRCInput.min = 10;
+            uRCInput.max = 50;
+            let rowCount = setting.details.filter(d => d.global === 1)[0].count;
+            // console.log(rowCount)
+            uRCInput.value = rowCount
+            uRCInput.addEventListener('change', (e) => {
+                setting.details = [...setting.details.filter(d => d.global !== 1), { 'global': 1, 'table': '', 'count': e.target.value }]
+                existingTables.forEach(type => {
+                    table[`${type}-show`] = e.target.value;
+                    if (document.getElementById(`${type}-table`)) {
+                        document.getElementById(`${type}-show-${e.target.value}`).selected = 'selected';
+                        createTable(type)
+                    };
+                });
+                window.api.send('update-setting', [setting.name, 'details', JSON.stringify(setting.details)]);
+            })
+            let uRCLabel = document.createElement('label');
+            uRCLabel.innerText = 'global count';
+            universalRowCount.appendChild(uRCInput);
+            universalRowCount.appendChild(uRCLabel);
+            expandDiv.appendChild(universalRowCount);
         }
-        if (!fromOptions) {
-            addCustomDiv.appendChild(approve);
+        else {
+            // console.log('will add individual table settings here');
+            existingTables.forEach(type => {
+                let RowCount = document.createElement('div');
+                RowCount.id = `${type}-row-count`;
+                let rCInput = document.createElement('input');
+                rCInput.type = 'number';
+                rCInput.step = 10;
+                rCInput.min = 10;
+                rCInput.max = 50;
+                let rowCount = setting.details.filter(d => d.table === type)[0].count;
+                rCInput.value = rowCount
+                rCInput.addEventListener('change', (e) => {
+                    setting.details = [...setting.details.filter(d => d.table !== type), { 'global': 0, 'table': type, 'count': e.target.value }]
+                    window.api.send('update-setting', [setting.name, 'details', JSON.stringify(setting.details)]);
+                    table[`${type}-show`] = e.target.value;
+                    if (document.getElementById(`${type}-table`)) {
+                        document.getElementById(`${type}-show-${e.target.value}`).selected = 'selected';
+                        createTable(type)
+                    };
+                })
+                let rCLabel = document.createElement('label');
+                rCLabel.innerText = `${type} table`;
+                RowCount.appendChild(rCInput);
+                RowCount.appendChild(rCLabel);
+                expandDiv.appendChild(RowCount);
+
+            })
+
         }
     }
-    addCustom.addEventListener('focus', (e) => {
-        addCustom.addEventListener('keyup', (ev) => {
-            if (ev.key === 'Enter') {
-                let approveButton = document.getElementsByClassName('approve')[0];
-                let clickEvent = new Event('mousedown');
-                approveButton.dispatchEvent(clickEvent);
+    if (setting.name === 'auto-tagging') {
+        let addCustomDiv = document.createElement('div');
+        addCustomDiv.classList = 'add-custom-input';
+        let addCustom = document.createElement('input');
+        addCustom.type = 'text';
+        addCustom.placeholder = `Add Custom ${type}`;
+        addCustomDiv.appendChild(addCustom);
+        let approvedBeforeBlur = false;
+        const addApprovedSymbol = (e, val) => {
+            let fromOptions = val !== 'add-new';
+            let approve = document.createElement('span');
+            approve.classList = `add-custom-action approve`;
+            approve.innerHTML = '&#10004;';
+            approve.addEventListener('mousedown', (e) => {
+                approvedBeforeBlur = true;
+                let dbValues = setting.details;
+                let oldVals = dbValues ? dbValues.filter(v => v.trim().length > 0) : [];
+                let newVals = oldVals;
+                let filter;
+                if (fromOptions) {
+                    let editInput = document.getElementById('edit-input');
+                    filter = editInput.value.trim().length > 0 ? editInput.value : val;
+                    newVals = oldVals.map(v => v === val ? filter : v);
+                }
+                if (!fromOptions && addCustom.value.trim().length > 0) {
+                    filter = addCustom.value;
+                    if (oldVals.filter(f => f === filter.trim()).length === 0) oldVals.push(filter);
+                    newVals = oldVals;
+                }
+                runTaggingFilter(new RegExp(filter));
+                if (document.getElementById('record-section')) createTable('record');
+                setting.details = newVals;
+                window.api.send('update-setting', [setting.name, 'details', newVals]);
+                addExpandOptions(expandable, setting.name, type);
+            })
+            if (fromOptions) {
+                document.getElementById(e.id).childNodes[0].appendChild(approve);
+            }
+            if (!fromOptions) {
+                addCustomDiv.appendChild(approve);
+            }
+        }
+        addCustom.addEventListener('focus', (e) => {
+            addCustom.addEventListener('keyup', (ev) => {
+                if (ev.key === 'Enter') {
+                    let approveButton = document.getElementsByClassName('approve')[0];
+                    let clickEvent = new Event('mousedown');
+                    if (approveButton) approveButton.dispatchEvent(clickEvent);
+                }
+            });
+            addApprovedSymbol(e, 'add-new')
+        });
+        addCustom.addEventListener('blur', (e) => {
+            if (!approvedBeforeBlur) {
+                addCustom.value = '';
+                let approve = document.getElementsByClassName('approve')[0];
+                approvedBeforeBlur = false;
+                approve.remove();
             }
         });
-        addApprovedSymbol(e, 'add-new')
-    });
-    addCustom.addEventListener('blur', (e) => {
-        if (!approvedBeforeBlur) {
-            addCustom.value = '';
-            let approve = document.getElementsByClassName('approve')[0];
-            approvedBeforeBlur = false;
-            approve.remove();
-        }
-    });
 
-    expandDiv.appendChild(addCustomDiv);
-    let values = window.localStorage.getItem(toggleVal + '-values') ? window.localStorage.getItem(toggleVal + '-values').split(',') : [];
-    values.forEach((val, index) => {
-        let p = document.createElement('p');
-        p.innerHTML = `&#8226; ${val}`;
-        p.id = `${type}-${index}`;
-        [{ 'type': 'edit', 'code': '&#9998;' }, { 'type': 'delete', 'code': '&#10006;' }].forEach(action => {
-            let span = document.createElement('span');
-            span.innerHTML = action.code;
-            span.classList = `add-custom-action ${action.type}`;
-            span.addEventListener('click', (e) => {
-                if (action.type === 'delete') {
-                    span.parentNode.remove();
-                    window.localStorage.setItem(toggleVal + '-values', window.localStorage.getItem(toggleVal + '-values').split(',').filter(v => v !== val));
-                }
-                if (action.type === 'edit') {
-                    let p = span.parentNode;
-                    let editDiv = document.createElement('div');
-                    let editInput = document.createElement('input');
-                    editInput.id = 'edit-input';
-                    editInput.placeholder = val;
-                    editDiv.appendChild(editInput);
-                    let approvedBeforeBlur = false;
-                    editInput.addEventListener('keyup', (e) => {
-                        if (e.key === 'Enter') {
-                            approvedBeforeBlur = true;
-                            let approveButton = document.getElementsByClassName('add-custom-action approve')[0]
-                            let clickEvent = new Event('mousedown');
-                            approveButton.dispatchEvent(clickEvent);
-                        }
-                    });
-                    editInput.addEventListener('blur', (e) => {
-                        if (!approvedBeforeBlur) addExpandOptions(expandable, toggleVal, type);
-                    });
-                    p.innerHTML = '';
-                    p.appendChild(editDiv);
-                    addApprovedSymbol(p, val);
-                    document.getElementById('edit-input').focus();
-                }
-            })
-            p.appendChild(span);
+        expandDiv.appendChild(addCustomDiv);
+        window.api.send('get-setting-details', setting.name)
+        window.api.receive('return-setting-details', (res) => {
+            let setting = res[0][0];
+            let values = setting.details ? setting.details.split(',') : [];
+            appSettings.filter(s => s.name === setting.name)[0].details = values;
+        })
+        let values = typeof setting.details === 'string' ? setting.details.split(',').sort() : setting.details.sort();
+        values.forEach((val, index) => {
+            let p = document.createElement('p');
+            p.innerHTML = `&#8226; ${val}`;
+            p.id = `${type}-${index}`;
+            [{ 'type': 'edit', 'code': '&#9998;' }, { 'type': 'delete', 'code': '&#10006;' }].forEach(action => {
+                let span = document.createElement('span');
+                span.innerHTML = action.code;
+                span.classList = `add-custom-action ${action.type}`;
+                span.addEventListener('click', (e) => {
+                    if (action.type === 'delete') {
+                        span.parentNode.remove();
+                        values = setting.details.filter(v => v !== val);
+                        setting.details = values;
+                        window.api.send('update-setting', [setting.name, 'details', values]);
+                    }
+                    if (action.type === 'edit') {
+                        let p = span.parentNode;
+                        let editDiv = document.createElement('div');
+                        let editInput = document.createElement('input');
+                        editInput.id = 'edit-input';
+                        editInput.placeholder = val;
+                        editDiv.appendChild(editInput);
+                        let approvedBeforeBlur = false;
+                        editInput.addEventListener('keyup', (e) => {
+                            if (e.key === 'Enter') {
+                                approvedBeforeBlur = true;
+                                let approveButton = document.getElementsByClassName('add-custom-action approve')[0]
+                                let clickEvent = new Event('mousedown');
+                                approveButton.dispatchEvent(clickEvent);
+                            }
+                        });
+                        editInput.addEventListener('blur', (e) => {
+                            if (!approvedBeforeBlur) addExpandOptions(expandable, setting.name, type);
+                        });
+                        p.innerHTML = '';
+                        p.appendChild(editDiv);
+                        addApprovedSymbol(p, val);
+                        document.getElementById('edit-input').focus();
+                    }
+                })
+                p.appendChild(span);
+            });
+            expandDiv.appendChild(p);
         });
-        expandDiv.appendChild(p);
-    });
+    }
     expandable.parentNode.parentNode.appendChild(expandDiv);
 }
 
@@ -934,7 +1014,7 @@ const createTable = (type) => {
                 let option = document.createElement('option');
                 option.value = i;
                 option.innerText = i;
-                option.id = `show-${i}`;
+                option.id = `${type}-show-${i}`;
                 if (table[`${type}-show`] === i) option.selected = 'selected';
                 showDropdown.appendChild(option);
             }
@@ -1005,11 +1085,13 @@ const runTaggingFilter = (filter) => {
 }
 
 const autoTag = () => {
-    if (JSON.parse(window.localStorage.getItem('auto-tagging'))) {
+    let autoTagging = appSettings.filter(s => s.name === 'auto-tagging')[0];
+    if (autoTagging.enabled) {
         // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
         let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/, / [T-t]ransition/, /\(?rca|RCA\)?/, /[P-p]ager[D-d]uty/]
-        if (window.localStorage.getItem('auto-tagging-values')) {
-            window.localStorage.getItem('auto-tagging-values').split(',').forEach(f => {
+        if (autoTagging.details) {
+            if (typeof autoTagging.details === 'string') autoTagging.details = autoTagging.details.split(',');
+            autoTagging.details.forEach(f => {
                 let filter = new RegExp(f);
                 filters.push(filter);
             })
@@ -1150,7 +1232,7 @@ const downloadCSV = () => {
             a.href = data[0][1];
             a.id = 'file-link';
             let user = /[a-zA-Z]+\.[a-zA-Z]+/.exec(data[0][2]);
-            user = user.length > 0 ? '-'+user[0].replace(/\./g,'_') : '';
+            user = user.length > 0 ? '-' + user[0].replace(/\./g, '_') : '';
             a.download = `${subject + user}.csv`;
             a.style.visibility = 'hidden';
             document.body.appendChild(a);

@@ -5,6 +5,7 @@ const sqlite3 = require('sqlite3').verbose();
 
 let dbPath = path.join(app.getPath('appData'), 'tockler/tracker.db');
 let table = 'TrackItems';
+let timeParserDbPath = path.join(app.getPath('appData'), 'time-parser/tracker.db');
 
 ipcMain.on('askForDates', (e, arg) => {
   let db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
@@ -75,6 +76,51 @@ function createWindow() {
 
   ipcMain.once('check-prod', (e, arg) => {
     e.reply('is-prod', app.isPackaged)
+  });
+
+  ipcMain.on('startup', (e, arg) => {
+    let db = new sqlite3.Database(timeParserDbPath, sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE, (err) => {
+      if (err) e.reply('config', err.message);
+    });
+    db.serialize(() => {
+      db.run(`CREATE TABLE IF NOT EXISTS AppSettings (
+      name TEXT PRIMARY KEY, 
+      enabled INTEGER DEFAULT 1, 
+      details TEXT DEFAULT NULL, 
+      UNIQUE(name)
+      ) WITHOUT ROWID`);
+      let sql = 'INSERT OR IGNORE INTO AppSettings (name, enabled, details) VALUES (?, ?, ?) ';
+      let insert = db.prepare(sql);
+      let settings = [
+        { 'name': 'dark-mode', 'details': '' },
+        { 'name': 'auto-tagging', 'details': '' },
+        { 'name': 'row-count', 
+          'details': `[
+            {"global": 1, "table":"", "count": 10},
+            {"global" : 0, "table": "record", "count": 10},
+            {"global" : 0, "table": "tag", "count": 10},
+            {"global" : 0, "table": "zoom", "count": 10}
+          ]` 
+        },
+        { 'name': 'save-location', 'details': 'Desktop' }
+      ];
+      settings.forEach(setting => {
+        s = [setting.name, 1, setting.details];
+        insert.run(s, err => {
+          if (err) throw err;
+        });
+      });
+      insert.finalize();
+      let appSettings = [];
+      db.each('SELECT * FROM AppSettings', [], (err, row) => {
+        appSettings.push(row);
+      }, () => {
+        e.reply('config', appSettings);
+        db.close(err => {
+          if (err) console.log(err)
+        });
+      });
+    });
   });
 
   let menu = Menu.buildFromTemplate([
@@ -262,3 +308,31 @@ ipcMain.on('title-bar-interaction', (event, arg) => {
 
 ipcMain.on('initial-zoom', (event, arg) => BrowserWindow.getFocusedWindow().webContents.setZoomLevel(JSON.parse(arg)));
 ipcMain.on('get-zoom-level', (event, arg) => event.reply('return-zoom-level', BrowserWindow.getFocusedWindow().webContents.getZoomLevel()));
+ipcMain.on('update-setting', (event, arg) => {
+  let db = new sqlite3.Database(timeParserDbPath, sqlite3.OPEN_READWRITE, (err) => {
+    if (err) throw err;
+  });
+  // console.log(arg);
+  db.serialize(() => {
+    let column = arg[1];
+    let setVal = arg[2];
+    let settingName = arg[0];
+    if (column === 'enabled') db.run('UPDATE AppSettings SET enabled = ? WHERE name = ?', [setVal, settingName]);
+    if (column === 'details') db.run('UPDATE AppSettings SET details = ? WHERE name = ?', [setVal, settingName]);
+    db.close();
+  })
+})
+ipcMain.on('get-setting-details', (event, arg) => {
+  let db = new sqlite3.Database(timeParserDbPath, sqlite3.OPEN_READONLY, (err) => {
+    if (err) throw err;
+  });
+  let settingName = arg;
+  let res = [];
+  db.each('SELECT name, details FROM AppSettings WHERE name = ?', [settingName], (err, row) => {
+    res.push(row);
+  }, () => {
+    // console.log(settingName, res);
+    event.reply('return-setting-details', res);
+    db.close();
+  })
+})
