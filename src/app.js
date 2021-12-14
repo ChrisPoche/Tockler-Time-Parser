@@ -135,9 +135,8 @@ window.addEventListener('load', () => {
 const updateZoomLevels = () => {
     window.api.send('get-zoom-level', 'zoom')
     window.api.receive('return-zoom-level', (zmlvl) => {
-        window.localStorage.setItem('zoom-level', zmlvl);
         let zoomInput = document.querySelector('#zoom-level input');
-        zoomInput.value = JSON.parse(zmlvl).toFixed(1);
+        zoomInput.value = JSON.parse(zmlvl);
     });
 }
 
@@ -145,7 +144,13 @@ const toggleSettingsPage = () => {
     let settingsPage = document.getElementById('settings-page')
     settingsPage.classList.toggle('settings-closed');
     if (settingsPage.classList.length === 0) document.getElementById('container').addEventListener('click', toggleSettingsPage);
-    if (settingsPage.classList.length > 0) document.getElementById('container').removeEventListener('click', toggleSettingsPage);
+    if (settingsPage.classList.length > 0) {
+        document.getElementById('container').removeEventListener('click', toggleSettingsPage);
+        appSettings.filter(setting => setting.name !== 'zoom-level').forEach(setting => {
+            if (document.getElementById(setting.name + '-label').querySelector('.expand-arrow.expand-open')) document.getElementById(setting.name + '-label').querySelector('.expand-arrow.expand-open').classList.remove('expand-open');;
+            if (document.getElementById(`add-custom-${setting.name}-container`)) document.getElementById(`add-custom-${setting.name}-container`).remove();
+        });
+    }
 }
 
 const createSettingsPage = () => {
@@ -154,56 +159,54 @@ const createSettingsPage = () => {
     settingsPage.id = 'settings-page';
     settingsPage.classList = 'settings-closed';
     document.body.appendChild(settingsPage);
-    appSettings.forEach(setting => {
-        if (setting.name !== 'save-location') {
-            let toggle = 'toggle-' + setting.name;
-            if (!document.getElementById(toggle)) {
-                setting.enabled = setting.enabled === 1;
-                if (setting.name === 'dark-mode' && setting.enabled) document.body.classList = 'dark-mode';
-                let row = document.createElement('div');
-                row.classList = 'settings';
-                let sliderContainer = document.createElement('label');
-                sliderContainer.classList = 'switch';
-                sliderContainer.id = toggle;
-                let input = document.createElement('input');
-                input.type = 'checkbox';
-                input.checked = setting.enabled;
-                let slider = document.createElement('span');
-                slider.classList = 'slider round';
-                sliderContainer.appendChild(input);
-                sliderContainer.appendChild(slider);
-                let label = document.createElement('label');
-                label.id = setting.name + '-label';
-                let dropDown = ['auto-tagging', 'save-location'].includes(setting.name) && setting.enabled || setting.name === 'row-count';
-                label.innerHTML = (dropDown ? `<span class="expand-arrow">&#8250;</span> ` : '') + setting.name.replace(/-/g, ' ');
-                row.appendChild(sliderContainer);
-                row.appendChild(label);
-                input.addEventListener('click', () => {
-                    if (setting.name === 'dark-mode') document.body.classList.toggle(setting.name);
-                    let enabledAfterClick = !setting.enabled;
-                    label.innerHTML = (enabledAfterClick && (dropDown || ['auto-tagging', 'save-location'].includes(setting.name)) || setting.name === 'row-count' ? `<span class="expand-arrow">&#8250;</span> ` : '') + setting.name.replace(/-/g, ' ');
-                    dropDown = setting.name === 'row-count' ? true : enabledAfterClick;
-                    if (!enabledAfterClick && setting.name === 'auto-tagging' && document.getElementById('add-custom-filter-container')) document.getElementById('add-custom-filter-container').remove();
-                    setting.enabled = enabledAfterClick;
-                    window.api.send('update-setting', [setting.name, 'enabled', enabledAfterClick ? 1 : 0]);
-                    if (setting.name === 'auto-tagging' && enabledAfterClick) autoTag();
-                    if (document.getElementById(`add-custom-${setting.name}-container`)) document.getElementById(`add-custom-${setting.name}-container`).remove();
-                });
-                label.addEventListener('click', (e) => {
-                    if (dropDown) {
-                        let expandable = document.getElementById(setting.name + '-label').querySelector('.expand-arrow');
-                        expandable.classList.toggle('expand-open');
-                        let type = setting.name === 'auto-tagging' ? 'Filter' : setting.name;
-                        if ([...expandable.classList].includes('expand-open')) {
-                            addExpandOptions(expandable, setting.name, type);
-                        }
-                        else {
-                            if (document.getElementById(`add-custom-${type.toLowerCase()}-container`)) document.getElementById(`add-custom-${type.toLowerCase()}-container`).remove();
-                        }
-                    };
-                })
-                settingsPage.appendChild(row);
-            }
+    appSettings.filter(setting => setting.name !== 'zoom-level').forEach(setting => {
+        let toggle = 'toggle-' + setting.name;
+        if (!document.getElementById(toggle)) {
+            setting.enabled = setting.enabled === 1;
+            if (setting.name === 'dark-mode' && setting.enabled) document.body.classList = 'dark-mode';
+            let row = document.createElement('div');
+            row.classList = 'settings';
+            let sliderContainer = document.createElement('label');
+            sliderContainer.classList = 'switch';
+            sliderContainer.id = toggle;
+            let input = document.createElement('input');
+            input.type = 'checkbox';
+            input.checked = setting.enabled;
+            let slider = document.createElement('span');
+            slider.classList = 'slider round';
+            sliderContainer.appendChild(input);
+            sliderContainer.appendChild(slider);
+            let label = document.createElement('label');
+            label.id = setting.name + '-label';
+            let dropDown = ['auto-tagging', 'save-location'].includes(setting.name) && setting.enabled || setting.name === 'row-count';
+            label.innerHTML = (dropDown ? `<span class="expand-arrow">&#8250;</span> ` : '') + setting.name.replace(/-/g, ' ');
+            row.appendChild(sliderContainer);
+            row.appendChild(label);
+            input.addEventListener('click', () => {
+                if (setting.name === 'dark-mode') document.body.classList.toggle(setting.name);
+                let enabledAfterClick = !setting.enabled;
+                label.innerHTML = (enabledAfterClick && (dropDown || ['auto-tagging', 'save-location'].includes(setting.name)) || setting.name === 'row-count' ? `<span class="expand-arrow">&#8250;</span> ` : '') + setting.name.replace(/-/g, ' ');
+                dropDown = setting.name === 'row-count' ? true : enabledAfterClick;
+                setting.enabled = enabledAfterClick;
+                window.api.send('update-setting', [setting.name, 'enabled', enabledAfterClick ? 1 : 0]);
+                if (setting.name === 'auto-tagging' && enabledAfterClick) autoTag();
+                if (document.getElementById(`add-custom-${setting.name}-container`)) document.getElementById(`add-custom-${setting.name}-container`).remove();
+                if (setting.name === 'row-count') document.getElementById('row-count-label').click();
+            });
+            label.addEventListener('click', (e) => {
+                if (dropDown) {
+                    let expandable = document.getElementById(setting.name + '-label').querySelector('.expand-arrow');
+                    expandable.classList.toggle('expand-open');
+                    let type = setting.name;
+                    if ([...expandable.classList].includes('expand-open')) {
+                        addExpandOptions(expandable, setting.name, type);
+                    }
+                    else {
+                        if (document.getElementById(`add-custom-${type.toLowerCase()}-container`)) document.getElementById(`add-custom-${type.toLowerCase()}-container`).remove();
+                    }
+                };
+            })
+            settingsPage.appendChild(row);
         }
     });
     let zoomRow = document.createElement('div');
@@ -212,15 +215,20 @@ const createSettingsPage = () => {
     let zoomInput = document.createElement('input');
     zoomInput.type = 'number';
     zoomInput.step = 0.2;
-    let zoomLevel = window.localStorage.getItem('zoom-level') !== null ? JSON.parse(window.localStorage.getItem('zoom-level')) : 0;
-    zoomInput.value = zoomLevel.toFixed(1);
+    let zoomLevel = appSettings.filter(setting => setting.name === 'zoom-level')[0].details;
+    zoomInput.value = zoomLevel;
     zoomInput.addEventListener('change', (e) => {
-        window.api.send('initial-zoom', e.target.value);
-        updateZoomLevels();
+        let newZoom = parseFloat(e.target.value);
+        if (!isNaN(newZoom)) {
+            window.api.send('set-zoom-level', newZoom);
+            window.api.send('update-setting', ['zoom-level', 'details', newZoom]);
+        }
+        else {
+            updateZoomLevels();
+        }
     })
     let zoomLabel = document.createElement('label');
     zoomLabel.innerText = 'zoom level';
-    window.api.send('initial-zoom', zoomLevel);
     zoomRow.appendChild(zoomInput);
     zoomRow.appendChild(zoomLabel);
     settingsPage.appendChild(zoomRow);
@@ -230,8 +238,14 @@ const createSettingsPage = () => {
     resetDefault.id = 'reset-default-settings';
     resetDefault.innerText = 'Restore Default Settings';
     resetDefault.addEventListener('click', () => {
-        window.localStorage.clear();
-        createSettingsPage();
+        // window.localStorage.clear();
+        window.api.send('restore-default-settings', 'default settings');
+        window.api.receive('config', (config) => {
+            appSettings = config[0];
+            createSettingsPage();
+            document.getElementById('zoom-level').querySelector('input').value = 0;
+            document.getElementById('settings-cog').click();
+        });
     });
     settingsPage.appendChild(resetDefault);
 }
@@ -299,10 +313,108 @@ const addExpandOptions = (expandable, settingName, type) => {
                 RowCount.appendChild(rCInput);
                 RowCount.appendChild(rCLabel);
                 expandDiv.appendChild(RowCount);
-
             })
 
         }
+    }
+    if (setting.name === 'save-location') {
+        let selectLocation = document.createElement('select');
+        let defaultSelections = ['Desktop', 'Downloads', 'Documents', 'Custom'];
+        let setVal = appSettings.filter(setting => setting.name === 'save-location')[0].details;
+        let customPath = !defaultSelections.includes(setVal);
+        let customPathVals = [];
+        let formattedPath;
+        if (customPath) {
+            formattedPath = setVal.split('\\').reduce((prev, curr, index) => {
+                if (index !== setVal.split('\\').length - 2 && index !== setVal.split('\\').length - 1) {
+                    curr = '..';
+                }
+                return [...prev, curr]
+            }, []).join('\\');
+            customPathVals.push({'sanitized' : formattedPath, 'full' : setVal});
+            defaultSelections.push(formattedPath);
+        }
+        defaultSelections.forEach(path => {
+            let pathOption = document.createElement('option');
+            pathOption.value = path;
+            pathOption.innerText = path;
+            if ((customPath && path === formattedPath) || (!customPath && path === setVal)) pathOption.selected = 'selected';
+            selectLocation.appendChild(pathOption);
+        })
+        let customPathInput = document.createElement('input');
+        customPathInput.addEventListener('click', (e) => {
+            let list = new DataTransfer();
+            let file = new File(["content"], "test.txt");
+            list.items.add(file);
+            customPathInput.files = list.files;
+            const checkWindowFocus = () => {
+                window.removeEventListener('focus', checkWindowFocus)
+                setTimeout(() => {
+                    if (customPathInput.files[0] === list.files[0]) {
+                        let err = document.createElement('p');
+                        err.id = 'custom-folder-error';
+                        err.innerText = 'Please select a folder with at least one file in it.';
+                        let options = [...document.querySelectorAll('option')];
+                        let prevSelectedOption = options.filter(o => o.value === appSettings.filter(setting => setting.name === 'save-location')[0].details)[0];
+                        if (!prevSelectedOption) {
+                            let sanitizedPath = customPathVals.filter(path => path.full === appSettings.filter(setting => setting.name === 'save-location')[0].details)[0].sanitized;
+                            prevSelectedOption = options.filter(o => o.value === sanitizedPath)[0];
+                        } 
+                        prevSelectedOption.selected = 'selected';
+                        err.addEventListener('animationend', () => {
+                            document.getElementById('custom-folder-error').remove();
+                        })
+                        expandDiv.appendChild(err);
+                    }
+                }, 500);
+            }
+            window.addEventListener('focus', checkWindowFocus)
+        });
+        customPathInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                let fullPath = e.target.files[0].path.replace(`\\${e.target.files[0].name}`, '');
+                let formattedPath = fullPath.split('\\').reduce((prev, curr, index) => {
+                    if (index !== fullPath.split('\\').length - 2 && index !== fullPath.split('\\').length - 1) {
+                        curr = '..';
+                    }
+                    return [...prev, curr]
+                }, []).join('\\');
+                if (formattedPath.length > 30) formattedPath = formattedPath.slice(formattedPath.length - 30); 
+                let lastBackSlash = formattedPath.indexOf('\\');
+                if (lastBackSlash >= 2 && lastBackSlash <= 4) formattedPath = '..'+formattedPath.slice(lastBackSlash);
+                let pathOption = document.createElement('option');
+                pathOption.value = formattedPath;
+                pathOption.innerText = formattedPath;
+                pathOption.selected = 'selected';
+                selectLocation.appendChild(pathOption);
+                appSettings.filter(setting => setting.name === 'save-location')[0].details = fullPath;
+                customPathVals.push({'sanitized' : formattedPath, 'full' : fullPath});
+                window.api.send('update-setting', ['save-location', 'details', fullPath]);
+            }
+        })
+        selectLocation.addEventListener('click', (e) => {
+            if (e.target.value === 'Custom') {
+                customPathInput.type = 'file';
+                customPathInput.directory = true;
+                customPathInput.webkitdirectory = true;
+                customPathInput.multiple = false;
+                customPathInput.hidden = true;
+                customPathInput.id = 'custom-path-input';
+                expandDiv.appendChild(customPathInput);
+                customPathInput.click();
+            };
+        });
+        selectLocation.addEventListener('change', (e) => {
+            let path = e.target.value;
+            if (path !== 'Custom') {
+                if (!['Desktop','Downloads','Documents'].includes(path)) {
+                    path = customPathVals.filter(customPath => customPath.sanitized === path)[0].full;
+                }
+                appSettings.filter(setting => setting.name === 'save-location')[0].details = path;
+                window.api.send('update-setting', ['save-location', 'details', path]);
+            }
+        })
+        expandDiv.appendChild(selectLocation);
     }
     if (setting.name === 'auto-tagging') {
         let addCustomDiv = document.createElement('div');
@@ -366,14 +478,8 @@ const addExpandOptions = (expandable, settingName, type) => {
         });
 
         expandDiv.appendChild(addCustomDiv);
-        window.api.send('get-setting-details', setting.name)
-        window.api.receive('return-setting-details', (res) => {
-            let setting = res[0][0];
-            let values = setting.details ? setting.details.split(',') : [];
-            appSettings.filter(s => s.name === setting.name)[0].details = values;
-        })
         let values = typeof setting.details === 'string' ? setting.details.split(',').sort() : setting.details.sort();
-        values.forEach((val, index) => {
+        values.filter(v => v.length > 0).forEach((val, index) => {
             let p = document.createElement('p');
             p.innerHTML = `&#8226; ${val}`;
             p.id = `${type}-${index}`;
@@ -1872,6 +1978,7 @@ const createDragAndDropArea = () => {
         document.getElementById('drag-n-drop').remove();
         e.stopImmediatePropagation();
     })
+    if (document.getElementById('drag-n-drop')) document.getElementById('drag-n-drop').remove();
     document.body.appendChild(dragAndDrop);
     document.addEventListener('mouseleave', (e) => {
         if (dataLoaded === false) createDragAndDropArea();

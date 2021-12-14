@@ -9,10 +9,10 @@ contextBridge.exposeInMainWorld(
       "askForDates", 
       'retrieve-events-by-date',
       'title-bar-interaction',
-      'initial-zoom',
+      'set-zoom-level',
       'get-zoom-level',
       'update-setting',
-      'get-setting-details'
+      'restore-default-settings'
     ];
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, data);

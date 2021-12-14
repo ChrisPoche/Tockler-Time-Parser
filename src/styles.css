@@ -42,7 +42,7 @@
 
 .settings {
     margin: 1em 0 1em 1em;
-    text-transform: capitalize;    
+    text-transform: capitalize;
     font-size: 1.3em;
 }
 
@@ -70,15 +70,15 @@
     display: inline-block;
     width: 44px;
     height: 23px;
-  }
-  
-  .switch input {
+}
+
+.switch input {
     opacity: 0;
     width: 0;
     height: 0;
-  }
-  
-  .slider {
+}
+
+.slider {
     position: absolute;
     cursor: pointer;
     top: 0;
@@ -88,9 +88,9 @@
     background-color: #ccc;
     -webkit-transition: .4s;
     transition: .4s;
-  }
-  
-  .slider:before {
+}
+
+.slider:before {
     position: absolute;
     content: "";
     height: 18px;
@@ -100,29 +100,29 @@
     background-color: white;
     -webkit-transition: .4s;
     transition: .4s;
-  }
-  
-  input:checked + .slider {
+}
+
+input:checked+.slider {
     background-color: #2196F3;
-  }
-  
-  input:focus + .slider {
+}
+
+input:focus+.slider {
     box-shadow: 0 0 1px #2196F3;
-  }
-  
-  input:checked + .slider:before {
+}
+
+input:checked+.slider:before {
     -webkit-transform: translateX(18px);
     -ms-transform: translateX(18px);
     transform: translateX(18px);
-  }
-  
-  .slider.round {
+}
+
+.slider.round {
     border-radius: 23px;
-  }
-  
-  .slider.round:before {
+}
+
+.slider.round:before {
     border-radius: 50%;
-  }
+}
 
 
 #icon {
@@ -657,9 +657,11 @@ thead {
 .add-custom-action.delete {
     color: rgb(163, 0, 0);
 }
+
 .add-custom-action.edit {
     color: rgb(194, 143, 0);
 }
+
 .add-custom-action.approve {
     color: rgb(1, 138, 24);
 }
@@ -685,7 +687,7 @@ thead {
     justify-content: flex-start;
 }
 
-#download-success, #tag-exists-error {
+#download-success, #tag-exists-error, #custom-folder-error {
     position: fixed;
     width: 200px;
     top: 72vh;
@@ -695,6 +697,13 @@ thead {
     transition: all .75s;
     -webkit-animation: softFadeInOut 2.5s;
     animation: softFadeInOut 2.5s;
+}
+
+#custom-folder-error {
+    position: relative;
+    font-size: smaller;
+    left: -20px;
+    top: auto;
 }
 
 #tag-exists-error {
@@ -905,10 +914,18 @@ thead {
     outline: 2px solid rgba(0, 0, 0, .05);
     z-index: 2000;
 }
+
 .context-menu-option {
     padding: .6em;
     margin: .35em 0;
 }
+
 .context-menu-option:hover {
     background-color: rgba(0, 0, 0, .07);
+}
+
+#add-custom-save-location-container select {
+    padding: 2px;
+    background-color: white;
+    margin-top: 15px;
 }
