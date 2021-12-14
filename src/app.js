@@ -326,12 +326,13 @@ const addExpandOptions = (expandable, settingName, type) => {
         let formattedPath;
         if (customPath) {
             formattedPath = setVal.split('\\').reduce((prev, curr, index) => {
-                if (index !== setVal.split('\\').length - 2 && index !== setVal.split('\\').length - 1) {
-                    curr = '..';
-                }
+                if (index !== setVal.split('\\').length - 2 && index !== setVal.split('\\').length - 1) curr = '..';
                 return [...prev, curr]
             }, []).join('\\');
-            customPathVals.push({'sanitized' : formattedPath, 'full' : setVal});
+            if (formattedPath.length > 30) formattedPath = formattedPath.slice(formattedPath.length - 30);
+            let lastBackSlash = formattedPath.indexOf('\\');
+            if (lastBackSlash >= 2 && lastBackSlash <= 4) formattedPath = '..' + formattedPath.slice(lastBackSlash);
+            customPathVals.push({ 'sanitized': formattedPath, 'full': setVal });
             defaultSelections.push(formattedPath);
         }
         defaultSelections.forEach(path => {
@@ -359,7 +360,7 @@ const addExpandOptions = (expandable, settingName, type) => {
                         if (!prevSelectedOption) {
                             let sanitizedPath = customPathVals.filter(path => path.full === appSettings.filter(setting => setting.name === 'save-location')[0].details)[0].sanitized;
                             prevSelectedOption = options.filter(o => o.value === sanitizedPath)[0];
-                        } 
+                        }
                         prevSelectedOption.selected = 'selected';
                         err.addEventListener('animationend', () => {
                             document.getElementById('custom-folder-error').remove();
@@ -374,21 +375,19 @@ const addExpandOptions = (expandable, settingName, type) => {
             if (e.target.files.length > 0) {
                 let fullPath = e.target.files[0].path.replace(`\\${e.target.files[0].name}`, '');
                 let formattedPath = fullPath.split('\\').reduce((prev, curr, index) => {
-                    if (index !== fullPath.split('\\').length - 2 && index !== fullPath.split('\\').length - 1) {
-                        curr = '..';
-                    }
+                    if (index !== fullPath.split('\\').length - 2 && index !== fullPath.split('\\').length - 1) curr = '..';
                     return [...prev, curr]
                 }, []).join('\\');
-                if (formattedPath.length > 30) formattedPath = formattedPath.slice(formattedPath.length - 30); 
+                if (formattedPath.length > 30) formattedPath = formattedPath.slice(formattedPath.length - 30);
                 let lastBackSlash = formattedPath.indexOf('\\');
-                if (lastBackSlash >= 2 && lastBackSlash <= 4) formattedPath = '..'+formattedPath.slice(lastBackSlash);
+                if (lastBackSlash >= 2 && lastBackSlash <= 4) formattedPath = '..' + formattedPath.slice(lastBackSlash);
                 let pathOption = document.createElement('option');
                 pathOption.value = formattedPath;
                 pathOption.innerText = formattedPath;
                 pathOption.selected = 'selected';
                 selectLocation.appendChild(pathOption);
                 appSettings.filter(setting => setting.name === 'save-location')[0].details = fullPath;
-                customPathVals.push({'sanitized' : formattedPath, 'full' : fullPath});
+                customPathVals.push({ 'sanitized': formattedPath, 'full': fullPath });
                 window.api.send('update-setting', ['save-location', 'details', fullPath]);
             }
         })
@@ -407,7 +406,7 @@ const addExpandOptions = (expandable, settingName, type) => {
         selectLocation.addEventListener('change', (e) => {
             let path = e.target.value;
             if (path !== 'Custom') {
-                if (!['Desktop','Downloads','Documents'].includes(path)) {
+                if (!['Desktop', 'Downloads', 'Documents'].includes(path)) {
                     path = customPathVals.filter(customPath => customPath.sanitized === path)[0].full;
                 }
                 appSettings.filter(setting => setting.name === 'save-location')[0].details = path;
@@ -1345,7 +1344,18 @@ const downloadCSV = () => {
             document.getElementById('file-link').click();
             document.getElementById('file-link').remove();
             let downloadSuccess = document.createElement('p');
-            downloadSuccess.innerText = 'CSV successfully downloaded to your desktop'
+            let saveLocation = appSettings.filter(setting => setting.name === 'save-location')[0].details;
+            if (!['Desktop', 'Downloads', 'Documents'].includes(saveLocation)) {
+                let formattedPath = saveLocation.split('\\').reduce((prev, curr, index) => {
+                    if (index !== saveLocation.split('\\').length - 2 && index !== saveLocation.split('\\').length - 1) curr = '..';
+                    return [...prev, curr]
+                }, []).join('\\');
+                if (formattedPath.length > 30) formattedPath = formattedPath.slice(formattedPath.length - 30);
+                let lastBackSlash = formattedPath.indexOf('\\');
+                if (lastBackSlash >= 2 && lastBackSlash <= 4) formattedPath = '..' + formattedPath.slice(lastBackSlash);
+                saveLocation = formattedPath;
+            }
+            downloadSuccess.innerText = `CSV successfully downloaded to ${saveLocation}`;
             downloadSuccess.id = 'download-success';
             document.body.appendChild(downloadSuccess);
             downloadSuccess.addEventListener('animationend', () => downloadSuccess.remove());
