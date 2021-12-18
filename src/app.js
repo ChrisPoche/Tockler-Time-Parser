@@ -137,6 +137,11 @@ const updateZoomLevels = () => {
     window.api.receive('return-zoom-level', (zmlvl) => {
         let zoomInput = document.querySelector('#zoom-level input');
         zoomInput.value = JSON.parse(zmlvl);
+        if (document.getElementById('timeline')) {
+            document.getElementById('timeline').remove()
+            document.getElementById('selection-box').remove()
+            createTimeline();
+        };
     });
 }
 
@@ -1305,14 +1310,30 @@ const postDataRetrieval = (records) => {
     createAppFilter(apps);
     createTable('record');
     autoTag();
+    createTable('record');
 
     if (!document.getElementById('download-csv')) {
-
         let downloadBttn = document.createElement('button');
         downloadBttn.id = 'download-csv';
         downloadBttn.addEventListener('click', downloadCSV);
         downloadBttn.innerText = 'Download CSV';
         document.body.appendChild(downloadBttn);
+    }
+
+    if (!document.getElementById('timeline-button')) {
+        let timelineBttn = document.createElement('button');
+        timelineBttn.id = 'timeline-button';
+        timelineBttn.addEventListener('click', () => {
+            if (document.getElementById('timeline')) {
+                document.getElementById('timeline').remove();
+                document.getElementById('selection-box').remove();
+            }
+            else {
+                createTimeline();
+            }
+        });
+        timelineBttn.innerText = 'Timeline';
+        document.body.appendChild(timelineBttn);
     }
 
     if (document.getElementById('zoom-table-button')) document.getElementById('zoom-table-button').remove();
@@ -1325,6 +1346,284 @@ const postDataRetrieval = (records) => {
     zTB.disabled = zoomTags.length < 1 ? true : false;
     document.body.appendChild(zTB);
 }
+
+const checkHourMarkers = () => {
+    let sb = document.getElementById('selection-box').getBoundingClientRect();
+    [...document.querySelectorAll('.hour-marker')].forEach(hour => {
+        let hBound = hour.getBoundingClientRect();
+        if (hBound.left < sb.left || hBound.left > sb.right) {
+            hour.style.color = 'rgba(255,255,255,.1)';
+        }
+    })
+}
+
+const createTimelineSlider = (tc, timeframe, fullRecordStart) => {
+    let selectionBox = document.createElement('div');
+    selectionBox.id = 'selection-box';
+    selectionBox.addEventListener('mousedown', (e) => {
+        if (e.target.id === 'selection-box') {
+            e = e || window.event;
+            clickX = e.clientX;
+            document.addEventListener('mousemove', calcHandleLoc);
+            document.addEventListener('mouseup', mouseUp);
+        }
+    })
+    const calcHandleLoc = (e) => {
+        e = e || window.event;
+        e.preventDefault();
+        dragX = clickX - e.clientX;
+        clickX = e.clientX;
+        let sbOffsetL = selectionBox.offsetLeft;
+        let change = sbOffsetL - dragX;
+        if (change < tc.left) change = tc.left;
+        let changeRight = change + selectionBox.offsetWidth;
+        if (change + selectionBox.offsetWidth > tc.right) {
+            changeRight = tc.right;
+            change = tc.right - selectionBox.offsetWidth;
+            // selectionBox.style.width = tc.right - change + 'px';
+        };
+        calcStart = (((change - tc.left) / tc.width) * timeframe * 1000);
+        calcStart = new Date(new Date(fullRecordStart).getTime() - (1800 * 1000) + calcStart);
+        selectionBox.style.left = change + 'px';
+        document.getElementById('l-h').style.left = change + 'px';
+        document.getElementById('r-h').style.left = changeRight + 'px';
+        calcEnd = ((((document.getElementById('r-h').offsetLeft - dragX) - tc.left) / tc.width) * timeframe * 1000);
+        calcEnd = new Date(new Date(fullRecordStart).getTime() - (1800 * 1000) + calcEnd);
+    }
+    const mouseUp = () => {
+        document.removeEventListener('mousemove', calcHandleLoc);
+        document.removeEventListener('mouseup', mouseUp);
+        leftPos = document.getElementById('l-h').offsetLeft + 'px';
+        rightPos = document.getElementById('r-h').offsetLeft + 'px';
+        createTimeline();
+        checkHourMarkers();
+    }
+    selectionBox.style.width = rightPos && leftPos ? parseInt(rightPos.split('px')[0]) - parseInt(leftPos.split('px')[0]) + 'px' : tc.width + 'px';
+    document.getElementById('container').appendChild(selectionBox);
+    selectionBox.style.cursor = selectionBox.offsetWidth >= tc.width ? 'auto' : 'move';
+    let stf = document.getElementById('select-time-frame');
+    selectionBox.style.top = (stf.offsetTop - 15) + 'px';
+    selectionBox.style.left = leftPos || document.getElementById('timeline').offsetLeft + (document.getElementById('timeline').offsetWidth * .02) + 'px';
+    if (document.getElementById('l-h')) document.getElementById('l-h').remove();
+    if (document.getElementById('r-h')) document.getElementById('r-h').remove();
+    let leftHandle = document.createElement('div');
+    leftHandle.className = 'handle';
+    selectionBox.appendChild(leftHandle);
+    leftHandle.style.backgroundColor = 'white';
+    leftHandle.draggable = true;
+    let rightHandle = leftHandle.cloneNode(true);
+    selectionBox.appendChild(rightHandle);
+    leftHandle.id = 'l-h';
+    leftHandle.style.left = leftPos || `${document.getElementById('selection-box').offsetLeft}px`;
+    leftHandle.style.top = `${document.getElementById('selection-box').offsetTop}px`;
+    rightHandle.id = 'r-h';
+    rightHandle.style.left = rightPos || `${document.getElementById('selection-box').offsetLeft + document.getElementById('selection-box').offsetWidth}px`;
+    rightHandle.style.top = `${document.getElementById('selection-box').offsetTop}px`;
+    var clickX, dragX;
+    [leftHandle, rightHandle].forEach(handle => {
+        let lOR;
+        handle.addEventListener('mousedown', (e) => {
+            if (['l-h', 'r-h'].includes(e.target.id)) {
+                lOR = e.target.id === 'l-h' ? 'left' : 'right';
+                e = e || window.event;
+                clickX = e.clientX;
+                document.addEventListener('mousemove', calcHandleLoc);
+                document.addEventListener('mouseup', mouseUp);
+            }
+        })
+        const calcHandleLoc = (e) => {
+            e = e || window.event;
+            e.preventDefault();
+            dragX = clickX - e.clientX;
+            clickX = e.clientX;
+            let change = handle.offsetLeft - dragX;
+            if (lOR === 'left') {
+                if (change < tc.left) change = tc.left;
+                calcStart = (((change - tc.left) / tc.width) * timeframe * 1000);
+                calcStart = new Date(new Date(fullRecordStart).getTime() - (1800 * 1000) + calcStart);
+                selectionBox.style.left = change + 'px';
+                handle.style.left = change + 'px';
+                let rh = document.getElementById('r-h');
+                selectionBox.style.width = (rh.offsetLeft + rh.offsetWidth - handle.offsetLeft) + 'px';
+            }
+            if (lOR === 'right') {
+                if (change > tc.right) change = tc.right;
+                calcEnd = (((change - tc.left) / tc.width) * timeframe * 1000);
+                calcEnd = new Date(new Date(fullRecordStart).getTime() - (1800 * 1000) + calcEnd);
+                selectionBox.style.width = (change - document.getElementById('l-h').offsetLeft) + 'px';
+                handle.style.left = change + 'px';
+            }
+        }
+        const mouseUp = () => {
+            document.removeEventListener('mousemove', calcHandleLoc);
+            document.removeEventListener('mouseup', mouseUp);
+            leftPos = document.getElementById('l-h').offsetLeft + 'px';
+            rightPos = document.getElementById('r-h').offsetLeft + 'px';
+            selectionBox.style.cursor = selectionBox.offsetWidth >= tc.width ? 'auto' : 'move';
+            createTimeline();
+            checkHourMarkers();
+        }
+    });
+}
+
+let calcEnd, calcStart, leftPos, rightPos;
+const createTimeline = () => {
+    if (document.getElementById('timeline')) document.getElementById('timeline').remove();
+    let timeline = document.createElement('div');
+    timeline.id = 'timeline';
+    // var clickY, dragY;
+    // timeline.addEventListener('mousedown', (e) => {
+    //     if (e.target.id === 'timeline') {
+    //         e = e || window.event;
+    //         e.preventDefault();
+    //         e.stopImmediatePropagation();
+    //         clickY = e.clientY;
+    //         document.addEventListener('mousemove', calcTLLoc);
+    //         document.addEventListener('mouseup', mouseUpTimeline);
+    //     }
+    // })
+    // const calcTLLoc = (e) => {
+    //     e = e || window.event;
+    //     e.preventDefault();
+    //     dragY = clickY - e.clientY;
+    //     clickY = e.clientY;
+    //     timeline.style.top = (timeline.offsetTop - dragY) + 'px';
+    // }
+    // const mouseUpTimeline = () => {
+    //     document.removeEventListener('mousemove', calcTLLoc);
+    //     document.removeEventListener('mouseup', mouseUpTimeline);
+    // }
+    let timelineContainer = document.createElement('div');
+    timelineContainer.id = 'tl-container';
+    const filteredRecordsFull = globalRecords.filter(record => !removedApps.includes(record.app) && record.checked);
+    let originStart = (new Date(filteredRecordsFull[0].start) / 1000) - 1800;
+    let start = new Date(calcStart) / 1000 || originStart;
+    let end = new Date(calcEnd) / 1000 || (new Date(filteredRecordsFull[filteredRecordsFull.length - 1].end) / 1000) + 1800;
+    let timeframeFull = ((new Date(filteredRecordsFull[filteredRecordsFull.length - 1].end) / 1000) + 1800) - ((new Date(filteredRecordsFull[0].start) / 1000) - 1800);
+    let timeframe = end - start;
+    let filteredRecords = filteredRecordsFull.filter(record => (new Date(record.end) / 1000) < end && (new Date(record.start) / 1000) > start);
+    let container = document.getElementById('container');
+    container.appendChild(timeline);
+    timeline.appendChild(timelineContainer);
+    let selectTimeframe = document.createElement('div');
+    selectTimeframe.id = 'select-time-frame';
+    timeline.appendChild(selectTimeframe);
+    let tc = document.getElementById('tl-container').getBoundingClientRect();
+    let apps = [...document.getElementById('app-drawer').getElementsByTagName('input')].filter(app => app.value !== 'Unselect All' && !removedApps.includes(app.value)).map(app => app.value);
+    let number = 360 / apps.length;
+    let colorMapping = {}, appTotals = {};
+    apps.forEach((app, i) => {
+        colorMapping[app] = `hsl(${Math.floor(i * number)},100%,75%)`;
+        appTotals[app] = 0;
+    });
+    filteredRecords.forEach(record => {
+        let tlEvent = document.createElement('div');
+        let width = (record.dur / timeframe) * tc.width;
+        if (width < 1) width = 1;
+        tlEvent.id = `${record.id}-timeline-event`;
+        tlEvent.style.width = `${width}px`;
+        let left = (((new Date(record.start) / 1000) - start) / timeframe) * tc.width + tc.left;
+        tlEvent.style.left = `${left}px`;
+        tlEvent.style.backgroundColor = colorMapping[record.app];
+        tlEvent.classList = 'timeline-event';
+        tlEvent.dataset.title = record.title;
+        tlEvent.dataset.app = record.app;
+        tlEvent.dataset.time = `${record.start.split(' ')[1]} - ${record.end.split(' ')[1]}`;
+        let dur = record.dur;
+        let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
+        let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
+        let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
+        tlEvent.dataset.dur = `${hh}h ${mm}m ${ss}s`;
+        timelineContainer.appendChild(tlEvent);
+        appTotals[record.app] += record.dur;
+        tlEvent.addEventListener('mouseenter', (e) => {
+            if (e.target.id) {
+                let hoverCard = document.createElement('div');
+                e.target.addEventListener('mouseleave', (e) => {
+                    document.querySelectorAll('.hover-card').forEach(card => card.remove());
+                })
+                hoverCard.classList = 'hover-card';
+                ['title', 'app', 'time', 'dur'].forEach(elem => {
+                    let p = document.createElement('p');
+                    p.innerText = e.target.dataset[elem];
+                    hoverCard.appendChild(p);
+                });
+                hoverCard.style.left = (e.target.offsetLeft + (e.target.offsetWidth / 2)) + 'px';
+                hoverCard.style.top = e.target.offsetTop + 25 + 'px';
+                container.appendChild(hoverCard);
+            }
+        });
+    });
+    let hourMarkers = document.createElement('div');
+    hourMarkers.id = 'hour-markers';
+    timeline.appendChild(hourMarkers);
+    for (let i = parseInt(filteredRecordsFull[0].start.split(' ')[1].split(':')[0]); i <= parseInt(filteredRecordsFull[filteredRecordsFull.length - 1].end.split(' ')[1].split(':')[0]); i++) {
+        let hour = i < 13 ? `${i === 0 ? 12 : i}am` : `${i - 12}pm`;
+        let date = `${filteredRecordsFull[0].start.split(' ')[0]} ${i < 10 ? '0' + i : i}:00:00`;
+        let percentage = ((new Date(date) / 1000) - originStart) / timeframeFull * 100;
+        // console.log(percentage);
+        if (percentage > 0) {
+            let prevdate = `${filteredRecordsFull[0].start.split(' ')[0]} ${i - 1 < 10 ? '0' + i - 1 : i - 1}:00:00`;
+            let prevPercentage = ((new Date(prevdate) / 1000) - originStart) / timeframeFull * 100;
+            if (prevPercentage < 0) prevPercentage = 0;
+            let h = document.createElement('div');
+            h.innerText = hour;
+            h.classList = 'hour-marker';
+            h.id = hour;
+            h.style.flex = `${percentage - prevPercentage} 1`;
+            hourMarkers.appendChild(h);
+        }
+    };
+    hourMarkers.style.width = tc.width * .96 + 'px';
+    if (document.getElementById('app-compilation')) document.getElementById('app-compilation').remove();
+    let appComp = document.createElement('div');
+    appComp.id = 'app-compilation';
+    apps.sort((prev, curr) => appTotals[curr] - appTotals[prev]).forEach(app => {
+        let appVal = document.createElement('div');
+        appVal.id = `${app}-total`;
+        appVal.classList = 'app-comp';
+        appVal.style.backgroundColor = colorMapping[app];
+        appVal.style.flex = `${appTotals[app]} 1`;
+        appComp.appendChild(appVal);
+        let dur = appTotals[app];
+        let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
+        let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
+        let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
+        appVal.dataset.dur = `${hh}h ${mm}m ${ss}s`;
+        appVal.dataset.app = app;
+        appVal.addEventListener('mouseenter', (e) => {
+            if (e.target.id) {
+                let hoverCard = document.createElement('div');
+                e.target.addEventListener('mouseleave', (e) => {
+                    document.querySelectorAll('.hover-card').forEach(card => card.remove());
+                })
+                hoverCard.classList = 'hover-card';
+                ['app', 'dur'].forEach(elem => {
+                    let p = document.createElement('p');
+                    p.innerText = e.target.dataset[elem];
+                    hoverCard.appendChild(p);
+                });
+                hoverCard.style.left = (e.target.offsetLeft + (e.target.offsetWidth / 2)) + 'px';
+                hoverCard.style.top = e.target.offsetTop + 25 + 'px';
+                appVal.appendChild(hoverCard);
+            }
+        });
+    });
+    document.getElementById('timeline').appendChild(appComp);
+    filteredRecordsFull.forEach(record => {
+        let tlEvent = document.createElement('div');
+        let width = (record.dur / timeframeFull) * tc.width;
+        if (width < 1) width = 1;
+        tlEvent.id = record.start.split(' ')[1];
+        tlEvent.style.width = `${width}px`;
+        let left = (((new Date(record.start) / 1000) - originStart) / timeframeFull) * tc.width + tc.left;
+        tlEvent.style.left = `${left}px`;
+        tlEvent.style.backgroundColor = colorMapping[record.app];
+        tlEvent.classList = 'select-timeframe-event';
+        selectTimeframe.appendChild(tlEvent);
+    });
+    if (!document.getElementById('selection-box')) createTimelineSlider(tc, timeframeFull, filteredRecordsFull[0].start);
+};
 
 const downloadCSV = () => {
     let filteredResults = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked);
@@ -1990,8 +2289,12 @@ const createDragAndDropArea = () => {
     })
     if (document.getElementById('drag-n-drop')) document.getElementById('drag-n-drop').remove();
     document.body.appendChild(dragAndDrop);
-    document.addEventListener('mouseleave', (e) => {
-        if (dataLoaded === false) createDragAndDropArea();
+    const leaveDragNDrop = (e) => {
+        if (dataLoaded === false) {
+            document.removeEventListener('mouseleave', leaveDragNDrop);
+            createDragAndDropArea();
+        }
         e.stopImmediatePropagation();
-    })
+    };
+    document.addEventListener('mouseleave', leaveDragNDrop)
 }

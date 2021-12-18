@@ -293,7 +293,7 @@ input::-webkit-datetime-edit-year-field:focus {
     outline: none;
 }
 
-#download-csv, #zoom-table-button {
+#download-csv, #zoom-table-button, #timeline-button {
     position: fixed;
     top: 90vh;
     left: 20px;
@@ -301,6 +301,10 @@ input::-webkit-datetime-edit-year-field:focus {
 
 #zoom-table-button {
     top: 80vh;
+}
+
+#timeline-button {
+    top: 75vh;
 }
 
 body {
@@ -479,7 +483,7 @@ thead {
     right: 0;
     width: 2px;
     position: absolute;
-    cursor: col-resize;
+    cursor: ew-resize;
     background-color: black;
 }
 
@@ -928,4 +932,90 @@ thead {
     padding: 2px;
     background-color: white;
     margin-top: 15px;
+}
+
+#timeline, #tl-container, #select-time-frame {
+    width: 96%;
+    height: 24vh;
+    background-color: #222;
+    margin: 2% 2%;
+    z-index: 2000;
+}
+
+#timeline {
+    display: flex;
+    flex-direction: column;
+    /* position: absolute; */
+}
+
+#tl-container, #select-time-frame {
+    height: 7em;
+}
+
+#app-compilation {
+    display: flex;
+    flex-direction: row;
+    padding: 2%;
+    height: 8em;
+}
+
+/* #tl-container:hover {
+    background-color: #000000;
+} */
+
+.timeline-event, .select-timeframe-event {
+    height: 3em;
+    position: fixed;
+    display: inline-block;
+}
+.timeline-event:hover {
+    background-color: white !important;
+}
+
+.select-timeframe-event {
+    height: 2em;
+}
+
+#selection-box {
+    height: 4em;
+    position: absolute;
+    z-index: 2001;
+    box-sizing: border-box;
+    background-color: rgba(255, 255, 255, .1);
+    cursor: move;
+}
+
+#l-h, #r-h {
+    height: 4em;
+    position: fixed;
+    width: 5px;
+}
+
+#l-h:hover, #r-h:hover {
+    width: 10px;
+}
+
+#l-h:hover {
+    margin-left: -2.5px;
+}
+
+.hover-card {
+    background-color: rgba(0, 0, 0, .8);
+    padding: 1em;
+    color: white;
+    position: fixed;
+    z-index: 2002;
+    text-align: center;
+    max-width: 25em;
+}
+
+#hour-markers {
+    display: flex;
+    position: relative;
+    margin-left: 4%;
+    align-content: space-between;
+}
+
+.hour-marker {
+    text-align: center;
 }
