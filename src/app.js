@@ -616,6 +616,12 @@ const grabRecordsFromDatePicker = (date) => {
         if (document.getElementById('zoom-section')) document.getElementById('zoom-section').remove();
         filteredRecords = [];
         activeTables = [];
+        if (document.getElementById('timeline')) document.getElementById('timeline').remove();
+        if (document.getElementById('selection-box')) document.getElementById('selection-box').remove();
+        leftPos = '';
+        rightPos = '';
+        calcStart = '';
+        calcEnd = '';
         postDataRetrieval(records);
     });
 };
@@ -1471,28 +1477,6 @@ const createTimeline = () => {
     if (document.getElementById('timeline')) document.getElementById('timeline').remove();
     let timeline = document.createElement('div');
     timeline.id = 'timeline';
-    // var clickY, dragY;
-    // timeline.addEventListener('mousedown', (e) => {
-    //     if (e.target.id === 'timeline') {
-    //         e = e || window.event;
-    //         e.preventDefault();
-    //         e.stopImmediatePropagation();
-    //         clickY = e.clientY;
-    //         document.addEventListener('mousemove', calcTLLoc);
-    //         document.addEventListener('mouseup', mouseUpTimeline);
-    //     }
-    // })
-    // const calcTLLoc = (e) => {
-    //     e = e || window.event;
-    //     e.preventDefault();
-    //     dragY = clickY - e.clientY;
-    //     clickY = e.clientY;
-    //     timeline.style.top = (timeline.offsetTop - dragY) + 'px';
-    // }
-    // const mouseUpTimeline = () => {
-    //     document.removeEventListener('mousemove', calcTLLoc);
-    //     document.removeEventListener('mouseup', mouseUpTimeline);
-    // }
     let timelineContainer = document.createElement('div');
     timelineContainer.id = 'tl-container';
     const filteredRecordsFull = globalRecords.filter(record => !removedApps.includes(record.app) && record.checked);
@@ -2093,7 +2077,7 @@ const resizeTableColumns = () => {
     let columns = row ? row.children : undefined;
     if (!columns) return;
 
-    let existingHandles = [...document.getElementsByClassName('handle')]
+    let existingHandles = [...document.getElementsByClassName('handle')].filter(handle => handle.id === '');
     let newHandles = existingHandles.length > 0 ? false : true;
     let handle;
 
