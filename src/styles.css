@@ -2,6 +2,16 @@
     box-sizing: border-box;
 }
 
+#main-pane {
+    position: absolute;
+    left: 240px;
+    top: 0;
+    margin-top: 3em;
+    width: calc(100vw - 240px);
+    height: calc(100vh - 3em);
+    /* z-index: 2002; */
+}
+
 #settings-cog {
     width: 2.1em;
     margin: .6em;
@@ -339,6 +349,7 @@ body.dark-mode {
     justify-content: center;
     align-items: center;
     padding-left: 20px;
+    width: 100vw;
 }
 
 .error {
@@ -943,9 +954,11 @@ thead {
 }
 
 #timeline {
+    margin: 0;
     display: flex;
     flex-direction: column;
-    /* position: absolute; */
+    cursor: ns-resize;
+    position: absolute;
 }
 
 #tl-container, #select-time-frame {
@@ -957,6 +970,7 @@ thead {
     flex-direction: row;
     padding: 2%;
     height: 8em;
+    cursor: auto;
 }
 
 /* #tl-container:hover {
@@ -967,6 +981,7 @@ thead {
     height: 3em;
     position: fixed;
     display: inline-block;
+    cursor: auto;
 }
 .timeline-event:hover {
     background-color: white !important;
@@ -978,10 +993,11 @@ thead {
 
 #selection-box {
     height: 4em;
-    position: absolute;
+    /* position: absolute; */
+    position: fixed;
     z-index: 2001;
     box-sizing: border-box;
-    background-color: rgba(255, 255, 255, .1);
+    background-color: rgba(255, 255, 255, .05);
     cursor: move;
 }
 
@@ -1014,6 +1030,7 @@ thead {
     position: relative;
     margin-left: 4%;
     align-content: space-between;
+    cursor: auto;
 }
 
 .hour-marker {

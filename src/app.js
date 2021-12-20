@@ -15,6 +15,7 @@ let sqlConnected = false;
 let isProd;
 let pulledDate;
 let appSettings;
+let timelineY;
 
 let existingTables = ['record', 'tag', 'zoom'];
 let table = existingTables.reduce((prev, t) => ({ ...prev, [`${t}-show`]: 10, [`${t}-go-to-page`]: 1, [`${t}-page-count`]: 1, [`${t}-top`]: '', [`${t}-left`]: '' }), {});
@@ -1379,13 +1380,13 @@ const createTimelineSlider = (tc, timeframe, fullRecordStart) => {
         e.preventDefault();
         dragX = clickX - e.clientX;
         clickX = e.clientX;
-        let sbOffsetL = selectionBox.offsetLeft;
-        let change = sbOffsetL - dragX;
+        let sbGBCR = selectionBox.getBoundingClientRect();
+        let change = sbGBCR.left - dragX;
         if (change < tc.left) change = tc.left;
-        let changeRight = change + selectionBox.offsetWidth;
-        if (change + selectionBox.offsetWidth > tc.right) {
+        let changeRight = change + sbGBCR.width;
+        if (change + sbGBCR.width > tc.right) {
             changeRight = tc.right;
-            change = tc.right - selectionBox.offsetWidth;
+            change = tc.right - sbGBCR.width;
             // selectionBox.style.width = tc.right - change + 'px';
         };
         calcStart = (((change - tc.left) / tc.width) * timeframe * 1000);
@@ -1405,13 +1406,15 @@ const createTimelineSlider = (tc, timeframe, fullRecordStart) => {
         checkHourMarkers();
     }
     selectionBox.style.width = rightPos && leftPos ? parseInt(rightPos.split('px')[0]) - parseInt(leftPos.split('px')[0]) + 'px' : tc.width + 'px';
-    document.getElementById('container').appendChild(selectionBox);
-    selectionBox.style.cursor = selectionBox.offsetWidth >= tc.width ? 'auto' : 'move';
-    let stf = document.getElementById('select-time-frame');
-    selectionBox.style.top = (stf.offsetTop - 15) + 'px';
-    selectionBox.style.left = leftPos || document.getElementById('timeline').offsetLeft + (document.getElementById('timeline').offsetWidth * .02) + 'px';
+    document.getElementById('main-pane').appendChild(selectionBox);
+    selectionBox.style.cursor = selectionBox.getBoundingClientRect().width >= tc.width ? 'auto' : 'move';
+    let stf = document.getElementById('select-time-frame').getBoundingClientRect();
+    selectionBox.style.top = (stf.top - 15) + 'px';
+    let tlGBCR = document.getElementById('timeline').getBoundingClientRect();
+    selectionBox.style.left = leftPos || tlGBCR.left + (tlGBCR.width * .02) + 'px';
     if (document.getElementById('l-h')) document.getElementById('l-h').remove();
     if (document.getElementById('r-h')) document.getElementById('r-h').remove();
+    let sbGBCR = document.getElementById('selection-box').getBoundingClientRect();
     let leftHandle = document.createElement('div');
     leftHandle.className = 'handle';
     selectionBox.appendChild(leftHandle);
@@ -1420,11 +1423,11 @@ const createTimelineSlider = (tc, timeframe, fullRecordStart) => {
     let rightHandle = leftHandle.cloneNode(true);
     selectionBox.appendChild(rightHandle);
     leftHandle.id = 'l-h';
-    leftHandle.style.left = leftPos || `${document.getElementById('selection-box').offsetLeft}px`;
-    leftHandle.style.top = `${document.getElementById('selection-box').offsetTop}px`;
+    leftHandle.style.left = leftPos || `${sbGBCR.left}px`;
+    leftHandle.style.top = `${sbGBCR.top}px`;
     rightHandle.id = 'r-h';
-    rightHandle.style.left = rightPos || `${document.getElementById('selection-box').offsetLeft + document.getElementById('selection-box').offsetWidth}px`;
-    rightHandle.style.top = `${document.getElementById('selection-box').offsetTop}px`;
+    rightHandle.style.left = rightPos || `${sbGBCR.right}px`;
+    rightHandle.style.top = `${sbGBCR.top}px`;
     var clickX, dragX;
     [leftHandle, rightHandle].forEach(handle => {
         let lOR;
@@ -1487,7 +1490,47 @@ const createTimeline = () => {
     let timeframe = end - start;
     let filteredRecords = filteredRecordsFull.filter(record => (new Date(record.end) / 1000) < end && (new Date(record.start) / 1000) > start);
     let container = document.getElementById('container');
-    container.appendChild(timeline);
+    document.getElementById('main-pane').appendChild(timeline);
+    let mainPane = document.getElementById('main-pane').getBoundingClientRect();
+    timeline.style.left = (mainPane.width * .02) + 'px';
+    timeline.style.top = timelineY || mainPane.height - timeline.offsetHeight - (mainPane.height * .02) + 'px';
+
+    var clickY, dragY;
+    timeline.addEventListener('mousedown', (e) => {
+        console.log('dragging')
+        if (e.target.id === 'timeline') {
+            e = e || window.event;
+            // e.preventDefault();
+            // e.stopImmediatePropagation();
+            clickY = e.clientY;
+            document.addEventListener('mousemove', calcTLLoc);
+            document.addEventListener('mouseup', mouseUpTimeline);
+        }
+    })
+    const calcTLLoc = (e) => {
+        e = e || window.event;
+        // e.preventDefault();
+        dragY = clickY - e.clientY;
+        clickY = e.clientY;
+        let sb = document.getElementById('selection-box');
+        let change = timeline.offsetTop - dragY;
+        let sbDiff = timeline.offsetTop - sb.offsetTop;
+        // if (change >= mainPane.top && change <= mainPane.height - timeline.offsetHeight - (mainPane.height * .02)) sbChange = sb.offsetTop - dragY;
+        if (change <= mainPane.top) change = mainPane.top;
+        if (change >= mainPane.height - timeline.offsetHeight - (mainPane.height * .02)) change = mainPane.height - timeline.offsetHeight - (mainPane.height * .02);
+        let sbChange = change - sbDiff;
+        timelineY = change + 'px';
+        timeline.style.top = timelineY;
+        sb.childNodes.forEach(handle => {
+            handle.style.top = sbChange + 'px';
+        })
+        sb.style.top = sbChange + 'px';
+    }
+    const mouseUpTimeline = () => {
+        document.removeEventListener('mousemove', calcTLLoc);
+        document.removeEventListener('mouseup', mouseUpTimeline);
+    }
+
     timeline.appendChild(timelineContainer);
     let selectTimeframe = document.createElement('div');
     selectTimeframe.id = 'select-time-frame';
