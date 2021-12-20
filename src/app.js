@@ -1494,14 +1494,12 @@ const createTimeline = () => {
     let mainPane = document.getElementById('main-pane').getBoundingClientRect();
     timeline.style.left = (mainPane.width * .02) + 'px';
     timeline.style.top = timelineY || mainPane.height - timeline.offsetHeight - (mainPane.height * .02) + 'px';
+    timelineY = timeline.style.top;
 
     var clickY, dragY;
     timeline.addEventListener('mousedown', (e) => {
-        console.log('dragging')
         if (e.target.id === 'timeline') {
             e = e || window.event;
-            // e.preventDefault();
-            // e.stopImmediatePropagation();
             clickY = e.clientY;
             document.addEventListener('mousemove', calcTLLoc);
             document.addEventListener('mouseup', mouseUpTimeline);
@@ -1509,13 +1507,11 @@ const createTimeline = () => {
     })
     const calcTLLoc = (e) => {
         e = e || window.event;
-        // e.preventDefault();
         dragY = clickY - e.clientY;
         clickY = e.clientY;
         let sb = document.getElementById('selection-box');
         let change = timeline.offsetTop - dragY;
         let sbDiff = timeline.offsetTop - sb.offsetTop;
-        // if (change >= mainPane.top && change <= mainPane.height - timeline.offsetHeight - (mainPane.height * .02)) sbChange = sb.offsetTop - dragY;
         if (change <= mainPane.top) change = mainPane.top;
         if (change >= mainPane.height - timeline.offsetHeight - (mainPane.height * .02)) change = mainPane.height - timeline.offsetHeight - (mainPane.height * .02);
         let sbChange = change - sbDiff;
@@ -1576,8 +1572,8 @@ const createTimeline = () => {
                     hoverCard.appendChild(p);
                 });
                 hoverCard.style.left = (e.target.offsetLeft + (e.target.offsetWidth / 2)) + 'px';
-                hoverCard.style.top = e.target.offsetTop + 25 + 'px';
                 container.appendChild(hoverCard);
+                hoverCard.style.top = parseInt(timelineY.split('px')[0]) < (document.getElementById('main-pane').offsetHeight / 2) ? e.target.offsetTop + 25 + 'px' : e.target.offsetTop - hoverCard.offsetHeight + 'px';
             }
         });
     });
@@ -1631,8 +1627,8 @@ const createTimeline = () => {
                     hoverCard.appendChild(p);
                 });
                 hoverCard.style.left = (e.target.offsetLeft + (e.target.offsetWidth / 2)) + 'px';
-                hoverCard.style.top = e.target.offsetTop + 25 + 'px';
                 appVal.appendChild(hoverCard);
+                hoverCard.style.top = parseInt(timelineY.split('px')[0]) < (document.getElementById('main-pane').offsetHeight / 2) ? e.target.offsetTop + 25 + 'px' : e.target.offsetTop - hoverCard.offsetHeight + 'px';
             }
         });
     });
