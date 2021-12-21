@@ -671,6 +671,7 @@ const aggregateRecords = () => {
     let tagDur = document.getElementById('tag-section') ? `&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;${tags.filter(tag => tag.id === parseInt(tagID)).map(tag => tag.name)[0]}: ${durationVals[2]}` : '';
     let durationDiv = document.getElementById('duration');
     durationDiv.innerHTML = includeTotalTime ? `Duration (hh:mm:ss): ${durationVals[0]} / ${durationVals[1]}` + tagDur : `Duration (hh:mm:ss): ${durationVals[0]}` + tagDur;
+    if (document.getElementById('timeline')) createTimeline();
 }
 
 const parseFile = (files) => {
@@ -939,7 +940,7 @@ const createTable = (type) => {
                             if (document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`)) document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`).checked = !cb.checked;
                             cb.checked = !cb.checked;
                             ['tag-table', 'record-table'].forEach(tbl => {
-                                if (document.getElementById(tbl)) {
+                                if (document.getElementById(tbl) && type === tbl.split('-')[0]) {
                                     let selectAllVisibleID = `select-all-visible-${type}`;
                                     let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
                                     let selectAllVisible = document.getElementById(selectAllVisibleID);
@@ -957,6 +958,7 @@ const createTable = (type) => {
                                         }
                                     }
                                 }
+                                if (document.getElementById(tbl) && type !== tbl.split('-')[0]) createTable(tbl.split('-')[0]);
                             })
                             aggregateRecords();
                         }
@@ -1042,7 +1044,7 @@ const createTable = (type) => {
                     i.checked = selectAllVisible.checked;
                 });
                 ['tag-table', 'record-table'].forEach(tbl => {
-                    if (document.getElementById(tbl)) {
+                    if (document.getElementById(tbl) && type === tbl.split('-')[0]) {
                         let selectAllVisibleID = `select-all-visible-${type}`;
                         let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
                         let selectAllVisible = document.getElementById(selectAllVisibleID);
@@ -1060,6 +1062,7 @@ const createTable = (type) => {
                             }
                         }
                     }
+                    if (document.getElementById(tbl) && type !== tbl.split('-')[0]) createTable(tbl.split('-')[0]);
                     aggregateRecords();
                 })
             })
