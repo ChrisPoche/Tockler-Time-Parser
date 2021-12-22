@@ -1070,7 +1070,7 @@ const createTable = (type) => {
         }
         if (document.getElementById(`${type}-table`)) document.getElementById(`${type}-table`).remove();
         section.prepend(tableTag);
-        drawTag('createTable');
+        drawTag();
         if (document.getElementById(`${type}-page-controls`) === null) {
             let pageControlBar = document.createElement('div');
             pageControlBar.id = (`${type}-page-controls`);
@@ -1317,44 +1317,26 @@ const postDataRetrieval = (records) => {
         });
     }
 
+    createActions();
     createAppFilter(apps);
+    [...document.getElementById('input-pane').querySelectorAll('h2')].forEach(header => {
+        header.addEventListener('click', (e) => {
+            if (e.target.innerText === 'Actions') {
+                document.getElementById('action-components').classList.toggle('hidden');
+                document.getElementById('component-inputs').style.flex = document.getElementById('action-components').className.includes('hidden') ? '1 1' : '3 3';
+            };
+            if (e.target.innerText === 'Applications') {
+                document.getElementById('app-components').classList.toggle('hidden');
+                document.getElementById('unselect-apps').classList.toggle('hidden');
+                document.getElementById('app-drawer').style.flex = document.getElementById('unselect-apps').className.includes('hidden') ? '.17 1' : '6 1';
+            };
+            if (document.getElementById('unselect-apps').className.includes('hidden') && document.getElementById('action-components').className.includes('hidden')) document.getElementById('input-pane').style.removeProperty('display');
+            if (!document.getElementById('action-components').className.includes('hidden') || !document.getElementById('unselect-apps').className.includes('hidden')) document.getElementById('input-pane').style.display = 'flex';
+        })
+    })
     createTable('record');
     autoTag();
     createTable('record');
-
-    if (!document.getElementById('download-csv')) {
-        let downloadBttn = document.createElement('button');
-        downloadBttn.id = 'download-csv';
-        downloadBttn.addEventListener('click', downloadCSV);
-        downloadBttn.innerText = 'Download CSV';
-        document.body.appendChild(downloadBttn);
-    }
-
-    if (!document.getElementById('timeline-button')) {
-        let timelineBttn = document.createElement('button');
-        timelineBttn.id = 'timeline-button';
-        timelineBttn.addEventListener('click', () => {
-            if (document.getElementById('timeline')) {
-                document.getElementById('timeline').remove();
-                document.getElementById('selection-box').remove();
-            }
-            else {
-                createTimeline();
-            }
-        });
-        timelineBttn.innerText = 'Timeline';
-        document.body.appendChild(timelineBttn);
-    }
-
-    if (document.getElementById('zoom-table-button')) document.getElementById('zoom-table-button').remove();
-    let zTB = document.createElement('button');
-    zTB.id = 'zoom-table-button';
-    zTB.innerText = 'Zoom Table';
-    zTB.addEventListener('click', () => {
-        createTable('zoom');
-    });
-    zTB.disabled = zoomTags.length < 1 ? true : false;
-    document.body.appendChild(zTB);
 }
 
 const checkHourMarkers = () => {
@@ -1421,7 +1403,6 @@ const createTimelineSlider = (tc, timeframe, fullRecordStart) => {
     let leftHandle = document.createElement('div');
     leftHandle.className = 'handle';
     selectionBox.appendChild(leftHandle);
-    leftHandle.style.backgroundColor = 'white';
     leftHandle.draggable = true;
     let rightHandle = leftHandle.cloneNode(true);
     selectionBox.appendChild(rightHandle);
@@ -1539,7 +1520,7 @@ const createTimeline = () => {
     let number = 360 / apps.length;
     let colorMapping = {}, appTotals = {};
     apps.forEach((app, i) => {
-        colorMapping[app] = `hsl(${Math.floor(i * number)},100%,75%)`;
+        colorMapping[app] = `hsl(${Math.floor(i * number)},${document.body.className.includes('dark-mode') ? 100 : 75}%,${document.body.className.includes('dark-mode') ? 75 : 60}%)`;
         appTotals[app] = 0;
     });
     filteredRecords.forEach(record => {
@@ -1682,6 +1663,7 @@ const downloadCSV = () => {
             }
             downloadSuccess.innerText = `CSV successfully downloaded to ${saveLocation}`;
             downloadSuccess.id = 'download-success';
+            downloadSuccess.classList = 'center';
             document.body.appendChild(downloadSuccess);
             downloadSuccess.addEventListener('animationend', () => downloadSuccess.remove());
         }
@@ -1818,6 +1800,9 @@ const drawTag = () => {
             let val = globalRecords[rowID].tags;
             if (val.length > 0) {
                 const tableRowID = `${type}-${rowID}`;
+                console.trace();
+                console.log(document.getElementById(tableRowID));
+                console.log(tableRowID);
                 const td = document.getElementById(tableRowID).querySelector('.tags-col');
                 let existingTags = [...td.childNodes].filter(tag => tag.className.includes('tag-'));
                 if (val.length !== existingTags.length) {
@@ -2138,41 +2123,88 @@ const resizeTableColumns = () => {
 };
 
 const refreshFilterResults = () => {
-    const appDrawer = document.getElementById('app-drawer');
-    const apps = [...appDrawer.getElementsByTagName('input')].filter(box => box.value !== 'Unselect All');
-    appDrawer.remove();
-    if (removedApps.length > 0) {
-        removedApps.forEach(app => {
-            if (document.getElementById(`hidden-${app}`)) {
-                document.getElementById(`app-${app}`).checked = false;
-            };
-        })
-    }
-    removedApps = refreshedApps ? [...new Set(apps.filter(app => !app.checked).map(app => app.value))].sort() : [...removedApps, ...apps.filter(app => !app.checked).map(app => app.value)].sort();
-    let checkedApps = apps.filter(app => app.checked)
-    checkedApps = checkedApps.map(app => app.value).sort();
-    let updatedApps = [...checkedApps, ...removedApps];
-    refreshedApps = removedApps.length > 0 ? true : false;
-    createAppFilter(updatedApps);
+    const apps = [...document.getElementById('app-drawer').querySelectorAll('.app-filter')];
+    removedApps = [...apps.filter(app => !app.checked).map(app => app.value)].sort();
     filterTitle = '';
+    filteredRecords = globalRecords;
     createTable('record');
 }
 
-const filterBoxRechecked = () => {
-    let appDrawer = document.getElementById('app-drawer');
-    if (removedApps.length === 1) refreshFilterResults();
-    else if (appDrawer.getElementsByTagName('button').length === 0) {
-        let refreshButton = document.createElement('button');
-        refreshButton.id = 'refresh-button';
-        refreshButton.innerText = 'Refresh Results';
-        refreshButton.addEventListener('click', refreshFilterResults);
-        appDrawer.appendChild(refreshButton);
+const createActions = () => {
+    if (!document.getElementById('input-pane')) {
+        let pane = document.createElement('div');
+        pane.id = 'input-pane';
+        pane.style.display = 'flex';
+        document.getElementById('container').appendChild(pane);
+        let ci = document.createElement('div');
+        ci.id = 'component-inputs';
+        pane.appendChild(ci);
+        let actionHeader = document.createElement('h2');
+        actionHeader.innerText = 'Actions';
+        ci.appendChild(actionHeader);
+        let actionComps = document.createElement('div');
+        actionComps.id = 'action-components';
+        // buttons
+        ['download-csv', 'timeline-button', 'zoom-table-button'].forEach(button => {
+            if (!document.getElementById(button)) {
+                let row = document.createElement('div');
+                row.id = button;
+                row.classList = 'components';
+                row.addEventListener('click', () => {
+                    if (globalRecords.filter(record => !removedApps.includes(record.app) && record.checked).length > 0) {
+                        if (button === 'download-csv') downloadCSV();
+                        if (button === 'timeline-button') {
+                            if (document.getElementById('timeline')) {
+                                document.getElementById('timeline').remove();
+                                document.getElementById('selection-box').remove();
+                            }
+                            else {
+                                createTimeline();
+                            }
+                        }
+                        if (button === 'zoom-table-button' && zoomTags.length > 0) {
+                            if (document.getElementById('zoom-section')) {
+                                activeTables = activeTables.filter(t => t.type !== 'zoom');
+                                document.getElementById('zoom-section').remove()
+                            }
+                            else {
+                                createTable('zoom')
+                            }
+                        };
+                    }
+                });
+                row.innerText = button.includes('button') ? button.replace(/-/g, ' ').replace('button', '').trim() : 'Download CSV';
+                actionComps.appendChild(row);
+            }
+        })
+        ci.appendChild(actionComps);
     }
 }
+
+
 const createAppFilter = (apps) => {
     let container = document.getElementById('container');
+    let inputPane = document.getElementById('input-pane');
     if (document.getElementById('app-drawer')) document.getElementById('app-drawer').remove();
     let appDrawer = document.createElement('div');
+    const setUnselectAll = () => {
+        let visibleCount = [...appComps.querySelectorAll('.app-filter')].length;
+        let visibleChecked = [...appComps.querySelectorAll('.app-filter[type="checkbox"]:checked')].length;
+        if (visibleChecked === visibleCount) {
+            unselectAllInput.checked = true;
+            unselectAllInput.indeterminate = false;
+            unselectAllLabel.innerText = 'Unselect All';
+        }
+        if (visibleChecked < visibleCount) {
+            unselectAllInput.checked = false;
+            unselectAllInput.indeterminate = true;
+            unselectAllLabel.innerText = 'Select All';
+            if (visibleChecked === 0) {
+                unselectAllInput.checked = false;
+                unselectAllInput.indeterminate = false;
+            }
+        }
+    }
     appDrawer.id = 'app-drawer';
     // create right border for app drawer
     if (!document.getElementById('app-drawer-border')) {
@@ -2180,111 +2212,84 @@ const createAppFilter = (apps) => {
         adRightBorder.id = 'app-drawer-border';
         container.appendChild(adRightBorder);
     }
-
-
     let unselectAllLabel, unselectAllInput, unselectAllDiv;
     if (document.getElementById('unselect-all-apps') === null) {
         unselectAllDiv = document.createElement('div');
+        unselectAllDiv.id = 'unselect-apps';
         unselectAllInput = document.createElement('input');
         unselectAllInput.type = 'checkbox';
-        unselectAllInput.checked = true;
-        unselectAllInput.classList = 'app-filter';
         unselectAllInput.id = 'unselect-all-apps';
-        unselectAllInput.value = 'Unselect All';
-        unselectAllInput.name = 'Unselect All';
-
         unselectAllLabel = document.createElement('label');
         unselectAllLabel.for = 'Unselect All';
-        unselectAllLabel.innerText = 'Unselect All';
-        unselectAllLabel.classList = 'app-filter';
     }
+    let appComps = document.createElement('div');
+    appComps.id = 'app-components';
     apps = apps.sort();
     apps.forEach(app => {
         let div = document.createElement('div');
+        div.classList = 'app-component';
         let input = document.createElement('input');
         let appName = app;
-        if (removedApps.includes(appName)) div.classList = 'hidden';
-        if (removedApps.includes(appName)) div.id = `hidden-${appName}`;
+        if (removedApps.includes(appName)) div.classList = 'app-component unchecked';
+        if (removedApps.includes(appName)) div.id = `unchecked-${appName}`;
         input.type = 'checkbox';
         input.checked = removedApps.includes(appName) ? false : true;
         input.classList = 'app-filter';
         input.id = `app-${appName}`;
         input.value = appName;
         input.name = appName;
-        input.addEventListener('change', (e) => {
-            e.target.checked ? filterBoxRechecked() : refreshFilterResults();
-        });
         div.appendChild(input);
-
         let label = document.createElement('label');
-        label.for = appName;
         label.innerText = appName;
-        label.classList = 'app-filter';
-        label.addEventListener('click', (e) => {
-            let checkbox = document.getElementById('app-' + e.target.for);
-            checkbox.checked = checkbox.checked ? !checkbox.checked : !checkbox.checked;
-            checkbox.checked ? filterBoxRechecked() : refreshFilterResults();
+        label.dataset.for = appName;
+        div.dataset.for = appName;
+        [div, label].forEach((element) => {
+            element.addEventListener('click', (e) => {
+                e.stopImmediatePropagation();
+                let checkbox = document.getElementById('app-' + e.target.dataset.for);
+                checkbox.checked = !checkbox.checked;
+                checkbox.parentNode.classList = `app-component ${!checkbox.checked ? ' unchecked' : ''}`;
+                checkbox.parentNode.id = !checkbox.checked ? `unchecked-${app}` : '';
+                setUnselectAll();
+                refreshFilterResults();
+            });
         });
         div.appendChild(label);
-
-        appDrawer.appendChild(div);
+        appComps.appendChild(div);
     });
-    let prevRemoved = document.createElement('a');
-    if (refreshedApps) {
-        prevRemoved.id = 'prev-removed';
-        prevRemoved.innerText = 'Load previously removed applications...';
-        prevRemoved.href = '';
-        prevRemoved.onclick = (e) => {
-            e.preventDefault();
-            document.getElementById('prev-removed').remove();
-            refreshedApps = true;
-            removedApps.forEach(app => {
-                if (document.getElementById(`hidden-${app}`)) document.getElementById(`hidden-${app}`).classList.remove('hidden')
-            });
-        }
-    }
+    appDrawer.appendChild(appComps)
     if (document.getElementById('unselect-all-apps') === null) {
-        unselectAllInput.addEventListener('change', (e) => {
-            unselectAllLabel.innerText = e.target.checked ? 'Unselect All' : 'Select All';
-            apps.forEach(app => {
-                document.getElementById(`app-${app}`).checked = e.target.checked;
-            });
-            if (!e.target.checked) {
-                removedApps = apps.filter(app => app !== 'Unselect All');
-                refreshedApps = true;
-            }
-            if (refreshedApps && e.target.checked) {
-                removedApps = [...document.getElementsByClassName('hidden')].map(h => h.id.substring('hidden-'.length));
+        [unselectAllDiv, unselectAllLabel].forEach(element => {
+            element.addEventListener('click', (e) => {
+                e.stopImmediatePropagation();
+                let checkbox = document.getElementById('unselect-all-apps');
+                if (checkbox.checked) {
+                    checkbox.checked = false; // Unselect All
+                    unselectAllLabel.innerText = 'Select All';
+                }
+                else if (checkbox.indeterminate || !checkbox.checked) {
+                    checkbox.checked = true; // Select All
+                    unselectAllLabel.innerText = 'Unselect All';
+                }
+                checkbox.indeterminate = false;
+                apps.forEach(app => {
+                    let input = document.getElementById(`app-${app}`);
+                    input.checked = checkbox.checked;
+                    input.parentNode.classList = `app-component ${!checkbox.checked ? ' unchecked' : ''}`;
+                    input.parentNode.id = !checkbox.checked ? `unchecked-${app}` : '';
+                });
                 refreshFilterResults();
-            }
-            filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
-            createTable('record');
-        });
-        unselectAllLabel.addEventListener('click', () => {
-            let checkbox = document.getElementById('unselect-all-apps');
-            checkbox.checked = checkbox.checked ? !checkbox.checked : !checkbox.checked;
-            unselectAllLabel.innerText = checkbox.checked ? 'Unselect All' : 'Select All';
-            apps.forEach(app => {
-                document.getElementById(`app-${app}`).checked = checkbox.checked;
             });
-            if (!checkbox.checked) {
-                removedApps = apps.filter(app => app !== 'Unselect All');
-                refreshedApps = true;
-            }
-            if (refreshedApps && checkbox.checked) {
-                removedApps = [...document.getElementsByClassName('hidden')].map(h => h.id.substring('hidden-'.length));
-                refreshFilterResults();
-            }
-            filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
-            createTable('record');
         });
         unselectAllDiv.appendChild(unselectAllInput);
         unselectAllDiv.appendChild(unselectAllLabel);
+        setUnselectAll();
         appDrawer.prepend(unselectAllDiv);
+        let appSelectHeader = document.createElement('h2');
+        appSelectHeader.innerText = 'Applications';
+        appDrawer.prepend(appSelectHeader);
     }
-
-    appDrawer.appendChild(prevRemoved);
-    container.prepend(appDrawer);
+    inputPane.prepend(appDrawer);
     container.style.textAlign = 'left';
     container.style.alignItems = 'normal';
     container.style.justifyContent = 'flex-start';
