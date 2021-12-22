@@ -1800,9 +1800,6 @@ const drawTag = () => {
             let val = globalRecords[rowID].tags;
             if (val.length > 0) {
                 const tableRowID = `${type}-${rowID}`;
-                console.trace();
-                console.log(document.getElementById(tableRowID));
-                console.log(tableRowID);
                 const td = document.getElementById(tableRowID).querySelector('.tags-col');
                 let existingTags = [...td.childNodes].filter(tag => tag.className.includes('tag-'));
                 if (val.length !== existingTags.length) {
@@ -2145,7 +2142,7 @@ const createActions = () => {
         let actionComps = document.createElement('div');
         actionComps.id = 'action-components';
         // buttons
-        ['download-csv', 'timeline-button', 'zoom-table-button'].forEach(button => {
+        ['download-csv', 'timeline-button', 'zoom-table-button', 'record-table-button'].forEach(button => {
             if (!document.getElementById(button)) {
                 let row = document.createElement('div');
                 row.id = button;
@@ -2162,15 +2159,18 @@ const createActions = () => {
                                 createTimeline();
                             }
                         }
-                        if (button === 'zoom-table-button' && zoomTags.length > 0) {
-                            if (document.getElementById('zoom-section')) {
-                                activeTables = activeTables.filter(t => t.type !== 'zoom');
-                                document.getElementById('zoom-section').remove()
-                            }
-                            else {
-                                createTable('zoom')
-                            }
-                        };
+                        if (button.includes('table-button')) {
+                            let tableType = button.split('-')[0];
+                            if (tableType === 'zoom' && zoomTags.length > 0 || tableType === 'record') {
+                                if (document.getElementById(`${tableType}-section`)) {
+                                    activeTables = activeTables.filter(t => t.type !== tableType);
+                                    document.getElementById(`${tableType}-section`).remove()
+                                }
+                                else {
+                                    createTable(tableType);
+                                }
+                            };
+                        }
                     }
                 });
                 row.innerText = button.includes('button') ? button.replace(/-/g, ' ').replace('button', '').trim() : 'Download CSV';
