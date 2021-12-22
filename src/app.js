@@ -262,7 +262,6 @@ const addExpandOptions = (expandable, settingName, type) => {
     expandDiv.id = `add-custom-${type.toLowerCase()}-container`;
     expandDiv.classList = 'add-custom';
     if (setting.name === 'row-count') {
-        // console.log(setting.details)
         setting.details = typeof setting.details === 'string' ? JSON.parse(setting.details) : setting.details;
         if (setting.enabled) {
             let universalRowCount = document.createElement('div');
@@ -639,7 +638,6 @@ const aggregateRecords = () => {
     active = active.length > 0 ? active.reduce((a, b) => a + b) : 0;
     let tag = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked && r.tags.includes(parseInt(tagID))).map(r => r.dur);
     tag = tag.length > 0 ? tag.reduce((a, b) => a + b) : 0;
-    // if (document.getElementById('top-tags-section')) {
     topTag = [];
     tags.forEach((tag, index) => {
         let dur = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked && r.tags.includes(parseInt(tag.id))).map(r => r.dur);
@@ -647,7 +645,6 @@ const aggregateRecords = () => {
         topTag.push({'id' : tag.id, tag, 'duration': dur, 'dur': calcDuration(dur) });
     });
     topTag = topTag.sort((a, b) => a.dur < b.dur ? 1 : -1);
-    // }
     let durationVals = [active, all, tag].map(dur => calcDuration(dur));
     let tagDur = document.getElementById('tag-section') ? `&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;${tags.filter(tag => tag.id === parseInt(tagID)).map(tag => tag.name)[0]}: ${durationVals[2]}` : '';
     let durationDiv = document.getElementById('duration');
@@ -772,6 +769,7 @@ const createTable = (type) => {
     if (!document.getElementById(`${type}-section`)) {
         let section = document.createElement('div');
         section.id = `${type}-section`;
+        section.classList.add('section');
         document.getElementById('container').appendChild(section);
     }
     let results;
@@ -799,13 +797,13 @@ const createTable = (type) => {
             'record': 'calc(5vh + 3em)',
             'tag': 'calc(41vh + 3em)',
             'zoom': 'calc(41vh + 3em)',
-            'top-tags': 'calc(5vh + 3em)'
+            'top-tags': '4em'
         };
         let left = {
             'record': '300px',
             'tag': '300px',
             'zoom': '800px',
-            'top-tags': '800px'
+            'top-tags': `${document.getElementById('main-pane').getBoundingClientRect().right - 570}px`
         };
         section.style.top = table[`${type}-top`] || top[type];
         section.style.left = table[`${type}-left`] || left[type];
@@ -1215,7 +1213,7 @@ const runTaggingFilter = (filter) => {
 const autoTag = () => {
     let autoTagging = appSettings.filter(s => s.name === 'auto-tagging')[0];
     if (autoTagging.enabled) {
-        // Auto Tagging - filters are currently hardcoded to specific outputs related to our tooling. May implement custom filter creation when database or local storage are added
+        // Auto Tagging - filters are currently hardcoded to personal preference, filters array can be modified below to suite own preferences.
         let filters = [/0[2-3]\d{6}\s?\-?/, /[A-Z]{3,7}\-\d+/, /[P-p]ower [A-a]utomate|\b[F-f]low[s]?\b/, /[J-j]ira/, /[S-s]alesforce /, /DRAFT \-/, /relonemajorincidentmgrtransitions/, / [T-t]ransition/, /\(?rca|RCA\)?/, /[P-p]ager[D-d]uty/]
         if (autoTagging.details) {
             if (typeof autoTagging.details === 'string') autoTagging.details = autoTagging.details.split(',');
@@ -1326,12 +1324,12 @@ const postDataRetrieval = (records) => {
         header.addEventListener('click', (e) => {
             if (e.target.innerText === 'Actions') {
                 document.getElementById('action-components').classList.toggle('hidden');
-                document.getElementById('component-inputs').style.flex = document.getElementById('action-components').className.includes('hidden') ? '1 1' : '3 3';
+                document.getElementById('component-inputs').style.flex = document.getElementById('action-components').className.includes('hidden') ? '1 1' : '3.1 3';
             };
             if (e.target.innerText === 'Applications') {
                 document.getElementById('app-components').classList.toggle('hidden');
                 document.getElementById('unselect-apps').classList.toggle('hidden');
-                document.getElementById('app-drawer').style.flex = document.getElementById('unselect-apps').className.includes('hidden') ? '.17 1' : '6 1';
+                document.getElementById('app-drawer').style.flex = document.getElementById('unselect-apps').className.includes('hidden') ? '.1675 .1675' : '6 1';
             };
             if (document.getElementById('unselect-apps').className.includes('hidden') && document.getElementById('action-components').className.includes('hidden')) document.getElementById('input-pane').style.removeProperty('display');
             if (!document.getElementById('action-components').className.includes('hidden') || !document.getElementById('unselect-apps').className.includes('hidden')) document.getElementById('input-pane').style.display = 'flex';
@@ -1375,7 +1373,6 @@ const createTimelineSlider = (tc, timeframe, fullRecordStart) => {
         if (change + sbGBCR.width > tc.right) {
             changeRight = tc.right;
             change = tc.right - sbGBCR.width;
-            // selectionBox.style.width = tc.right - change + 'px';
         };
         calcStart = (((change - tc.left) / tc.width) * timeframe * 1000);
         calcStart = new Date(new Date(fullRecordStart).getTime() - (1800 * 1000) + calcStart);
@@ -1569,7 +1566,6 @@ const createTimeline = () => {
         let hour = i < 13 ? `${i === 0 ? 12 : i}am` : `${i - 12}pm`;
         let date = `${filteredRecordsFull[0].start.split(' ')[0]} ${i < 10 ? '0' + i : i}:00:00`;
         let percentage = ((new Date(date) / 1000) - originStart) / timeframeFull * 100;
-        // console.log(percentage);
         if (percentage > 0) {
             let prevdate = `${filteredRecordsFull[0].start.split(' ')[0]} ${i - 1 < 10 ? '0' + i - 1 : i - 1}:00:00`;
             let prevPercentage = ((new Date(prevdate) / 1000) - originStart) / timeframeFull * 100;
@@ -1809,7 +1805,6 @@ const drawTag = () => {
                             let t = tags.filter(tag => tag.id === tid)[0];
                             let tag = document.createElement('p');
                             tag.innerText = t.name;
-                            // Need to figure out why Tag Table isn't drawing tags despite record, zoom and top-tags working
                             tag.classList = `tags tag-${t.id}`;
                             if (type !== 'top-tags') {
                                 tag.addEventListener('mouseenter', (e) => {
@@ -1888,7 +1883,7 @@ const drawTag = () => {
                                 dropTag = null;
                             });
                             tag.addEventListener('dragend', (e) => {
-                                if (!dropTag || dragTag === dropTag) dragTag = null; // drop isn't on another tag, clear value
+                                if (!dropTag || dragTag === dropTag) dragTag = null;
                             })
                             tag.addEventListener('dragover', (e) => {
                                 e.preventDefault();
@@ -2142,7 +2137,6 @@ const createActions = () => {
         ci.appendChild(actionHeader);
         let actionComps = document.createElement('div');
         actionComps.id = 'action-components';
-        // buttons
         ['download-csv', 'timeline-button', 'zoom-table-button', 'record-table-button', 'top-tags-table-button'].forEach(button => {
             if (!document.getElementById(button)) {
                 let row = document.createElement('div');
@@ -2206,12 +2200,6 @@ const createAppFilter = (apps) => {
         }
     }
     appDrawer.id = 'app-drawer';
-    // create right border for app drawer
-    if (!document.getElementById('app-drawer-border')) {
-        let adRightBorder = document.createElement('div');
-        adRightBorder.id = 'app-drawer-border';
-        container.appendChild(adRightBorder);
-    }
     let unselectAllLabel, unselectAllInput, unselectAllDiv;
     if (document.getElementById('unselect-all-apps') === null) {
         unselectAllDiv = document.createElement('div');
