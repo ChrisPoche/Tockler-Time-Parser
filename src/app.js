@@ -3,13 +3,11 @@ let refreshedApps = false;
 let removedApps = [];
 let globalRecords = [];
 let includeTotalTime = true;
-let tableTab = document.createElement('div');
 let filterTitle = '';
-let editMode = false;
 let tags = [];
 let dWR = []; // Days With Records
 let dragTag, dropTag;
-let filteredRecords = [], tagID, zoomTags = []; // Global table trackers
+let filteredRecords = [], tagID, zoomTags = [], topTag = []; // Global table trackers
 let activeTables = [];
 let sqlConnected = false;
 let isProd;
@@ -17,7 +15,7 @@ let pulledDate;
 let appSettings;
 let timelineY;
 
-let existingTables = ['record', 'tag', 'zoom'];
+let existingTables = ['record', 'tag', 'zoom', 'top-tags'];
 let table = existingTables.reduce((prev, t) => ({ ...prev, [`${t}-show`]: 10, [`${t}-go-to-page`]: 1, [`${t}-page-count`]: 1, [`${t}-top`]: '', [`${t}-left`]: '' }), {});
 let sortByHeader = {
     'record': {
@@ -37,12 +35,17 @@ let sortByHeader = {
         'duration': '',
         'start': '',
         'end': ''
+    },
+    'top-tags': {
+        'tag': '',
+        'duration': '',
     }
 }
 let visibleRecords = {
     'record': [],
     'tag': [],
-    'zoom': []
+    'zoom': [], 
+    'top-tags': []
 };
 
 const dateInputHandler = (e) => {
@@ -58,11 +61,12 @@ const dateInputHandler = (e) => {
     }
 }
 
-
 window.addEventListener('load', () => {
     window.api.receive('is-prod', (prodCheck) => isProd = prodCheck[0]);
     window.api.receive('config', (config) => {
         appSettings = config[0];
+        let rowCount = appSettings.filter(setting => setting.name === 'row-count')[0];
+        if (!rowCount.enabled) [...JSON.parse(rowCount.details)].filter(d => d.global === 0).forEach(d => table[`${d.table}-show`] = d.count);
         createSettingsPage();
     });
     createTitlebar();
@@ -107,10 +111,6 @@ window.addEventListener('load', () => {
         document.getElementById('csv-input').click();
     });
     document.addEventListener('keyup', (e) => {
-        if (e.key === 'e' && e.ctrlKey && dataLoaded) {
-            editMode = !editMode;
-            toggleCloseButtons();
-        }
         if (((e.key === '-' && e.ctrlKey) || (e.key === '=' && e.ctrlKey) || (e.key === '0' && e.ctrlKey))) {
             if (document.getElementById('record-table')) resizeTableColumns();
             updateZoomLevels();
@@ -244,7 +244,6 @@ const createSettingsPage = () => {
     resetDefault.id = 'reset-default-settings';
     resetDefault.innerText = 'Restore Default Settings';
     resetDefault.addEventListener('click', () => {
-        // window.localStorage.clear();
         window.api.send('restore-default-settings', 'default settings');
         window.api.receive('config', (config) => {
             appSettings = config[0];
@@ -274,7 +273,6 @@ const addExpandOptions = (expandable, settingName, type) => {
             uRCInput.min = 10;
             uRCInput.max = 50;
             let rowCount = setting.details.filter(d => d.global === 1)[0].count;
-            // console.log(rowCount)
             uRCInput.value = rowCount
             uRCInput.addEventListener('change', (e) => {
                 setting.details = [...setting.details.filter(d => d.global !== 1), { 'global': 1, 'table': '', 'count': e.target.value }]
@@ -294,7 +292,6 @@ const addExpandOptions = (expandable, settingName, type) => {
             expandDiv.appendChild(universalRowCount);
         }
         else {
-            // console.log('will add individual table settings here');
             existingTables.forEach(type => {
                 let RowCount = document.createElement('div');
                 RowCount.id = `${type}-row-count`;
@@ -611,11 +608,13 @@ const grabRecordsFromDatePicker = (date) => {
             }
 
         });
+        existingTables.forEach(table => {
+            if (document.getElementById(`${table}-section`)) document.getElementById(`${table}-section`).remove();
+        })
         tags = [];
-        if (document.getElementById('tag-section')) document.getElementById('tag-section').remove();
         zoomTags = [];
-        if (document.getElementById('zoom-section')) document.getElementById('zoom-section').remove();
         filteredRecords = [];
+        topTag = [];
         activeTables = [];
         if (document.getElementById('timeline')) document.getElementById('timeline').remove();
         if (document.getElementById('selection-box')) document.getElementById('selection-box').remove();
@@ -627,33 +626,11 @@ const grabRecordsFromDatePicker = (date) => {
     });
 };
 
-const toggleCloseButtons = () => {
-    ['app-chart', 'record-section'].forEach((id) => {
-        if (editMode) {
-            if (document.getElementById(id).style.visibility !== 'hidden') {
-                let element = document.getElementById(id);
-                let gbcr = element.getBoundingClientRect();
-                let closeX = id === 'app-chart' ? gbcr.left + (gbcr.width * .875) : gbcr.left + gbcr.width + 2;
-                let closeY = id === 'app-chart' ? gbcr.top + (gbcr.top * .15) : gbcr.top - 30;
-                let closeButton = document.createElement('div');
-                closeButton.id = `close-${id}`;
-                closeButton.innerText = 'X';
-                closeButton.classList = 'close-button'
-                closeButton.style.left = closeX + 'px';
-                closeButton.style.top = closeY + 'px';
-                closeButton.addEventListener('click', () => {
-                    element.style.visibility = 'hidden';
-                    closeButton.remove();
-                })
-                document.body.appendChild(closeButton);
-            };
-        }
-        else if (!editMode) {
-            if (document.getElementById(id).style.visibility !== 'hidden') {
-                document.getElementById(`close-${id}`).remove();
-            }
-        }
-    })
+const calcDuration = (dur) => {
+    let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
+    let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
+    let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
+    return `${hh}:${mm}:${ss}`;
 };
 
 const aggregateRecords = () => {
@@ -662,12 +639,16 @@ const aggregateRecords = () => {
     active = active.length > 0 ? active.reduce((a, b) => a + b) : 0;
     let tag = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked && r.tags.includes(parseInt(tagID))).map(r => r.dur);
     tag = tag.length > 0 ? tag.reduce((a, b) => a + b) : 0;
-    let durationVals = [active, all, tag].map(dur => {
-        let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
-        let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
-        let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
-        return `${hh}:${mm}:${ss}`;
+    // if (document.getElementById('top-tags-section')) {
+    topTag = [];
+    tags.forEach((tag, index) => {
+        let dur = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked && r.tags.includes(parseInt(tag.id))).map(r => r.dur);
+        dur = dur.length > 0 ? dur.reduce((a, b) => a + b) : 0;
+        topTag.push({'id' : tag.id, tag, 'duration': dur, 'dur': calcDuration(dur) });
     });
+    topTag = topTag.sort((a, b) => a.dur < b.dur ? 1 : -1);
+    // }
+    let durationVals = [active, all, tag].map(dur => calcDuration(dur));
     let tagDur = document.getElementById('tag-section') ? `&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;${tags.filter(tag => tag.id === parseInt(tagID)).map(tag => tag.name)[0]}: ${durationVals[2]}` : '';
     let durationDiv = document.getElementById('duration');
     durationDiv.innerHTML = includeTotalTime ? `Duration (hh:mm:ss): ${durationVals[0]} / ${durationVals[1]}` + tagDur : `Duration (hh:mm:ss): ${durationVals[0]}` + tagDur;
@@ -724,7 +705,7 @@ const parseFile = (files) => {
 };
 
 const modifySort = (e, type) => {
-    let val = e.target.id.includes('zoom-tl-th') ? 'tags' : e.target.id.split('-')[2];
+    let val = e.target.id.includes('zoom-tl-th') || e.target.id.includes('top-tags-tl-th') ? `tag${e.target.id.includes('top-tags-tl-th') ? '' :'s'}` : e.target.id.split('-')[e.target.id.split('-').length - 1];
     if (val !== 'tags' || type !== 'zoom') {
         if (!['visible', 'bar', 'th'].includes(val) && val) {
             sortByHeader[type][val] = sortByHeader[type][val] === '' ? 'asc' : sortByHeader[type][val] === 'asc' ? 'desc' : '';
@@ -787,7 +768,7 @@ const createAddTagButton = (td) => {
 }
 
 const createTable = (type) => {
-    if (activeTables.filter(t => t.type.includes(type)).length < 1) activeTables.push({ type, 'clickBound': false });
+    if (activeTables.filter(t => t.type === type).length < 1) activeTables.push({ type, 'clickBound': false });
     if (!document.getElementById(`${type}-section`)) {
         let section = document.createElement('div');
         section.id = `${type}-section`;
@@ -797,6 +778,7 @@ const createTable = (type) => {
     if (type === 'record') results = filteredRecords.filter(r => !removedApps.includes(r.app));
     if (type === 'tag') results = globalRecords.filter(r => r.tags.includes(parseInt(tagID)));
     if (type === 'zoom') results = zoomTags;
+    if (type === 'top-tags') results = topTag;
     if (results.length >= 0) {
         table[`${type}-page-count`] = results.length === 0 ? 1 : Math.ceil(results.length / table[`${type}-show`])
         table[`${type}-go-to-page`] = table[`${type}-go-to-page`] > table[`${type}-page-count`] ? table[`${type}-page-count`] : table[`${type}-go-to-page`];
@@ -816,12 +798,14 @@ const createTable = (type) => {
         let top = {
             'record': 'calc(5vh + 3em)',
             'tag': 'calc(41vh + 3em)',
-            'zoom': 'calc(41vh + 3em)'
+            'zoom': 'calc(41vh + 3em)',
+            'top-tags': 'calc(5vh + 3em)'
         };
         let left = {
             'record': '300px',
             'tag': '300px',
-            'zoom': '800px'
+            'zoom': '800px',
+            'top-tags': '800px'
         };
         section.style.top = table[`${type}-top`] || top[type];
         section.style.left = table[`${type}-left`] || left[type];
@@ -833,7 +817,8 @@ const createTable = (type) => {
         let header = {
             'record': [`${type}-tl-th`, 'app', 'title', 'start', 'end', 'duration', 'tags'],
             'tag': [`${type}-tl-th`, 'app', 'title', 'duration', 'tags'],
-            'zoom': ['tags', 'duration', 'start', 'end']
+            'zoom': ['tags', 'duration', 'start', 'end'],
+            'top-tags': ['tag', 'duration']
         };
         header[type].forEach((h, index) => {
             let th = document.createElement('th');
@@ -857,7 +842,7 @@ const createTable = (type) => {
             if (index === 0) {
                 th.id = `${type}-tl-th`;
                 th.classList = 'header';
-                th.innerHTML = type === 'zoom' ? `tags<span>${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>` : '';
+                th.innerHTML = type === 'zoom' || type === 'top-tags' ? `tag${type === 'top-tags' ? '' : 's'}<span>${sortByHeader[type][h] === 'asc' ? ' &#129041;' : sortByHeader[type][h] === 'desc' ? ' &#129043;' : ''}</span>` : '';
                 th.style.cursor = 'move';
                 // Make table draggable
                 var clickX, clickY, dragX, dragY;
@@ -910,15 +895,21 @@ const createTable = (type) => {
         tableTag.appendChild(thead);
         let tbody = document.createElement('tbody');
         Object.keys(sortByHeader[type]).forEach(key => {
-            if (sortByHeader[type][key].length > 0) results = sortByHeader[type][key] === 'asc' ? results.sort((a, b) => a[key] > b[key] ? 1 : -1) : results.sort((a, b) => a[key] < b[key] ? 1 : -1);
+            if (type === 'top-tags') {
+                if (key === 'tag' && sortByHeader[type][key].length > 0) results = sortByHeader[type][key] === 'asc' ? results.sort((a, b) => a[key].name > b[key].name ? 1 : -1) : results.sort((a, b) => a[key].name < b[key].name ? 1 : -1)
+                if (key === 'duration' && sortByHeader[type][key].length > 0) results = sortByHeader[type][key] === 'desc' ? results.sort((a, b) => b[key] - a[key]) : results.sort((a, b) =>  a[key] - b[key])
+            }
+            else {
+                if (sortByHeader[type][key].length > 0) results = sortByHeader[type][key] === 'asc' ? results.sort((a, b) => a[key] > b[key] ? 1 : -1) : results.sort((a, b) => a[key] < b[key] ? 1 : -1);
+            }
         });
         visibleRecords[type] = [];
         for (let i = (table[`${type}-go-to-page`] - 1) * table[`${type}-show`]; i < (table[`${type}-go-to-page`] * table[`${type}-show`]) - (table[`${type}-go-to-page`] === table[`${type}-page-count`] ? table[`${type}-show`] - (results.length % table[`${type}-show`]) : 0); i++) {
             let tr = document.createElement('tr');
-            tr.id = `${type}-${results[i][type === 'zoom' ? 'start' : 'id']}`;
-            visibleRecords[type].push(results[i][type === 'zoom' ? 'start' : 'id']);
+            tr.id = type === 'top-tags' ? `${type}-${i}` : `${type}-${results[i][type === 'zoom' ? 'start' : 'id']}`;
+            type === 'top-tags' ? visibleRecords[type].push(i) : visibleRecords[type].push(results[i][type === 'zoom' ? 'start' : 'id']);
             tr.classList = `${type}-row`;
-            if (type !== 'zoom') { // Checkboxes / Record and Tag
+            if (type !== 'zoom' && type !== 'top-tags') { // Checkboxes / Record and Tag
                 let firstCol = document.createElement('td');
                 firstCol.classList = 'check-col';
                 let checkbox = document.createElement('input');
@@ -1002,15 +993,25 @@ const createTable = (type) => {
                     }
                     if (index === 1) { // Duration
                         let dur = (Date.parse(globalRecords[results[i].end].end) - Date.parse(globalRecords[results[i].start].start)) / 1000;
-                        let hh = ((Math.floor(dur / 3600) < 10) ? ("0" + Math.floor(dur / 3600)) : Math.floor(dur / 3600));
-                        let mm = ((Math.floor(dur % 3600 / 60) < 10) ? ("0" + Math.floor(dur % 3600 / 60)) : Math.floor(dur % 3600 / 60));
-                        let ss = ((Math.floor(dur % 3600 % 60) < 10) ? ("0" + Math.floor(dur % 3600 % 60)) : Math.floor(dur % 3600 % 60));
-                        td.innerText = `${hh}:${mm}:${ss}`;
+                        td.innerText = calcDuration(dur);
                         results[i].duration = dur;
                     }
                     if (index > 0) td.classList = 'time-col';
                     if (index === 2) td.innerText = globalRecords[results[i].start].start;
                     if (index === 3) td.innerText = globalRecords[results[i].end].end;
+                    tr.appendChild(td);
+                })
+            }
+            if (type === 'top-tags') {
+                header[type].forEach((val, index) => {
+                    let td = document.createElement('td');
+                    if (index === 0) { // Tag
+                        td.classList = 'tags-col';
+                    }
+                    if (index === 1) { // Duration
+                        td.classList = 'time-col';
+                        td.innerText = results[i].dur;
+                    }
                     tr.appendChild(td);
                 })
             }
@@ -1073,13 +1074,15 @@ const createTable = (type) => {
         drawTag();
         if (document.getElementById(`${type}-page-controls`) === null) {
             let pageControlBar = document.createElement('div');
-            pageControlBar.id = (`${type}-page-controls`);
+            pageControlBar.id = `${type}-page-controls`;
+            pageControlBar.classList = 'page-controls';
             // Go to Page
             let goToPageLabel = document.createElement('label');
             let goToPageInput = document.createElement('input');
             goToPageLabel.innerText = 'Go to Page:';
             goToPageInput.type = 'number';
             goToPageInput.id = `${type}-go-to-page`;
+            goToPageInput.classList = 'go-to-page';
             goToPageInput.value = table[`${type}-go-to-page`];
             goToPageInput.min = 1;
             goToPageInput.max = table[`${type}-page-count`];
@@ -1095,13 +1098,17 @@ const createTable = (type) => {
             pageControlBar.appendChild(goToPageLabel);
             pageControlBar.appendChild(goToPageInput);
             // Page # of #
-            let pageNumLabel = document.createElement('label');
-            pageNumLabel.innerText = `Page ${table[`${type}-go-to-page`]} of ${table[`${type}-page-count`]}`;
-            pageNumLabel.id = `${type}-page-numbering`;
-            pageControlBar.prepend(pageNumLabel);
+            if (type !== 'top-tags') {
+                let pageNumLabel = document.createElement('label');
+                pageNumLabel.innerText = `Page ${table[`${type}-go-to-page`]} of ${table[`${type}-page-count`]}`;
+                pageNumLabel.id = `${type}-page-numbering`;
+                pageNumLabel.classList = 'page-numbering';
+                pageControlBar.prepend(pageNumLabel);
+            }
             // Left Arrows
             let leftArrowBox = document.createElement('div');
             leftArrowBox.id = `left-arrows-${type}`;
+            leftArrowBox.classList = 'left-arrows';
             let leftSingleArrow = document.createElement('label');
             leftSingleArrow.id = `previous-page-arrow-${type}`;
             leftSingleArrow.addEventListener('click', (e) => {
@@ -1150,6 +1157,7 @@ const createTable = (type) => {
             // Right Arrows
             let rightArrowBox = document.createElement('div');
             rightArrowBox.id = `right-arrows-${type}`;
+            rightArrowBox.classList = 'right-arrows';
             let rightSingleArrow = document.createElement('label');
             rightSingleArrow.id = `next-page-arrow-${type}`;
             rightSingleArrow.addEventListener('click', (e) => {
@@ -1293,20 +1301,16 @@ const postDataRetrieval = (records) => {
     filteredRecords = records;
     let apps = [...new Set(records.map(r => r.app))];
     dataLoaded = true;
-
     if (!document.getElementById('record-section')) {
         let recordSection = document.createElement('div');
         recordSection.id = 'record-section';
         document.getElementById('container').appendChild(recordSection);
     }
-
     // Populate most useful apps
     apps.forEach(app => {
         let prefApps = ['Slack', 'Chrome', 'Zoom', 'Excel', 'Outlook', 'OneDrive', 'Winword'];
         if (prefApps.filter(a => a === app).length < 1) removedApps.push(app);
     });
-    refreshedApps = true;
-
     if (!document.getElementById('duration')) {
         let durationDiv = document.createElement('div');
         durationDiv.id = 'duration';
@@ -1316,7 +1320,6 @@ const postDataRetrieval = (records) => {
             aggregateRecords();
         });
     }
-
     createActions();
     createAppFilter(apps);
     [...document.getElementById('input-pane').querySelectorAll('h2')].forEach(header => {
@@ -1479,7 +1482,6 @@ const createTimeline = () => {
     timeline.style.left = (mainPane.width * .02) + 'px';
     timeline.style.top = timelineY || mainPane.height - timeline.offsetHeight - (mainPane.height * .02) + 'px';
     timelineY = timeline.style.top;
-
     var clickY, dragY;
     timeline.addEventListener('mousedown', (e) => {
         if (e.target.id === 'timeline') {
@@ -1510,7 +1512,6 @@ const createTimeline = () => {
         document.removeEventListener('mousemove', calcTLLoc);
         document.removeEventListener('mouseup', mouseUpTimeline);
     }
-
     timeline.appendChild(timelineContainer);
     let selectTimeframe = document.createElement('div');
     selectTimeframe.id = 'select-time-frame';
@@ -1683,7 +1684,7 @@ const createNewTag = (name, val = null, recordID = null) => {
         record.tags.push(tags.length - 1);
         let visibleRows = [];
         activeTables.forEach(table => visibleRows = [...visibleRecords[table.type]]);
-        if (visibleRows.filter(r => r === recordID).length > 0) drawTag('createNewTag');
+        if (visibleRows.filter(r => r === recordID).length > 0) drawTag();
     }
 }
 
@@ -1722,7 +1723,7 @@ const searchTags = (e) => {
                                 modifyZoomTags(zt[0].start, zt[0].end, zt[0].origin, tagID, 'add')
                             }
                             else {
-                                drawTag('searchTags');
+                                drawTag();
                             }
                         }
                     }
@@ -1779,7 +1780,7 @@ const handleAddTag = (td) => {
                     modifyZoomTags(zt[0].start, zt[0].end, zt[0].origin, tagID, 'add');
                 }
                 else {
-                    drawTag('handleAddTag');
+                    drawTag();
                 }
             }
         }
@@ -1797,7 +1798,7 @@ const drawTag = () => {
     activeTables.forEach(table => {
         let type = table.type;
         visibleRecords[type].forEach(rowID => {
-            let val = globalRecords[rowID].tags;
+            let val = type === 'top-tags' ? [topTag[rowID].tag.id] : globalRecords[rowID].tags;
             if (val.length > 0) {
                 const tableRowID = `${type}-${rowID}`;
                 const td = document.getElementById(tableRowID).querySelector('.tags-col');
@@ -1808,35 +1809,38 @@ const drawTag = () => {
                             let t = tags.filter(tag => tag.id === tid)[0];
                             let tag = document.createElement('p');
                             tag.innerText = t.name;
+                            // Need to figure out why Tag Table isn't drawing tags despite record, zoom and top-tags working
                             tag.classList = `tags tag-${t.id}`;
-                            tag.addEventListener('mouseenter', (e) => {
-                                let x = document.createElement('span');
-                                x.classList = 'delete-tag';
-                                x.innerText = 'x'
-                                tag.appendChild(x);
-                                x.addEventListener('click', (e) => {
-                                    e.stopImmediatePropagation();
-                                    let tagIDToRemove = parseInt(e.target.parentNode.classList[1].split('-')[1]);
-                                    if (/^\d+$/.test(tagIDToRemove)) {
-                                        let id = e.target.parentNode.parentNode.parentNode.id;
-                                        let fromZoom = id.split('-')[0] === 'zoom';
-                                        id = id.split('-')[1];
-                                        globalRecords[id].tags = globalRecords[id].tags.filter(t => t !== tagIDToRemove);
-                                        activeTables.forEach(table => {
-                                            if (visibleRecords[table.type].includes(parseInt(id))) createTable(table.type);
-                                        });
-                                        if (fromZoom) {
-                                            let zt = zoomTags.filter(zt => zt.start === parseInt(id))[0];
-                                            modifyZoomTags(zt.start, zt.end, zt.start, tagIDToRemove, 'delete')
-                                        }
-                                        if (document.getElementsByClassName('add-tag')[0]) document.getElementsByClassName('add-tag')[0].remove();
-                                    };
+                            if (type !== 'top-tags') {
+                                tag.addEventListener('mouseenter', (e) => {
+                                    let x = document.createElement('span');
+                                    x.classList = 'delete-tag';
+                                    x.innerText = 'x'
+                                    tag.appendChild(x);
+                                    x.addEventListener('click', (e) => {
+                                        e.stopImmediatePropagation();
+                                        let tagIDToRemove = parseInt(e.target.parentNode.classList[1].split('-')[1]);
+                                        if (/^\d+$/.test(tagIDToRemove)) {
+                                            let id = e.target.parentNode.parentNode.parentNode.id;
+                                            let fromZoom = id.split('-')[0] === 'zoom';
+                                            id = id.split('-')[1];
+                                            globalRecords[id].tags = globalRecords[id].tags.filter(t => t !== tagIDToRemove);
+                                            activeTables.forEach(table => {
+                                                if (visibleRecords[table.type].includes(parseInt(id))) createTable(table.type);
+                                            });
+                                            if (fromZoom) {
+                                                let zt = zoomTags.filter(zt => zt.start === parseInt(id))[0];
+                                                modifyZoomTags(zt.start, zt.end, zt.start, tagIDToRemove, 'delete')
+                                            }
+                                            if (document.getElementsByClassName('add-tag')[0]) document.getElementsByClassName('add-tag')[0].remove();
+                                        };
+                                    })
+                                });
+                                tag.addEventListener('mouseleave', (e) => {
+                                    let x = tag.childNodes[tag.childNodes.length - 1];
+                                    x.remove();
                                 })
-                            });
-                            tag.addEventListener('mouseleave', (e) => {
-                                let x = tag.childNodes[tag.childNodes.length - 1];
-                                x.remove();
-                            })
+                            }
                             tag.addEventListener('contextmenu', (e) => {
                                 let tagID = [...e.target.classList].filter(c => c.includes('tag-'))[0].split('-')[1];
                                 let contextMenu = document.createElement('div');
@@ -2084,7 +2088,6 @@ const createHandleListeners = (handle) => {
                 currentColumn.style.width = `${currentColumnWidth + changeX}px`;
             };
         });
-
         document.addEventListener('mouseup', (e) => {
             pageX = undefined;
             currentColumn = undefined;
@@ -2100,11 +2103,9 @@ const resizeTableColumns = () => {
     let row = table.getElementsByTagName('tr')[0];
     let columns = row ? row.children : undefined;
     if (!columns) return;
-
     let existingHandles = [...document.getElementsByClassName('handle')].filter(handle => handle.id === '');
     let newHandles = existingHandles.length > 0 ? false : true;
     let handle;
-
     for (let i = 0; i < columns.length - 1; i++) {
         if (newHandles) {
             handle = document.createElement('div');
@@ -2142,7 +2143,7 @@ const createActions = () => {
         let actionComps = document.createElement('div');
         actionComps.id = 'action-components';
         // buttons
-        ['download-csv', 'timeline-button', 'zoom-table-button', 'record-table-button'].forEach(button => {
+        ['download-csv', 'timeline-button', 'zoom-table-button', 'record-table-button', 'top-tags-table-button'].forEach(button => {
             if (!document.getElementById(button)) {
                 let row = document.createElement('div');
                 row.id = button;
@@ -2160,8 +2161,8 @@ const createActions = () => {
                             }
                         }
                         if (button.includes('table-button')) {
-                            let tableType = button.split('-')[0];
-                            if (tableType === 'zoom' && zoomTags.length > 0 || tableType === 'record') {
+                            let tableType = button === 'top-tags-table-button' ? 'top-tags' : button.split('-')[0];
+                            if (tableType === 'zoom' && zoomTags.length > 0 || tableType !== 'zoom') {
                                 if (document.getElementById(`${tableType}-section`)) {
                                     activeTables = activeTables.filter(t => t.type !== tableType);
                                     document.getElementById(`${tableType}-section`).remove()
@@ -2180,7 +2181,6 @@ const createActions = () => {
         ci.appendChild(actionComps);
     }
 }
-
 
 const createAppFilter = (apps) => {
     let container = document.getElementById('container');

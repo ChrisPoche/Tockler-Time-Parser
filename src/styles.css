@@ -408,7 +408,7 @@ body.dark-mode {
     margin-top: 2.5vh;
 }
 
-#record-section, #tag-section, #zoom-section {
+#record-section, #tag-section, #zoom-section, #top-tags-section {
     max-height: 87vh;
     overflow-y: auto;
     color: black;
@@ -514,7 +514,11 @@ thead {
     white-space: nowrap;
 }
 
-#record-page-controls, #tag-page-controls, #zoom-page-controls {
+.top-tags-row .time-col {
+    width: 9em;
+}
+
+.page-controls {
     display: block;
     height: 29.78px;
     text-align: center;
@@ -569,27 +573,21 @@ thead {
     justify-content: flex-end;
 }
 
-#record-go-to-page, #record-page-numbering,
-#tag-go-to-page, #tag-page-numbering,
-#zoom-go-to-page, #zoom-page-numbering {
+.go-to-page, .page-numbering {
     width: 39px;
     margin-right: 20px;
 }
 
-#record-go-to-page::-webkit-outer-spin-button, #record-go-to-page::-webkit-inner-spin-button,
-#tag-go-to-page::-webkit-outer-spin-button, #tag-go-to-page::-webkit-inner-spin-button,
-#zoom-go-to-page::-webkit-outer-spin-button, #zoom-go-to-page::-webkit-inner-spin-button {
+.go-to-page::-webkit-outer-spin-button, .go-to-page::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-#record-go-to-page[type=number],
-#tag-go-to-page[type=number],
-#zoom-go-to-page[type=number] {
+.go-to-page[type=number] {
     -moz-appearance: textfield;
 }
 
-#record-go-to-page, #tag-go-to-page, #zoom-go-to-page, select {
+.go-to-page, select {
     background-color: lightgrey;
     outline: none;
     border: none;
@@ -652,22 +650,19 @@ thead {
     color: rgb(1, 138, 24);
 }
 
-#right-arrows-record, #left-arrows-record,
-#right-arrows-tag, #left-arrows-tag,
-#right-arrows-zoom, #left-arrows-zoom {
+.right-arrows, .left-arrows {
     position: absolute;
-    /* bottom: 9px; */
     margin-top: -24px;
     width: 50px;
     display: flex;
 }
 
-#right-arrows-record, #right-arrows-tag, #right-arrows-zoom {
+.right-arrows {
     right: 0;
     justify-content: flex-end;
 }
 
-#left-arrows-record, #left-arrows-tag, #left-arrows-zoom {
+.left-arrows {
     margin-top: 1px;
     left: 0;
     justify-content: flex-start;
@@ -749,6 +744,10 @@ thead {
 
 .tags:hover {
     padding: .3em .1em .3em .9em;
+}
+
+.top-tags-row .tags:hover {
+    padding: .3em .9em;
 }
 
 .delete-tag, .add-tag {

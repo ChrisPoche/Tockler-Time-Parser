@@ -106,7 +106,8 @@ const setUpAppSettings = (e) => {
           {"global": 1, "table":"", "count": 10},
           {"global" : 0, "table": "record", "count": 10},
           {"global" : 0, "table": "tag", "count": 10},
-          {"global" : 0, "table": "zoom", "count": 10}
+          {"global" : 0, "table": "zoom", "count": 10},
+          {"global" : 0, "table": "top-tags", "count": 20}
         ]`
       },
       { 'name': 'save-location', 'details': 'Downloads' },
