@@ -621,7 +621,7 @@ const grabRecordsFromDatePicker = (date) => {
         rightPos = '';
         calcStart = '';
         calcEnd = '';
-        postDataRetrieval(records);
+        postDataRetrieval(records, 'date-picker');
     });
 };
 
@@ -696,15 +696,15 @@ const parseFile = (files) => {
                     tags: tagsScoped
                 }
             });
-            postDataRetrieval(records);
+            postDataRetrieval(records,'file');
         }
     })
 };
 
 const modifySort = (e, type) => {
     let val = e.target.id.includes('zoom-tl-th') || e.target.id.includes('top-tags-tl-th') ? `tag${e.target.id.includes('top-tags-tl-th') ? '' :'s'}` : e.target.id.split('-')[e.target.id.split('-').length - 1];
-    if (val !== 'tags' || type !== 'zoom') {
-        if (!['visible', 'bar', 'th'].includes(val) && val) {
+    if (val !== 'tags' && type !== 'zoom') {
+        if (!['visible', 'bar', 'th'].includes(val) && !e.target.id.includes('select-all-visible') && val) {
             sortByHeader[type][val] = sortByHeader[type][val] === '' ? 'asc' : sortByHeader[type][val] === 'asc' ? 'desc' : '';
             table[`${type}-go-to-page`] = 1;
             filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase())) : globalRecords;
@@ -1293,7 +1293,7 @@ const modifyZoomTags = (startID, endID, originID, tagVal = null, tagAction = nul
 }
 
 
-const postDataRetrieval = (records) => {
+const postDataRetrieval = (records, dataOrigin) => {
     document.getElementById('date-input').value = records[0].start.split(' ')[0];
     globalRecords = records;
     filteredRecords = records;
@@ -1305,10 +1305,12 @@ const postDataRetrieval = (records) => {
         document.getElementById('container').appendChild(recordSection);
     }
     // Populate most useful apps
-    apps.forEach(app => {
-        let prefApps = ['Slack', 'Chrome', 'Zoom', 'Excel', 'Outlook', 'OneDrive', 'Winword'];
-        if (prefApps.filter(a => a === app).length < 1) removedApps.push(app);
-    });
+    if (dataOrigin !== 'file') {
+        apps.forEach(app => {
+            let prefApps = ['Slack', 'Chrome', 'Zoom', 'Excel', 'Outlook', 'OneDrive', 'Winword'];
+            if (prefApps.filter(a => a === app).length < 1) removedApps.push(app);
+        });
+    }
     if (!document.getElementById('duration')) {
         let durationDiv = document.createElement('div');
         durationDiv.id = 'duration';
@@ -1646,9 +1648,9 @@ const downloadCSV = () => {
             document.body.appendChild(a);
             document.getElementById('file-link').click();
             document.getElementById('file-link').remove();
-            let downloadSuccess = document.createElement('p');
+            let downloadStatus = document.createElement('p');
             let saveLocation = appSettings.filter(setting => setting.name === 'save-location')[0].details;
-            if (!['Desktop', 'Downloads', 'Documents'].includes(saveLocation)) {
+            if (!['desktop', 'downloads', 'documents'].includes(saveLocation.toLowerCase())) {
                 let formattedPath = saveLocation.split('\\').reduce((prev, curr, index) => {
                     if (index !== saveLocation.split('\\').length - 2 && index !== saveLocation.split('\\').length - 1) curr = '..';
                     return [...prev, curr]
@@ -1658,11 +1660,20 @@ const downloadCSV = () => {
                 if (lastBackSlash >= 2 && lastBackSlash <= 4) formattedPath = '..' + formattedPath.slice(lastBackSlash);
                 saveLocation = formattedPath;
             }
-            downloadSuccess.innerText = `CSV successfully downloaded to ${saveLocation}`;
-            downloadSuccess.id = 'download-success';
-            downloadSuccess.classList = 'center';
-            document.body.appendChild(downloadSuccess);
-            downloadSuccess.addEventListener('animationend', () => downloadSuccess.remove());
+            downloadStatus.id = 'download-status';
+            downloadStatus.classList = 'center';
+            window.api.send('check-download-status', 'check');
+            window.api.receive('download-status', (status) => {
+                if (status[0] === 'Download successful') {
+                    downloadStatus.innerText = `CSV successfully downloaded to ${saveLocation}`;
+                    downloadStatus.style.left = '40%';
+                }
+                else {
+                    downloadStatus.innerHTML = `Failed to download to ${saveLocation}.<br> Please select another Save Location in the Settings pane.`;
+                }
+                document.body.appendChild(downloadStatus);
+                downloadStatus.addEventListener('animationend', () => downloadStatus.remove());
+            })
         }
     });
 }
@@ -2290,7 +2301,7 @@ const createDragAndDropArea = () => {
         dragAndDrop.addEventListener(type, (e) => {
             e.preventDefault();
             dragAndDrop.classList.add('highlight');
-            if (document.getElementById('container').childElementCount > 1) document.getElementById('error-invalid').remove();
+            if (type === 'dragenter' && document.getElementById('error-invalid')) document.getElementById('error-invalid').remove();
         });
     });
     dragAndDrop.addEventListener('dragleave', (e) => {

@@ -285,6 +285,10 @@ input:checked+.slider:before {
     top: 60%;
 }
 
+#download-status.center {
+    left: 35%;
+}
+
 #date-input.data-loaded {
     position: fixed;
     top: 95vh;
@@ -666,13 +670,21 @@ thead {
     justify-content: flex-start;
 }
 
-#download-success, #tag-exists-error, #custom-folder-error {
+#download-status, #tag-exists-error, #custom-folder-error {
     position: fixed;
+    text-align: center;
     color: red;
     opacity: 0;
     transition: all .75s;
     -webkit-animation: softFadeInOut 2.5s;
     animation: softFadeInOut 2.5s;
+}
+
+#download-status {
+    -webkit-animation: softFadeInOut 4.5s;
+    animation: softFadeInOut 4.5s;
+    font-weight: bold;
+    font-size: x-large;
 }
 
 #tag-exists-error, #custom-folder-error {

@@ -12,7 +12,8 @@ contextBridge.exposeInMainWorld(
       'set-zoom-level',
       'get-zoom-level',
       'update-setting',
-      'restore-default-settings'
+      'restore-default-settings', 
+      'check-download-status'
     ];
     if (validChannels.includes(channel)) {
       ipcRenderer.send(channel, data);
@@ -28,7 +29,8 @@ contextBridge.exposeInMainWorld(
       'return-zoom-level',
       'is-prod', 
       'config',
-      'return-setting-details'
+      'return-setting-details',
+      'download-status'
     ];
     if (validChannels.includes(channel)) {
       if (channel === 'return-events-by-date') {

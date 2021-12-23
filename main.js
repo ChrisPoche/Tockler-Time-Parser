@@ -6,7 +6,7 @@ const sqlite3 = require('sqlite3').verbose();
 let dbPath = path.join(app.getPath('appData'), 'tockler/tracker.db');
 let table = 'TrackItems';
 let timeParserDbPath = path.join(app.getPath('appData'), 'time-parser/tracker.db');
-let csvSavePath;
+let csvSavePath, download = {'status':''};
 
 ipcMain.on('askForDates', (e, arg) => {
   let db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
@@ -70,6 +70,7 @@ const updateSettings = (arg) => {
   if (settingName === 'save-location') {
     if (column === 'details' ) csvSavePath = ['Desktop', 'Downloads', 'Documents'].includes(setVal) ? setVal.toLowerCase() : setVal;
     if (column === 'enabled' && setVal === 0) csvSavePath = 'downloads';
+    console.log('Updated Path:', csvSavePath);
   } 
   // console.log(arg);
   db.serialize(() => {
@@ -124,7 +125,8 @@ const setUpAppSettings = (e) => {
     db.each('SELECT * FROM AppSettings', [], (err, row) => {
       appSettings.push(row);
     }, () => {
-      csvSavePath = 'downloads';
+      csvSavePath = appSettings.filter(setting => setting.name === 'save-location')[0].details.toLowerCase();
+      console.log('Initial Path:', csvSavePath);
       e.reply('config', appSettings);
       db.close(err => {
         if (err) console.log(err)
@@ -259,7 +261,7 @@ function createWindow() {
   mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
     console.log('attempting to download');
     ['desktop', 'downloads', 'documents'].includes(csvSavePath) ? item.setSavePath(path.join(app.getPath(csvSavePath), item.getFilename())) : item.setSavePath(path.join(csvSavePath, item.getFilename()));
-    console.log(fs.existsSync(item.getSavePath()));
+    console.log('File exists:',fs.existsSync(item.getSavePath()));
     if (fs.existsSync(item.getSavePath())) {
       var exist = true;
       while (exist) {
@@ -284,10 +286,11 @@ function createWindow() {
 
     item.on('done', (event, state) => {
       if (state === 'completed') {
-        console.log('Download successfully')
+        download.status =  'Download successful';
       } else {
-        console.log(`Download failed: ${state}`)
+        download.status = `Download failed: ${state}`;
       }
+      console.log(download.status);
     })
   });
 }
@@ -349,3 +352,11 @@ ipcMain.on('restore-default-settings', (e, arg) => {
   BrowserWindow.getFocusedWindow().webContents.setZoomLevel(0);
   setUpAppSettings(e);
 })
+ipcMain.on('check-download-status', (event, arg) => {
+  let checkStatus = setInterval(() => {
+    if (download.status) {
+      event.reply('download-status', download.status);
+      clearInterval(checkStatus);
+    }
+  }, 500);
+});
