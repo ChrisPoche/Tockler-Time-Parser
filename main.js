@@ -70,9 +70,7 @@ const updateSettings = (arg) => {
   if (settingName === 'save-location') {
     if (column === 'details' ) csvSavePath = ['Desktop', 'Downloads', 'Documents'].includes(setVal) ? setVal.toLowerCase() : setVal;
     if (column === 'enabled' && setVal === 0) csvSavePath = 'downloads';
-    console.log('Updated Path:', csvSavePath);
   } 
-  // console.log(arg);
   db.serialize(() => {
     if (column === 'enabled') db.run('UPDATE AppSettings SET enabled = ? WHERE name = ?', [setVal, settingName]);
     if (column === 'details') db.run('UPDATE AppSettings SET details = ? WHERE name = ?', [setVal, settingName]);
@@ -126,7 +124,6 @@ const setUpAppSettings = (e) => {
       appSettings.push(row);
     }, () => {
       csvSavePath = appSettings.filter(setting => setting.name === 'save-location')[0].details.toLowerCase();
-      console.log('Initial Path:', csvSavePath);
       e.reply('config', appSettings);
       db.close(err => {
         if (err) console.log(err)
