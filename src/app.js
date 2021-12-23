@@ -61,6 +61,19 @@ const dateInputHandler = (e) => {
     }
 }
 
+window.addEventListener('resize', () => {
+    if (document.getElementById('top-tags-section')) {
+        table['top-tags-left'] = '';
+        createTable('top-tags');
+    }
+    if (document.getElementById('timeline')) {
+        document.getElementById('timeline').remove();
+        document.getElementById('selection-box').remove();
+        timelineY = '';
+        createTimeline();
+    }
+})
+
 window.addEventListener('load', () => {
     window.api.receive('is-prod', (prodCheck) => isProd = prodCheck[0]);
     window.api.receive('config', (config) => {
@@ -1464,7 +1477,6 @@ const createTimeline = () => {
     let container = document.getElementById('container');
     document.getElementById('main-pane').appendChild(timeline);
     let mainPane = document.getElementById('main-pane').getBoundingClientRect();
-    timeline.style.left = (mainPane.width * .02) + 'px';
     timeline.style.top = timelineY || mainPane.height - timeline.offsetHeight - (mainPane.height * .02) + 'px';
     timelineY = timeline.style.top;
     var clickY, dragY;
