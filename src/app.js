@@ -44,7 +44,7 @@ let sortByHeader = {
 let visibleRecords = {
     'record': [],
     'tag': [],
-    'zoom': [], 
+    'zoom': [],
     'top-tags': []
 };
 
@@ -642,7 +642,7 @@ const aggregateRecords = () => {
     tags.forEach((tag, index) => {
         let dur = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked && r.tags.includes(parseInt(tag.id))).map(r => r.dur);
         dur = dur.length > 0 ? dur.reduce((a, b) => a + b) : 0;
-        topTag.push({'id' : tag.id, tag, 'duration': dur, 'dur': calcDuration(dur) });
+        topTag.push({ 'id': tag.id, tag, 'duration': dur, 'dur': calcDuration(dur) });
     });
     topTag = topTag.sort((a, b) => a.dur < b.dur ? 1 : -1);
     let durationVals = [active, all, tag].map(dur => calcDuration(dur));
@@ -696,13 +696,13 @@ const parseFile = (files) => {
                     tags: tagsScoped
                 }
             });
-            postDataRetrieval(records,'file');
+            postDataRetrieval(records, 'file');
         }
     })
 };
 
 const modifySort = (e, type) => {
-    let val = e.target.id.includes('zoom-tl-th') || e.target.id.includes('top-tags-tl-th') ? `tag${e.target.id.includes('top-tags-tl-th') ? '' :'s'}` : e.target.id.split('-')[e.target.id.split('-').length - 1];
+    let val = e.target.id.includes('zoom-tl-th') || e.target.id.includes('top-tags-tl-th') ? `tag${e.target.id.includes('top-tags-tl-th') ? '' : 's'}` : e.target.id.split('-')[e.target.id.split('-').length - 1];
     if (val !== 'tags' && type !== 'zoom') {
         if (!['visible', 'bar', 'th'].includes(val) && !e.target.id.includes('select-all-visible') && val) {
             sortByHeader[type][val] = sortByHeader[type][val] === '' ? 'asc' : sortByHeader[type][val] === 'asc' ? 'desc' : '';
@@ -765,6 +765,34 @@ const createAddTagButton = (td) => {
 }
 
 const createTable = (type) => {
+    const updateCalculatedDurations = () => {
+        aggregateRecords();
+        if (document.getElementById('top-tags-section')) createTable('top-tags');
+    }
+    const selectAllModifier = () => {
+        ['tag-table', 'record-table'].forEach(tbl => {
+            if (document.getElementById(tbl) && type === tbl.split('-')[0]) {
+                let selectAllVisibleID = `select-all-visible-${type}`;
+                let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
+                let selectAllVisible = document.getElementById(selectAllVisibleID);
+                let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
+                if (visibleChecked === visibleCount) {
+                    selectAllVisible.checked = true;
+                    selectAllVisible.indeterminate = false;
+                }
+                if (visibleChecked < visibleCount) {
+                    selectAllVisible.checked = false;
+                    selectAllVisible.indeterminate = true;
+                    if (visibleChecked === 0) {
+                        selectAllVisible.checked = false;
+                        selectAllVisible.indeterminate = false;
+                    }
+                }
+            }
+            if (document.getElementById(tbl) && type !== tbl.split('-')[0]) createTable(tbl.split('-')[0]);
+        })
+        updateCalculatedDurations();
+    }
     if (activeTables.filter(t => t.type === type).length < 1) activeTables.push({ type, 'clickBound': false });
     if (!document.getElementById(`${type}-section`)) {
         let section = document.createElement('div');
@@ -895,7 +923,7 @@ const createTable = (type) => {
         Object.keys(sortByHeader[type]).forEach(key => {
             if (type === 'top-tags') {
                 if (key === 'tag' && sortByHeader[type][key].length > 0) results = sortByHeader[type][key] === 'asc' ? results.sort((a, b) => a[key].name > b[key].name ? 1 : -1) : results.sort((a, b) => a[key].name < b[key].name ? 1 : -1)
-                if (key === 'duration' && sortByHeader[type][key].length > 0) results = sortByHeader[type][key] === 'desc' ? results.sort((a, b) => b[key] - a[key]) : results.sort((a, b) =>  a[key] - b[key])
+                if (key === 'duration' && sortByHeader[type][key].length > 0) results = sortByHeader[type][key] === 'desc' ? results.sort((a, b) => b[key] - a[key]) : results.sort((a, b) => a[key] - b[key])
             }
             else {
                 if (sortByHeader[type][key].length > 0) results = sortByHeader[type][key] === 'asc' ? results.sort((a, b) => a[key] > b[key] ? 1 : -1) : results.sort((a, b) => a[key] < b[key] ? 1 : -1);
@@ -918,7 +946,7 @@ const createTable = (type) => {
                     e.stopImmediatePropagation();
                     let id = e.target.id.substring(`check-${type}-`.length);
                     globalRecords[id].checked = e.target.checked;
-                    aggregateRecords();
+                    selectAllModifier();
                 });
                 tr.addEventListener('click', (e) => {
                     if (e.target.tagName !== 'INPUT') {
@@ -928,28 +956,7 @@ const createTable = (type) => {
                             globalRecords[id].checked = !cb.checked;
                             if (document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`)) document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`).checked = !cb.checked;
                             cb.checked = !cb.checked;
-                            ['tag-table', 'record-table'].forEach(tbl => {
-                                if (document.getElementById(tbl) && type === tbl.split('-')[0]) {
-                                    let selectAllVisibleID = `select-all-visible-${type}`;
-                                    let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
-                                    let selectAllVisible = document.getElementById(selectAllVisibleID);
-                                    let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
-                                    if (visibleChecked === visibleCount) {
-                                        selectAllVisible.checked = true;
-                                        selectAllVisible.indeterminate = false;
-                                    }
-                                    if (visibleChecked < visibleCount) {
-                                        selectAllVisible.checked = false;
-                                        selectAllVisible.indeterminate = true;
-                                        if (visibleChecked === 0) {
-                                            selectAllVisible.checked = false;
-                                            selectAllVisible.indeterminate = false;
-                                        }
-                                    }
-                                }
-                                if (document.getElementById(tbl) && type !== tbl.split('-')[0]) createTable(tbl.split('-')[0]);
-                            })
-                            aggregateRecords();
+                            selectAllModifier();
                         }
                     }
                 });
@@ -1042,28 +1049,7 @@ const createTable = (type) => {
                     if (document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`)) document.querySelector(`#check-${type === 'record' ? 'tag' : 'record'}-${id}`).checked = selectAllVisible.checked;
                     i.checked = selectAllVisible.checked;
                 });
-                ['tag-table', 'record-table'].forEach(tbl => {
-                    if (document.getElementById(tbl) && type === tbl.split('-')[0]) {
-                        let selectAllVisibleID = `select-all-visible-${type}`;
-                        let visibleCount = [...document.getElementById(tbl).querySelectorAll('tr')].length - 1;
-                        let selectAllVisible = document.getElementById(selectAllVisibleID);
-                        let visibleChecked = [...document.getElementById(tbl).querySelectorAll('input[type="checkbox"]:checked')].filter(c => c.id !== selectAllVisibleID).length;
-                        if (visibleChecked === visibleCount) {
-                            selectAllVisible.checked = true;
-                            selectAllVisible.indeterminate = false;
-                        }
-                        if (visibleChecked < visibleCount) {
-                            selectAllVisible.checked = false;
-                            selectAllVisible.indeterminate = true;
-                            if (visibleChecked === 0) {
-                                selectAllVisible.checked = false;
-                                selectAllVisible.indeterminate = false;
-                            }
-                        }
-                    }
-                    if (document.getElementById(tbl) && type !== tbl.split('-')[0]) createTable(tbl.split('-')[0]);
-                    aggregateRecords();
-                })
+                selectAllModifier();
             })
             hr.childNodes[0].appendChild(selectAllVisible)
         }
