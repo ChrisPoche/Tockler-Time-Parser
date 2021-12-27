@@ -1683,7 +1683,7 @@ const cleanUpAppName = (app) => {
 }
 
 const createNewTag = (name, val = null, recordID = null) => {
-    tags.push({ 'id': tags.length, name, level: 1, child: [], parent: -1 });
+    tags.push({ 'id': tags.length, name, level: 1, child: [], parent: -1, nestDepth: 0 });
     if (recordID && val) {
         let record = globalRecords[recordID];
         record.tags.push(tags.length - 1);
@@ -1948,7 +1948,7 @@ const openTagModal = (action, tagID = null) => {
     }
     text.style.marginBottom = `${height * .1}px`;
     modal.appendChild(text);
-    let parentTag, childTag;
+    let parentTagID, childTagID;
     const updateTagModal = () => {
         let tagName = document.createElement('input');
         if (action !== 'parent-child') {
@@ -2027,16 +2027,18 @@ const openTagModal = (action, tagID = null) => {
                     modalBackground.click();
                     document.body.removeEventListener('keyup', closeTagModal);
                     if (action === 'parent-child') {
-                        let nestLimitPassed = tags.filter(tag => tag.id === parentTag)[0].level + 1 <= 3; 
+                        let childTag = tags.filter(tag => tag.id === childTagID)[0];
+                        let parentTag = tags.filter(tag => tag.id === parentTagID)[0];
+                        let nestLimitPassed = childTag.nestDepth + parentTag.level + 1 <= 3;
                         if (nestLimitPassed) {
-                            nestTags(parentTag, childTag)
+                            nestTags(parentTagID, childTagID)
                         }
                         if (!nestLimitPassed) {
                             // console.log("Nest limit exceeded");
                             let nestLimitError = document.createElement('p');
                             nestLimitError.id = 'child-nest-error';
                             nestLimitError.classList = 'center';
-                            nestLimitError.innerText = `Nesting under the ${tags.filter(tag => tag.id === parentTag)[0].name} tag exceeds nest limit.`;
+                            nestLimitError.innerText = `Nesting under the ${tags.filter(tag => tag.id === parentTagID)[0].name} tag exceeds nest limit.`;
                             document.body.appendChild(nestLimitError);
                             nestLimitError.addEventListener('animationend', () => nestLimitError.remove());
                         }
@@ -2080,8 +2082,8 @@ const openTagModal = (action, tagID = null) => {
                     })
                 }
                 if (id === 'parent-child') {
-                    parentTag = parseInt(dropTag.split('-')[1]);
-                    childTag = parseInt(dragTag.split('-')[1]);
+                    parentTagID = parseInt(dropTag.split('-')[1]);
+                    childTagID = parseInt(dragTag.split('-')[1]);
                     action = id;
                     document.getElementById(id).style.backgroundColor = 'gray';
                     tagOptions.filter(o => o !== id).forEach(o => {
@@ -2101,13 +2103,41 @@ const openTagModal = (action, tagID = null) => {
     if (!dropTag && action === 'merge') createTagSearch(document.getElementById('unknown-tag'));
 };
 
-const nestTags = (parentID, childID) => {
-    let parent = tags.filter(tag => tag.id === parentID)[0];
-    let child = tags.filter(tag => tag.id === childID)[0];
-    child.level = parent.level + 1;
-    child.parent = parentID;
-    parent.child.push(childID);
-    // console.log('parent', parent, 'child', child);
+const updatePreviousParentTag = (parentTagID, childTagID) => {
+    let parentTag = tags.filter(tag => tag.id === parentTagID)[0];
+    let newChildTagArray = parentTag.child.filter(child => child !== childTagID);
+    parentTag.child = newChildTagArray;
+    let newNestDepth = 0;
+    if (newChildTagArray.length > 0) {
+        newNestDepth = 1;
+        newChildTagArray.forEach(childTagID => {
+            let childNestDepth = tags.filter(tag => tag.id === childTagID)[0].nestDepth + 1;
+            if (newNestDepth < childNestDepth) newNestDepth = childNestDepth;
+        }); 
+    } 
+    parentTag.nestDepth = newNestDepth;
+    // console.log('Prev Parent',parentTag);
+};
+
+const updateNestedChildTags = (parentTagID, childTagID) => {
+    let parentTag = tags.filter(tag => tag.id === parentTagID)[0];
+    let childTag = tags.filter(tag => tag.id === childTagID)[0];
+    childTag.level = parentTag.level + 1;
+    if (childTag.child.length > 0) childTag.child.forEach(nestChildTagID => updateNestedChildTags(childTagID, nestChildTagID));
+    // console.log('Parent:', parentTag);
+    // console.log('Child:', childTag);
+};
+
+const nestTags = (parentTagID, childTagID) => {
+    let parentTag = tags.filter(tag => tag.id === parentTagID)[0];
+    let childTag = tags.filter(tag => tag.id === childTagID)[0];
+    let prevParentID = childTag.parent;
+    childTag.level = parentTag.level + 1;
+    childTag.parent = parentTagID;
+    parentTag.child.push(childTagID);
+    parentTag.nestDepth = childTag.nestDepth + 1;
+    if (childTag.nestDepth > 0) updateNestedChildTags(parentTagID, childTagID)
+    if (prevParentID > -1) updatePreviousParentTag(prevParentID, childTagID);
 }
 
 const modifyTags = (mergedID, oldTagIDs) => {
