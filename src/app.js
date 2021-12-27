@@ -1683,7 +1683,7 @@ const cleanUpAppName = (app) => {
 }
 
 const createNewTag = (name, val = null, recordID = null) => {
-    tags.push({ 'id': tags.length, name });
+    tags.push({ 'id': tags.length, name, level: 1, child: [], parent: -1 });
     if (recordID && val) {
         let record = globalRecords[recordID];
         record.tags.push(tags.length - 1);
@@ -1948,11 +1948,14 @@ const openTagModal = (action, tagID = null) => {
     }
     text.style.marginBottom = `${height * .1}px`;
     modal.appendChild(text);
-    const createRenameInput = () => {
+    let parentTag, childTag;
+    const updateTagModal = () => {
         let tagName = document.createElement('input');
-        tagName.type = 'text';
-        tagName.style.width = action === 'merge' ? `${width * .56}px` : '95%';
-        tagName.placeholder = action === 'merge' ? `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}` : tags.filter(t => t.id === parseInt(tagID))[0].name;
+        if (action !== 'parent-child') {
+            tagName.type = 'text';
+            tagName.style.width = action === 'merge' ? `${width * .56}px` : '95%';
+            tagName.placeholder = action === 'merge' ? `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}` : tags.filter(t => t.id === parseInt(tagID))[0].name;
+        }
         if (action === 'edit') tagName.value = tags.filter(t => t.id === parseInt(tagID))[0].name;
         const newTagName = () => {
             let input = modal.querySelector('input');
@@ -1985,7 +1988,7 @@ const openTagModal = (action, tagID = null) => {
         tagDiv.appendChild(tagName);
         tagDiv.style.width = `${width * .8}px`;
         tagDiv.style.marginLeft = `${width * .1}px`;
-        if (action !== 'remove-all') {
+        if (action !== 'remove-all' && action !== 'parent-child') {
             modal.appendChild(tagDiv);
             tagName.focus();
         }
@@ -1993,6 +1996,9 @@ const openTagModal = (action, tagID = null) => {
         switch (action) {
             case 'merge':
                 button.innerText = 'Merge';
+                break;
+            case 'parent-child':
+                button.innerText = 'Nest';
                 break;
             case 'edit':
                 button.innerText = 'Save';
@@ -2009,25 +2015,42 @@ const openTagModal = (action, tagID = null) => {
             button.style.position = 'absolute';
             button.style.top = '78%';
         }
-        if (action === 'remove-all') {
-            button.style.margin = '0 auto';
-            button.style.backgroundColor = '#7d0000';
-            button.style.color = 'white';
-            const deleteTag = (e) => {
+        if (['remove-all', 'parent-child'].includes(action)) {
+            if (action === 'remove-all') {
+                button.style.margin = '0 auto';
+                button.style.backgroundColor = '#7d0000';
+                button.style.color = 'white';
+            }
+            const closeTagModal = (e) => {
                 if (e.key === 'Enter' || e.code === 'Space' || e.type === 'click') {
-                    modifyTags(-1, [parseInt(tagID)]);
+                    if (action === 'remove-all') modifyTags(-1, [parseInt(tagID)]);
                     modalBackground.click();
-                    document.body.removeEventListener('keyup', deleteTag);
+                    document.body.removeEventListener('keyup', closeTagModal);
+                    if (action === 'parent-child') {
+                        let nestLimitPassed = tags.filter(tag => tag.id === parentTag)[0].level + 1 <= 3; 
+                        if (nestLimitPassed) {
+                            nestTags(parentTag, childTag)
+                        }
+                        if (!nestLimitPassed) {
+                            // console.log("Nest limit exceeded");
+                            let nestLimitError = document.createElement('p');
+                            nestLimitError.id = 'child-nest-error';
+                            nestLimitError.classList = 'center';
+                            nestLimitError.innerText = `Nesting under the ${tags.filter(tag => tag.id === parentTag)[0].name} tag exceeds nest limit.`;
+                            document.body.appendChild(nestLimitError);
+                            nestLimitError.addEventListener('animationend', () => nestLimitError.remove());
+                        }
+                    };
                 }
             }
-            button.addEventListener('click', deleteTag);
-            document.body.addEventListener('keyup', deleteTag);
+            button.addEventListener('click', closeTagModal);
+            document.body.addEventListener('keyup', closeTagModal);
         }
-        if (action !== 'remove-all') button.addEventListener('click', newTagName);
+        if (['edit', 'merge'].includes(action)) button.addEventListener('click', newTagName);
         modal.appendChild(button);
     }
     if (action === 'edit' || action === 'remove-all') {
-        createRenameInput();
+        updateTagModal();
     }
     if (action === 'merge') {
         let tagOptions = ['merge', 'parent-child'];
@@ -2040,7 +2063,7 @@ const openTagModal = (action, tagID = null) => {
             if (!dragTag) dragTag = 'tag-' + tagID;
             p.innerHTML = id === 'merge' ?
                 `<h2>Merge tags: combine tags with the option to rename</h2> <h3>${dropTag ? tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name : '<span id="unknown-tag"></span>'} &#8594;&#8592; ${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}</h3>` :
-                `<span style='color:darkgray;'><h2>Parent-child tagging: Coming Soon</h2> <h3 style='color:darkgray;'>${dropTag ? tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name : '???'} <br><span style='line-height:1.5;margin-left:${width * .04}px;'>&#8627; ${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}</span></h3></span>`;
+                `<h2>Parent-child tagging: nest tags up to 3 levels</h2> <h3>${dropTag ? tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name : '???'} <br><span style='line-height:1.5;margin-left:${width * .04}px;'>&#8627; ${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}</span></h3>`;
             modal.appendChild(p);
             p.addEventListener('click', (e) => {
                 let id = e.target.parentNode.id === 'tag-modal' ? e.target.id : e.target.parentNode.id ? e.target.parentNode.id : e.target.parentNode.parentNode.id ? e.target.parentNode.parentNode.id : e.target.parentNode.parentNode.parentNode.id;
@@ -2050,7 +2073,22 @@ const openTagModal = (action, tagID = null) => {
                         document.getElementById(o).addEventListener('animationend', () => {
                             p.style.pointerEvents = 'none';
                             document.getElementById(o).style.visibility = 'hidden';
-                            createRenameInput();
+                            updateTagModal();
+                            document.getElementById(o).remove();
+                        })
+                        document.getElementById(o).classList.add('hide-option');
+                    })
+                }
+                if (id === 'parent-child') {
+                    parentTag = parseInt(dropTag.split('-')[1]);
+                    childTag = parseInt(dragTag.split('-')[1]);
+                    action = id;
+                    document.getElementById(id).style.backgroundColor = 'gray';
+                    tagOptions.filter(o => o !== id).forEach(o => {
+                        document.getElementById(o).addEventListener('animationend', () => {
+                            p.style.pointerEvents = 'none';
+                            document.getElementById(o).style.visibility = 'hidden';
+                            updateTagModal();
                             document.getElementById(o).remove();
                         })
                         document.getElementById(o).classList.add('hide-option');
@@ -2062,6 +2100,15 @@ const openTagModal = (action, tagID = null) => {
     document.body.appendChild(modal);
     if (!dropTag && action === 'merge') createTagSearch(document.getElementById('unknown-tag'));
 };
+
+const nestTags = (parentID, childID) => {
+    let parent = tags.filter(tag => tag.id === parentID)[0];
+    let child = tags.filter(tag => tag.id === childID)[0];
+    child.level = parent.level + 1;
+    child.parent = parentID;
+    parent.child.push(childID);
+    // console.log('parent', parent, 'child', child);
+}
 
 const modifyTags = (mergedID, oldTagIDs) => {
     let deleteTags = mergedID === -1;

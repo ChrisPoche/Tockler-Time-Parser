@@ -670,7 +670,7 @@ thead {
     justify-content: flex-start;
 }
 
-#download-status, #tag-exists-error, #custom-folder-error {
+#download-status, #tag-exists-error, #custom-folder-error, #child-nest-error {
     position: fixed;
     text-align: center;
     color: red;
@@ -680,7 +680,7 @@ thead {
     animation: softFadeInOut 2.5s;
 }
 
-#download-status {
+#download-status, #child-nest-error {
     -webkit-animation: softFadeInOut 4.5s;
     animation: softFadeInOut 4.5s;
     font-weight: bold;
