@@ -751,6 +751,18 @@ thead {
     color: white;
 }
 
+.l-1 {
+    background-color: #0075ff;
+}
+
+.l-2 {
+    background-color: #368efb;
+}
+
+.l-3 {
+    background-color: #5ca6ff;
+}
+
 .tags:hover {
     padding: .3em .1em .3em .9em;
 }

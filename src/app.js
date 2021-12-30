@@ -1814,7 +1814,7 @@ const drawTag = () => {
                             let t = tags.filter(tag => tag.id === tid)[0];
                             let tag = document.createElement('p');
                             tag.innerText = t.name;
-                            tag.classList = `tags tag-${t.id}`;
+                            tag.classList = `tags tag-${t.id} l-${t.level}`;
                             if (type !== 'top-tags') {
                                 tag.addEventListener('mouseenter', (e) => {
                                     let x = document.createElement('span');
@@ -2086,15 +2086,18 @@ const openTagModal = (action, tagID = null) => {
                     childTagID = parseInt(dragTag.split('-')[1]);
                     action = id;
                     document.getElementById(id).style.backgroundColor = 'gray';
-                    tagOptions.filter(o => o !== id).forEach(o => {
-                        document.getElementById(o).addEventListener('animationend', () => {
-                            p.style.pointerEvents = 'none';
-                            document.getElementById(o).style.visibility = 'hidden';
-                            updateTagModal();
-                            document.getElementById(o).remove();
+                    let oppositeOption = tagOptions.filter(o => o !== id);
+                    if (oppositeOption) {
+                        oppositeOption.forEach(o => {
+                            document.getElementById(o).addEventListener('animationend', () => {
+                                p.style.pointerEvents = 'none';
+                                document.getElementById(o).style.visibility = 'hidden';
+                                updateTagModal();
+                                document.getElementById(o).remove();
+                            })
+                            document.getElementById(o).classList.add('hide-option');
                         })
-                        document.getElementById(o).classList.add('hide-option');
-                    })
+                    }
                 }
             })
         })
@@ -2113,10 +2116,9 @@ const updatePreviousParentTag = (parentTagID, childTagID) => {
         newChildTagArray.forEach(childTagID => {
             let childNestDepth = tags.filter(tag => tag.id === childTagID)[0].nestDepth + 1;
             if (newNestDepth < childNestDepth) newNestDepth = childNestDepth;
-        }); 
-    } 
+        });
+    }
     parentTag.nestDepth = newNestDepth;
-    // console.log('Prev Parent',parentTag);
 };
 
 const updateNestedChildTags = (parentTagID, childTagID) => {
@@ -2124,8 +2126,14 @@ const updateNestedChildTags = (parentTagID, childTagID) => {
     let childTag = tags.filter(tag => tag.id === childTagID)[0];
     childTag.level = parentTag.level + 1;
     if (childTag.child.length > 0) childTag.child.forEach(nestChildTagID => updateNestedChildTags(childTagID, nestChildTagID));
-    // console.log('Parent:', parentTag);
-    // console.log('Child:', childTag);
+};
+
+const updateTagClasses = (IDs) => {
+    IDs.filter(id => id >= 0).forEach(tagID => {
+        let tags = [...document.querySelectorAll(`.tag-${tagID}`)];
+        tags.forEach(tag => tag.remove());
+    });
+    drawTag();
 };
 
 const nestTags = (parentTagID, childTagID) => {
@@ -2138,6 +2146,7 @@ const nestTags = (parentTagID, childTagID) => {
     parentTag.nestDepth = childTag.nestDepth + 1;
     if (childTag.nestDepth > 0) updateNestedChildTags(parentTagID, childTagID)
     if (prevParentID > -1) updatePreviousParentTag(prevParentID, childTagID);
+    updateTagClasses([parentTagID, childTagID, prevParentID]);
 }
 
 const modifyTags = (mergedID, oldTagIDs) => {
