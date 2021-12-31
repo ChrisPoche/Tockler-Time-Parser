@@ -1846,16 +1846,17 @@ const drawTag = () => {
                                 })
                             }
                             tag.addEventListener('contextmenu', (e) => {
-                                let tagID = [...e.target.classList].filter(c => c.includes('tag-'))[0].split('-')[1];
+                                let tagID = parseInt([...e.target.classList].filter(c => c.includes('tag-'))[0].split('-')[1]);
+                                let tagLevel = parseInt([...e.target.classList].filter(c => c.includes('l-'))[0].split('-')[1]);
                                 let contextMenu = document.createElement('div');
                                 contextMenu.id = 'custom-context-menu';
                                 contextMenu.style.left = `${e.x}px`;
                                 contextMenu.style.top = `${e.y}px`;
-                                ['Edit Tag', 'Merge Tags', 'Remove Tag From All'].forEach(option => {
+                                ['Edit Tag', 'Merge Tags', 'Un-nest Tag', 'Remove Tag From All'].forEach(option => {
                                     let menuOption = document.createElement('div');
                                     menuOption.classList = 'context-menu-option';
                                     menuOption.innerText = option;
-                                    contextMenu.appendChild(menuOption);
+                                    if ((option === 'Un-nest Tag' && tagLevel >= 2) || option !== 'Un-nest Tag') contextMenu.appendChild(menuOption);
                                     menuOption.addEventListener('click', (e) => {
                                         let action = e.target.innerText;
                                         blurContextMenu();
@@ -1865,6 +1866,10 @@ const drawTag = () => {
                                                 break;
                                             case 'Merge Tags':
                                                 openTagModal('merge', tagID);
+                                                break;
+                                            case 'Un-nest Tag':
+                                                let tag = tags.filter(tag => tag.id === tagID)[0];
+                                                tag.child.length > 0 ? tag.child.forEach(childID => nestTags(tagID, childID)) : nestTags(tagID);
                                                 break;
                                             case 'Remove Tag From All':
                                                 openTagModal('remove-all', tagID);
@@ -1954,16 +1959,16 @@ const openTagModal = (action, tagID = null) => {
         if (action !== 'parent-child') {
             tagName.type = 'text';
             tagName.style.width = action === 'merge' ? `${width * .56}px` : '95%';
-            tagName.placeholder = action === 'merge' ? `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}` : tags.filter(t => t.id === parseInt(tagID))[0].name;
+            tagName.placeholder = action === 'merge' ? `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}` : tags.filter(t => t.id === tagID)[0].name;
         }
-        if (action === 'edit') tagName.value = tags.filter(t => t.id === parseInt(tagID))[0].name;
+        if (action === 'edit') tagName.value = tags.filter(t => t.id === tagID)[0].name;
         const newTagName = () => {
             let input = modal.querySelector('input');
             let title = input.value.length === 0 ? input.placeholder : input.value;
             if (tags.filter(tag => tag.name === title).length <= 1) {
                 if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title);
                 let newTagID = tags.filter(tag => tag.name === title)[0].id;
-                modifyTags(newTagID, action === 'edit' ? [parseInt(tagID)] : [parseInt(dropTag.split('-')[1]), parseInt(dragTag.split('-')[1])]);
+                modifyTags(newTagID, action === 'edit' ? [tagID] : [parseInt(dropTag.split('-')[1]), parseInt(dragTag.split('-')[1])]);
                 modalBackground.click();
             }
             else {
@@ -2031,7 +2036,7 @@ const openTagModal = (action, tagID = null) => {
                         let parentTag = tags.filter(tag => tag.id === parentTagID)[0];
                         let nestLimitPassed = childTag.nestDepth + parentTag.level + 1 <= 3;
                         if (nestLimitPassed) {
-                            nestTags(parentTagID, childTagID)
+                            nestTags(parentTagID, childTagID, 'nest');
                         }
                         if (!nestLimitPassed) {
                             // console.log("Nest limit exceeded");
@@ -2128,7 +2133,15 @@ const updateNestedChildTags = (parentTagID, childTagID) => {
     if (childTag.child.length > 0) childTag.child.forEach(nestChildTagID => updateNestedChildTags(childTagID, nestChildTagID));
 };
 
-const updateTagClasses = (IDs) => {
+const updateTagClasses = (newIDs, prevID) => {
+    let IDs = [prevID];
+    newIDs.forEach(id => {
+        if (id > -1) {
+            IDs.push(id);
+            let tag = tags.filter(tag => tag.id === id)[0];
+            if (tag.child.length > 0) tag.child.forEach(childTag => IDs.push(childTag));
+        }
+    })
     IDs.filter(id => id >= 0).forEach(tagID => {
         let tags = [...document.querySelectorAll(`.tag-${tagID}`)];
         tags.forEach(tag => tag.remove());
@@ -2136,17 +2149,43 @@ const updateTagClasses = (IDs) => {
     drawTag();
 };
 
-const nestTags = (parentTagID, childTagID) => {
-    let parentTag = tags.filter(tag => tag.id === parentTagID)[0];
-    let childTag = tags.filter(tag => tag.id === childTagID)[0];
-    let prevParentID = childTag.parent;
-    childTag.level = parentTag.level + 1;
-    childTag.parent = parentTagID;
-    parentTag.child.push(childTagID);
-    parentTag.nestDepth = childTag.nestDepth + 1;
-    if (childTag.nestDepth > 0) updateNestedChildTags(parentTagID, childTagID)
-    if (prevParentID > -1) updatePreviousParentTag(prevParentID, childTagID);
-    updateTagClasses([parentTagID, childTagID, prevParentID]);
+const nestTags = (parentTagID, childTagID = -1, nestDirection = 'remove') => {
+    let parentTag, childTag, prevParentID;
+    parentTag = tags.filter(tag => tag.id === parentTagID)[0];
+    if (nestDirection === 'remove') {
+        prevParentID = parentTag.parent;
+        if (parentTag.level === 3) {
+            let levelTwoTag = tags.filter(tag => tag.id === prevParentID)[0]
+            levelTwoTag.nestDepth = levelTwoTag.child.length === 1 ? 0 : 1;
+            let levelOneTag = tags.filter(tag => tag.id === levelTwoTag.parent)[0];
+            levelOneTag.nestDepth = levelTwoTag.nestDepth + 1;
+        }
+        parentTag.level = 1;
+        parentTag.parent = -1;
+    }
+    if (childTagID > -1) {
+        childTag = tags.filter(tag => tag.id === childTagID)[0];
+        let prevChildLevel = childTag.level;
+        childTag.level = parentTag.level + 1;
+        if (nestDirection === 'nest') {
+            prevParentID = childTag.parent;
+            childTag.parent = parentTagID;
+            parentTag.child.push(childTagID);
+            if (parentTag.nestDepth < childTag.nestDepth + 1) parentTag.nestDepth = childTag.nestDepth + 1;
+            if (childTag.level === 3) {
+                let levelOneTag = tags.filter(tag => tag.id === parentTag.parent)[0];
+                levelOneTag.nestDepth = 2;
+            }
+            if (prevChildLevel === 3) {
+                const levelTwoTag = tags.filter(tag => tag.id === prevParentID)[0];
+                let levelOneTag = tags.filter(tag => tag.id === levelTwoTag.parent)[0];
+                levelOneTag.nestDepth = levelTwoTag.child.filter(id => id !== childTagID).length > 0 ? 2 : 1;
+            }
+        }
+        if (childTag.nestDepth > 0) updateNestedChildTags(parentTagID, childTagID);
+    }
+    if (prevParentID > -1) updatePreviousParentTag(prevParentID, nestDirection === 'nest' ? childTagID : parentTagID);
+    updateTagClasses([parentTagID, childTagID], prevParentID);
 }
 
 const modifyTags = (mergedID, oldTagIDs) => {
