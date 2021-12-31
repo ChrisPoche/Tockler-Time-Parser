@@ -759,8 +759,16 @@ thead {
     background-color: #368efb;
 }
 
+.top-tags-row .l-2 {
+    margin-left: 20px;
+}
+
 .l-3 {
     background-color: #5ca6ff;
+}
+
+.top-tags-row .l-3 {
+    margin-left: 40px;
 }
 
 .tags:hover {

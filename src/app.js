@@ -655,9 +655,35 @@ const aggregateRecords = () => {
     tags.forEach((tag, index) => {
         let dur = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked && r.tags.includes(parseInt(tag.id))).map(r => r.dur);
         dur = dur.length > 0 ? dur.reduce((a, b) => a + b) : 0;
-        topTag.push({ 'id': tag.id, tag, 'duration': dur, 'dur': calcDuration(dur) });
+        if (tag.level === 1) topTag.push({ 'id': tag.id, tag, 'duration': dur, 'dur': calcDuration(dur) });
     });
-    topTag = topTag.sort((a, b) => a.dur < b.dur ? 1 : -1);
+    sortedTopTag = topTag.sort((a, b) => a.dur < b.dur ? 1 : -1);
+    topTag = [];
+    sortedTopTag.forEach(tt => {
+        topTag.push(tt);
+        let childTags = [];
+        if (tt.tag.child.length > 0) {
+            tt.tag.child.forEach(childTag => {
+                let tag = tags.filter(tag => tag.id === childTag)[0];
+                let dur = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked && r.tags.includes(parseInt(tag.id))).map(r => r.dur);
+                dur = dur.length > 0 ? dur.reduce((a, b) => a + b) : 0;
+                childTags.push({ 'id': tag.id, tag, 'duration': dur, 'dur': calcDuration(dur) });
+            });
+        }
+        childTags.sort((a, b) => a.dur < b.dur ? 1 : -1).forEach(ct => {
+            topTag.push(ct)
+            let grandChildTags = [];
+            if (ct.tag.child.length > 0) {
+                ct.tag.child.forEach(grandChildTag => {
+                    let tag = tags.filter(tag => tag.id === grandChildTag)[0];
+                    let dur = globalRecords.filter(r => !removedApps.includes(r.app) && r.checked && r.tags.includes(parseInt(tag.id))).map(r => r.dur);
+                    dur = dur.length > 0 ? dur.reduce((a, b) => a + b) : 0;
+                    grandChildTags.push({ 'id': tag.id, tag, 'duration': dur, 'dur': calcDuration(dur) });
+                });
+            }
+            grandChildTags.sort((a, b) => a.dur < b.dur ? 1 : -1).forEach(gt => topTag.push(gt));
+        })
+    });
     let durationVals = [active, all, tag].map(dur => calcDuration(dur));
     let tagDur = document.getElementById('tag-section') ? `&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;${tags.filter(tag => tag.id === parseInt(tagID)).map(tag => tag.name)[0]}: ${durationVals[2]}` : '';
     let durationDiv = document.getElementById('duration');
@@ -777,11 +803,13 @@ const createAddTagButton = (td) => {
     });
 }
 
+const updateCalculatedDurations = () => {
+    topTag = [];
+    aggregateRecords();
+    if (document.getElementById('top-tags-section')) createTable('top-tags');
+}
+
 const createTable = (type) => {
-    const updateCalculatedDurations = () => {
-        aggregateRecords();
-        if (document.getElementById('top-tags-section')) createTable('top-tags');
-    }
     const selectAllModifier = () => {
         ['tag-table', 'record-table'].forEach(tbl => {
             if (document.getElementById(tbl) && type === tbl.split('-')[0]) {
@@ -2176,6 +2204,7 @@ const updateTagClasses = (newIDs, prevID) => {
         tags.forEach(tag => tag.remove());
     });
     drawTag();
+    if (document.getElementById('top-tags-section')) updateCalculatedDurations();
 };
 
 const nestTags = (parentTagID, childTagID = -1, nestDirection = 'remove') => {
