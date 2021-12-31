@@ -1099,3 +1099,15 @@ thead {
 .dark-mode #unselect-apps {
     font-weight: normal;
 }
+
+.validate-both {
+    background-color: rgb(1, 138, 24);
+}
+
+.validate-half {
+    background-color: rgba(1, 138, 24, .4);
+}
+
+.validate-none, .validate-same {
+    background-color: rgb(163, 0, 0);
+}

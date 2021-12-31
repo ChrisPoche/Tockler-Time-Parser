@@ -1799,6 +1799,32 @@ const removeSearchTagsDropdown = () => {
     document.getElementById('tag-search').parentNode.remove();
 }
 
+let validateType;
+const validateTags = (phase, tagID) => {
+    let relatedTags = [tagID];
+    let baseTag = tags.filter(tag => tag.id === tagID)[0];
+    if (phase === 'start') {
+        if (baseTag.parent > -1) relatedTags.push(baseTag.parent);
+        if (baseTag.child.length > 0) {
+            baseTag.child.forEach(childTagID => {
+                relatedTags.push(childTagID);
+                let childTag = tags.filter(tag => tag.id === childTagID)[0];
+                if (baseTag.level === 1 && childTag.child.length > 0) childTag.child.forEach(grandChildTagID => relatedTags.push(grandChildTagID));
+            });
+        };
+    }
+    document.querySelectorAll('.tags').forEach(tag => {
+        let checkTagID = parseInt(tag.classList[1].split('-')[1]);
+        if (phase === 'end') tag.classList.remove(tag.classList[3]);
+        if (phase === 'start') {
+            let childrenTags = relatedTags.filter(tag => tag !== tagID && tag !== baseTag.parent);
+            if (checkTagID === tagID) tag.classList.add('validate-same');
+            else if (checkTagID === baseTag.parent || childrenTags.includes(checkTagID)) tag.classList.add('validate-half'); // Can merge tag but not nest
+            else tag.classList.add('validate-both');
+        }
+    })
+};
+
 const drawTag = () => {
     activeTables.forEach(table => {
         let type = table.type;
@@ -1892,12 +1918,14 @@ const drawTag = () => {
                                 createTable('tag')
                             })
                             tag.draggable = true;
-                            tag.addEventListener('drag', (e) => {
+                            tag.addEventListener('dragstart', (e) => {
                                 dragTag = [...e.target.classList][1];
                                 dropTag = null;
+                                validateTags('start', parseInt(dragTag.split('-')[1]));
                             });
                             tag.addEventListener('dragend', (e) => {
                                 if (!dropTag || dragTag === dropTag) dragTag = null;
+                                validateTags('end');
                             })
                             tag.addEventListener('dragover', (e) => {
                                 e.preventDefault();
@@ -1906,6 +1934,7 @@ const drawTag = () => {
                                 e.preventDefault();
                                 dropTag = e.target.classList[1];
                                 if (!dropTag || dragTag === dropTag) dragTag = null;
+                                validateType = document.querySelector(`.${dropTag}`).classList[3].split('-')[1];
                                 if (dragTag && dropTag) openTagModal('merge');
                             })
                             td.appendChild(tag);
@@ -2060,7 +2089,7 @@ const openTagModal = (action, tagID = null) => {
         updateTagModal();
     }
     if (action === 'merge') {
-        let tagOptions = ['merge', 'parent-child'];
+        let tagOptions = validateType === 'both' ? ['merge', 'parent-child'] : ['merge'];
         tagOptions.forEach(id => {
             let p = document.createElement('div');
             p.style.width = `${width * .8}px`;
