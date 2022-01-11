@@ -855,7 +855,7 @@ const createTable = (type) => {
         hr.id = `${type}-table-header`;
         let header = {
             'record': [`${type}-tl-th`, 'app', 'title', 'start', 'end', 'duration', 'tags'],
-            'tag': [`${type}-tl-th`, 'app', 'title', 'duration', 'tags'],
+            'tag': [`${type}-tl-th`, 'app', 'title', 'time', 'duration', 'tags'],
             'zoom': ['tags', 'duration', 'start', 'end'],
             'top-tags': ['tag', 'duration']
         };
@@ -977,7 +977,7 @@ const createTable = (type) => {
                 firstCol.appendChild(checkbox);
                 tr.appendChild(firstCol);
                 let row = [];
-                header[type].forEach((col, index) => index > 0 && results.length > 0 ? row.push(results[i][col]) : row.push(''));
+                header[type].forEach((col, index) => index > 0 && results.length > 0 ? row.push(col === 'time' ? `${results[i]['start'].split(' ')[1]} - ${results[i]['end'].split(' ')[1]}`: results[i][col]) : row.push(''));
                 row.shift();
                 row.map((val, index) => {
                     let td = document.createElement('td');
@@ -995,8 +995,8 @@ const createTable = (type) => {
                             tooltTip.style.top = coord.y + .4 + 'px';
                         })
                     }
-                    if (index === 2 || (type === 'record' && index === 3 || index === 4)) td.classList = 'time-col';
-                    if ((type === 'tag' && index === 3) || (type === 'record' && index === 5)) {
+                    if (['end','start','duration','time'].includes(header[type][index + 1])) td.classList = 'time-col';
+                    if (header[type].indexOf('tags') === index + 1) {
                         td.innerText = '';
                         createAddTagButton(td);
                     }
