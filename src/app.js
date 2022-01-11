@@ -1363,7 +1363,8 @@ const postDataRetrieval = (records, dataOrigin) => {
             if (document.getElementById('unselect-apps').className.includes('hidden') && document.getElementById('action-components').className.includes('hidden')) document.getElementById('input-pane').style.removeProperty('display');
             if (!document.getElementById('action-components').className.includes('hidden') || !document.getElementById('unselect-apps').className.includes('hidden')) document.getElementById('input-pane').style.display = 'flex';
         })
-    })
+    });
+    document.getElementById('app-drawer').querySelector('h2').click();
     createTable('record');
     autoTag();
     createTable('record');
@@ -1974,7 +1975,62 @@ const drawTag = () => {
     })
 }
 
+const createNestTree = (tagIDs) => {
+    console.log(tagIDs);
+    let nestTreeDiv = document.getElementById('nest-tree');
+    let width = document.getElementById('tag-modal').getBoundingClientRect().width;
+    let treeSubDiv = document.createElement('div');
+    treeSubDiv.id = `nest-tree-${tagIDs.length > 1 ? tagIDs[0] === -1 ? 'un-nest' : tagIDs.join('-') : tagIDs[0]}`;
+    treeSubDiv.classList = 'nest-tree-sub';
+    let treeText = '';
+    let renameInput = document.querySelector('input[name = "rename-tag-input"]');
+    renameInput.addEventListener('keyup', (e) => [...document.getElementsByClassName('rename-value')].forEach(nestTree => nestTree.innerText = e.target.value.trim().length > 0 ? e.target.value : renameInput.placeholder));
+    let mergedTag = `<span class='rename-value'>${renameInput.placeholder}</span>`;
+    let topLevel;
+    if (tagIDs[0] !== -1) topLevel = tagIDs.map(tagID => tags.filter(tag => tag.id === tagID)[0].level === 1).every(top => top === true);
+    const closeTreeText = () => {
+        treeSubDiv.innerHTML = treeText + '</h3>';
+        nestTreeDiv.appendChild(treeSubDiv);
+    };
+    if (tagIDs[0] === -1) {
+        treeText += `<h3>Un-nest Both Tags<br><br>${mergedTag}`;
+        closeTreeText();
+    }
+    else {
+        console.log(topLevel)
+        if (tagIDs.length > 1 && !topLevel) tagIDs.forEach(tagID => createNestTree([tagID]));
+        tagIDs.forEach((tagID, index) => {
+            let tag = tags.filter(tag => tag.id === tagID)[0];
+            // console.log(tagID, tag);
+            let arrow = `<br><span style='line-height:1.5;margin-left:${width * .04}px;'>&#8627; </span>`;
+            if (topLevel) treeText = `<h3>${mergedTag}`;
+            if (!topLevel) treeText = tag.parent > -1 ? `<h3>${tags.filter(t => t.id === tag.parent)[0].name}${arrow}${mergedTag}` : `<h3>${mergedTag}`;
+            // console.log(treeText);
+            const nestChildTags = (parentTag) => {
+                parentTag.child.forEach(childTagID => {
+                    let childTag = tags.filter(t => t.id === childTagID)[0];
+                    arrow = `<br><span style='line-height:1.5;margin-left:${width * (.04 * (childTag.level - 1))}px;'>&#8627; </span>`;
+                    treeText += `${arrow}${childTag.name}`;
+                    if (childTag.child.length > 0) nestChildTags(childTag);
+                });
+            };
+            if (tag.child.length > 0) nestChildTags(tag);
+            if (!topLevel) closeTreeText();
+            // console.log(treeText);
+        })
+    }
+    treeSubDiv.addEventListener('click', (e) => {
+        let selected = document.querySelector('.clicked');
+        if (selected) selected.classList.remove('clicked');
+        let id = e.target.id.includes('nest-tree') ? e.target.id.split('-').slice(2).join('-') : e.target.parentNode.id.includes('nest-tree') ? e.target.parentNode.id.split('-').slice(2).join('-') : e.target.parentNode.parentNode.id.split('-').slice(2).join('-');
+        console.log(id);
+        document.getElementById(`nest-tree-${id}`).classList.add('clicked');
+    })
+    if (topLevel) closeTreeText();
+}
+
 const openTagModal = (action, tagID = null) => {
+    let nestedTag, drop, drag;
     document.querySelectorAll('.bring-to-front').forEach(t => t.classList.remove('bring-to-front'));
     let modalBackground = document.createElement('div');
     modalBackground.id = 'modal-background';
@@ -1991,8 +2047,7 @@ const openTagModal = (action, tagID = null) => {
     let width = winWidth * .6 > 800 ? 800 : winWidth * .6;
     let height = width * .66;
     modal.style.width = width + 'px';
-    modal.style.height = height + 'px';
-    modal.style.left = `${(window.innerWidth / 2) - (width / 2) + 240}px`;
+    modal.style.left = `${(window.innerWidth / 2) - (width / 2)}px`;
     modal.style.top = `${(window.innerHeight / 2) - (height / 2)}px`;
     let text = document.createElement('h1');
     switch (action) {
@@ -2011,12 +2066,14 @@ const openTagModal = (action, tagID = null) => {
     text.style.marginBottom = `${height * .1}px`;
     modal.appendChild(text);
     let parentTagID, childTagID;
+    let tagDiv = document.createElement('div');
     const updateTagModal = () => {
         let tagName = document.createElement('input');
         if (action !== 'parent-child') {
             tagName.type = 'text';
-            tagName.style.width = action === 'merge' ? `${width * .56}px` : '95%';
-            tagName.placeholder = action === 'merge' ? `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}` : tags.filter(t => t.id === tagID)[0].name;
+            tagName.name = 'rename-tag-input';
+            tagName.style.width = action.includes('merge') ? `${width * .56}px` : '95%';
+            tagName.placeholder = action.includes('merge') ? `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}` : tags.filter(t => t.id === tagID)[0].name;
         }
         if (action === 'edit') tagName.value = tags.filter(t => t.id === tagID)[0].name;
         const newTagName = () => {
@@ -2043,20 +2100,45 @@ const openTagModal = (action, tagID = null) => {
             if (e.key === 'Enter') newTagName();
         })
         let tagLabel = document.createElement('label');
-        tagLabel.innerText = action === 'merge' ? 'Merged tag name:' : '';
-        let tagDiv = document.createElement('div');
+        tagLabel.innerText = action.includes('merge') ? 'Merged tag name:' : '';
         tagDiv.id = 'merge-tag-input';
         tagDiv.appendChild(tagLabel);
         tagDiv.appendChild(tagName);
         tagDiv.style.width = `${width * .8}px`;
-        tagDiv.style.marginLeft = `${width * .1}px`;
         if (action !== 'remove-all' && action !== 'parent-child') {
             modal.appendChild(tagDiv);
             tagName.focus();
         }
+        if (action.includes('nested-merge')) {
+            let nestTree = document.createElement('div');
+            nestTree.id = 'nest-tree';
+            modal.appendChild(nestTree);
+            let nestID = parseInt(action.split('-')[2]);
+            if (action === 'nested-merge-both') {
+                if (drop.level === drag.level) createNestTree([drop.id, drag.id]);
+                else {
+                    let collisionHeader = document.createElement('h2');
+                    collisionHeader.style.margin = '7% 0 -3%';
+                    collisionHeader.innerText = 'Merge conflict. Please select prefered resolution and update name.';
+                    modal.insertBefore(collisionHeader, modal.childNodes[modal.childNodes.length - 2]);
+                    createNestTree([drop.id]);
+                    createNestTree([drag.id]);
+                }
+            }
+            // else createNestTree([drop.id, drag.id]);
+            createNestTree([-1, drop.id, drag.id]);
+            let height = modal.getBoundingClientRect().height;
+            modal.style.top = `${window.innerHeight - height}px`;
+        }
         let button = document.createElement('button');
         switch (action) {
             case 'merge':
+                button.innerText = 'Merge';
+                break;
+            case 'nested-merge-' + nestedTag:
+                button.innerText = 'Merge';
+                break;
+            case 'nested-merge-both':
                 button.innerText = 'Merge';
                 break;
             case 'parent-child':
@@ -2072,7 +2154,6 @@ const openTagModal = (action, tagID = null) => {
                 break;
         }
         button.id = 'tag-modal-button';
-        button.style.margin = `${width * .05}px 0 0 ${width * .87}px`;
         if (action === 'edit') {
             button.style.position = 'absolute';
             button.style.top = '78%';
@@ -2116,12 +2197,11 @@ const openTagModal = (action, tagID = null) => {
     if (action === 'edit' || action === 'remove-all') {
         updateTagModal();
     }
+    let tagOptions;
     if (action === 'merge') {
-        let tagOptions = validateType === 'both' ? ['merge', 'parent-child'] : ['merge'];
+        tagOptions = validateType === 'both' ? ['merge', 'parent-child'] : ['merge'];
         tagOptions.forEach(id => {
             let p = document.createElement('div');
-            p.style.width = `${width * .8}px`;
-            p.style.marginLeft = `${width * .1}px`;
             p.id = id;
             p.classList = 'tag-option';
             if (!dragTag) dragTag = 'tag-' + tagID;
@@ -2132,6 +2212,38 @@ const openTagModal = (action, tagID = null) => {
             p.addEventListener('click', (e) => {
                 let id = e.target.parentNode.id === 'tag-modal' ? e.target.id : e.target.parentNode.id ? e.target.parentNode.id : e.target.parentNode.parentNode.id ? e.target.parentNode.parentNode.id : e.target.parentNode.parentNode.parentNode.id;
                 if (id === 'merge') {
+                    if (dropTag && dragTag && action === 'merge') {
+                        drop = tags.filter(tag => tag.id === parseInt(dropTag.split('-')[1]))[0];
+                        drag = tags.filter(tag => tag.id === parseInt(dragTag.split('-')[1]))[0];
+                        console.table(drop);
+                        console.table(drag);
+                        if (drop.parent > -1 || drop.child.length > 0 || drag.parent > -1 || drag.child.length > 0) {
+                            if ((drop.child.length > 0 || drop.parent > -1) && drag.parent !== drop.id && drop.parent !== drag.id) {
+                                nestedTag = drop.id;
+                                console.log('Drop', nestedTag);
+                            }
+                            if ((drag.child.length > 0 || drag.parent > -1) && drag.parent !== drop.id && drop.parent !== drag.id) {
+                                nestedTag = drag.id;
+                                console.log('Drag', nestedTag);
+                            }
+                            action = nestedTag || nestedTag > -1 ? `nested-merge-${nestedTag}` : action;
+                            if ((drop.parent > -1 || drop.child.length > 0) && (drag.parent > -1 || drag.child.length > 0) && (drag.parent !== drop.id && drop.parent !== drag.id)) action = 'nested-merge-both';
+                        }
+                    }
+                    console.log(nestedTag, action);
+                    switch (action) {
+                        case 'merge':
+                            text.innerText = 'How would you like to merge tags?';
+                            break;
+                        case 'nested-merge-both':
+                            text.innerHTML = 'Both tags are nested.<br><br>How would you like to merge tags?';
+                            break;
+                        case 'nested-merge-' + nestedTag:
+                            text.innerHTML = 'This will merge into a nested tree.<br><br>What would you like the new tag to be named?';
+                            break;
+                        default:
+                            break;
+                    }
                     document.getElementById(id).style.backgroundColor = 'gray';
                     tagOptions.filter(o => o !== id).forEach(o => {
                         document.getElementById(o).addEventListener('animationend', () => {
@@ -2165,6 +2277,10 @@ const openTagModal = (action, tagID = null) => {
         })
     }
     document.body.appendChild(modal);
+    if (tagOptions.length === 1) {
+        document.getElementById('merge').click();
+        updateTagModal('merge');
+    }
     if (!dropTag && action === 'merge') createTagSearch(document.getElementById('unknown-tag'));
 };
 

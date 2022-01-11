@@ -857,6 +857,7 @@ thead {
     justify-content: center;
     text-align: center;
     color: black;
+    padding: 2%;
 }
 
 #tag-modal div {
@@ -865,7 +866,7 @@ thead {
     border-radius: .6rem;
 }
 
-#tag-modal div h3 {
+.tag-option h3 {
     color: rgb(77, 77, 77)
 }
 
@@ -882,6 +883,10 @@ thead {
     padding: 2%;
     margin: 1vw 0 0;
     font-size: large;
+}
+
+#merge-tag-input {
+    align-self: center;
 }
 
 #merge-tag-input label {
@@ -914,6 +919,8 @@ thead {
     padding: .4rem;
     border-radius: .4rem;
     font-size: large;
+    align-self: flex-end;
+    margin: 4% 0 -2%;
 }
 
 .bring-to-front {
@@ -1118,4 +1125,28 @@ thead {
 
 .validate-none, .validate-same {
     background-color: rgb(163, 0, 0);
+}
+
+.rename-value {
+    font-weight: bolder;
+    color: rgb(120, 0, 0);
+}
+
+#nest-tree h3 {
+    font-weight: normal;
+    color: black;
+}
+
+#nest-tree div {
+    padding: 2% 4%;
+}
+
+#nest-tree {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+}
+
+.nest-tree-sub:hover, .clicked {
+    background-color: gray;
 }
