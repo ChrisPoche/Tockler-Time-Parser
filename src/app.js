@@ -865,7 +865,7 @@ const createTable = (type) => {
             th.id = `${type}-header-${h}`;
             th.classList = 'header';
             th.addEventListener('click', (e) => modifySort(e, type));
-            if (index === header[type].length - 1 && type !== 'record') { // Close Button Tag and Zoom
+            if (index === header[type].length - 1) { // Close Button Tag and Zoom
                 let closeButton = document.createElement('div');
                 closeButton.id = `close-${type}-section`;
                 closeButton.innerText = 'X';
@@ -875,6 +875,7 @@ const createTable = (type) => {
                     e.stopImmediatePropagation();
                     document.getElementById(`${type}-section`).remove();
                     activeTables = activeTables.filter(t => t.type !== type);
+                    if (type === 'tag') document.getElementById('duration').innerText = document.getElementById('duration').innerText.split('-')[0];
                 });
                 th.appendChild(closeButton);
             }

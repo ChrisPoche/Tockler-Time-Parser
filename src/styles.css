@@ -384,12 +384,12 @@ body.dark-mode {
 }
 
 .unchecked {
-    color:rgba(0, 0, 0, .4);
+    color: rgba(0, 0, 0, .4);
     font-weight: normal;
 }
 
 .dark-mode .unchecked {
-    color:rgba(255, 255, 255, .4);
+    color: rgba(255, 255, 255, .4);
 }
 
 #app-drawer {
@@ -541,8 +541,7 @@ thead {
     line-height: 2.5;
     font-size: smaller;
     z-index: 2;
-    background-color: darkgray;
-    color: white;
+    color: rgba(0, 0, 0, .6);
     right: 0;
     top: 0;
 }
@@ -550,10 +549,9 @@ thead {
 .close-section {
     right: 4px;
     top: 4px;
-    background-color: gray;
     width: 28px;
     height: 28px;
-    line-height: 2.1;
+    line-height: 1.9;
 }
 
 #table-tab {
@@ -940,7 +938,8 @@ thead {
 }
 
 #timeline {
-    border: 2px solid black;;
+    border: 2px solid black;
+    ;
     margin: 0;
     display: flex;
     flex-direction: column;
@@ -992,7 +991,7 @@ thead {
 
 .dark-mode #selection-box {
     background-color: rgba(255, 255, 255, .05);
-}    
+}
 
 #l-h, #r-h {
     height: 4em;
