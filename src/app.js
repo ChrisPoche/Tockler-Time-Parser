@@ -925,6 +925,7 @@ const createTable = (type) => {
                     let relatedTags = tags.filter(t => t.name.toLowerCase().includes(filterTitle.toLowerCase())).map(t => t.id);
                     filteredRecords = filterTitle.length > 0 ? globalRecords.filter(r => r.title.toLowerCase().includes(filterTitle.toLowerCase()) || r.tags.some(t => relatedTags.includes(t))) : globalRecords;
                     createTable('record');
+                    document.getElementById('title-search-bar').focus();
                     document.getElementById(`${type}-go-to-page`).max = table[`${type}-page-count`];
                 })
                 th.appendChild(input);
@@ -943,7 +944,7 @@ const createTable = (type) => {
             }
         });
         visibleRecords[type] = [];
-        for (let i = (table[`${type}-go-to-page`] - 1) * table[`${type}-show`]; i < (table[`${type}-go-to-page`] * table[`${type}-show`]) - (table[`${type}-go-to-page`] === table[`${type}-page-count`] ? table[`${type}-show`] - (results.length % table[`${type}-show`]) : 0); i++) {
+        for (let i = (table[`${type}-go-to-page`] - 1) * table[`${type}-show`]; i < (table[`${type}-go-to-page`] * table[`${type}-show`]) - (table[`${type}-go-to-page`] === table[`${type}-page-count`] ? table[`${type}-show`] - (results.length % table[`${type}-show`] === 0 ? table[`${type}-show`] : results.length % table[`${type}-show`]) : 0); i++) {
             let tr = document.createElement('tr');
             tr.id = type === 'top-tags' ? `${type}-${i}` : `${type}-${results[i][type === 'zoom' ? 'start' : 'id']}`;
             type === 'top-tags' ? visibleRecords[type].push(i) : visibleRecords[type].push(results[i][type === 'zoom' ? 'start' : 'id']);
