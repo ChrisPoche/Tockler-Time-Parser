@@ -1218,7 +1218,7 @@ const createTable = (type) => {
                 option.value = i;
                 option.innerText = i;
                 option.id = `${type}-show-${i}`;
-                if (table[`${type}-show`] === i) option.selected = 'selected';
+                if (parseInt(table[`${type}-show`]) === i) option.selected = 'selected';
                 showDropdown.appendChild(option);
             }
             showDropdown.addEventListener('change', (e) => {
