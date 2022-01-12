@@ -777,6 +777,82 @@ const createAddTagButton = (td) => {
     });
 }
 
+const createCustomContextMenu = (e) => {
+    let type = 'tags';
+    let tagID = [...e.target.classList].includes('tool-tip') ? e.target.parentNode.parentNode.id : [...e.target.classList].filter(c => c.includes('tag-'))[0].split('-')[1];
+    if (isNaN(parseInt(tagID))) {
+        type = tagID.split('-')[0];
+        tagID = tagID.split('-')[1];
+    }
+    let contextMenu = document.createElement('div');
+    contextMenu.id = 'custom-context-menu';
+    contextMenu.style.left = `${e.x}px`;
+    contextMenu.style.top = `${e.y}px`;
+    let options;
+    switch (type) {
+        case 'tags':
+            options = ['Edit Tag', 'Merge Tags', 'Remove Tag From All'];
+            break;
+        case 'record':
+            options = ['Mass Tag'];
+            break;
+        case 'tag':
+            options = ['Mass Tag', 'Go to Record'];
+            break;
+        default:
+            break;
+    }
+    options.forEach(option => {
+        let menuOption = document.createElement('div');
+        menuOption.classList = 'context-menu-option';
+        menuOption.innerText = option;
+        contextMenu.appendChild(menuOption);
+        menuOption.addEventListener('click', (e) => {
+            let action = e.target.innerText;
+            blurContextMenu();
+            switch (action) {
+                case 'Edit Tag':
+                    openTagModal('edit', tagID);
+                    break;
+                case 'Merge Tags':
+                    openTagModal('merge', tagID);
+                    break;
+                case 'Remove Tag From All':
+                    openTagModal('remove-all', tagID);
+                    break;
+                case 'Mass Tag':
+                    openTagModal('mass', tagID);
+                    break;
+                case 'Go to Record':
+                    table['record-go-to-page'] = Math.floor(filteredRecords.findIndex(record => record.id === parseInt(tagID)) / table['record-show']) + 1;
+                    createTable('record');
+                    document.getElementById('record-table').click();
+                    let rowHighlight = document.createElement('div');
+                    let row = document.getElementById(`record-${tagID}`);
+                    row.appendChild(rowHighlight);
+                    rowHighlight.classList.add('row-highlight');
+                    rowHighlight.style.left = `${row.getBoundingClientRect().left}px`;
+                    rowHighlight.style.top = `${row.getBoundingClientRect().top}px`;
+                    rowHighlight.style.width = `${row.getBoundingClientRect().width}px`;
+                    rowHighlight.style.height = `${row.getBoundingClientRect().height}px`;
+                    console.log(row)
+                    console.log(rowHighlight)
+                    rowHighlight.addEventListener('animationend', () => rowHighlight.remove());
+                    break;
+                default:
+                    break;
+            }
+        })
+    });
+    const blurContextMenu = () => {
+        contextMenu.remove();
+        document.getElementById('container').removeEventListener('click', blurContextMenu);
+    }
+    if (!document.getElementById('custom-context-menu')) document.getElementById('container').addEventListener('click', blurContextMenu);
+    if (document.getElementById('custom-context-menu')) document.getElementById('custom-context-menu').remove();
+    document.body.appendChild(contextMenu);
+}
+
 const createTable = (type) => {
     const updateCalculatedDurations = () => {
         aggregateRecords();
@@ -978,13 +1054,13 @@ const createTable = (type) => {
                 firstCol.appendChild(checkbox);
                 tr.appendChild(firstCol);
                 let row = [];
-                header[type].forEach((col, index) => index > 0 && results.length > 0 ? row.push(col === 'time' ? `${results[i]['start'].split(' ')[1]} - ${results[i]['end'].split(' ')[1]}`: results[i][col]) : row.push(''));
+                header[type].forEach((col, index) => index > 0 && results.length > 0 ? row.push(col === 'time' ? `${results[i]['start'].split(' ')[1]} - ${results[i]['end'].split(' ')[1]}` : results[i][col]) : row.push(''));
                 row.shift();
                 row.map((val, index) => {
                     let td = document.createElement('td');
                     td.innerText = val;
                     if (index === 0) td.classList = 'app-col';
-                    if (index === 1) {
+                    if (header[type].indexOf('title') === index + 1) {
                         let tooltTip = document.createElement('span');
                         tooltTip.classList = 'tool-tip';
                         tooltTip.innerText = val;
@@ -994,9 +1070,10 @@ const createTable = (type) => {
                             let coord = e.target.getBoundingClientRect();
                             tooltTip.style.left = coord.x + 'px';
                             tooltTip.style.top = coord.y + .4 + 'px';
-                        })
+                        });
+                        tooltTip.addEventListener('contextmenu', (e) => createCustomContextMenu(e));
                     }
-                    if (['end','start','duration','time'].includes(header[type][index + 1])) td.classList = 'time-col';
+                    if (['end', 'start', 'duration', 'time'].includes(header[type][index + 1])) td.classList = 'time-col';
                     if (header[type].indexOf('tags') === index + 1) {
                         td.innerText = '';
                         createAddTagButton(td);
@@ -1713,13 +1790,15 @@ const searchTags = (e) => {
             result.innerText = sortedTags[i].name;
             result.addEventListener('mousedown', (e) => { // Clicked to add tag
                 if (td.id === 'unknown-tag') {
+                    console.log(td);
                     let parent = document.getElementById('unknown-tag').parentNode;
                     td.remove();
                     parent.innerText = e.target.innerText + parent.innerText;
                     dropTag = 'tag-' + tags.filter(t => t.name === e.target.innerText)[0].id;
                     document.getElementById('merge').click();
                 }
-                if (td.id !== 'unknown-tag') {
+                if (td.id !== 'unknown-tag' && td.id !== 'tag-modal') {
+                    console.log(td);
                     let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
                     if (sortedTags[i].name !== 'Add Tag') {
                         let tagID = tags.filter(tag => tag.name === sortedTags[i].name)[0].id;
@@ -1735,8 +1814,13 @@ const searchTags = (e) => {
                         }
                     }
                 }
+                if (td.id === 'tag-modal') {
+                    document.getElementById('tag-search').value = e.target.innerText;
+                }
                 // Clicked to add non-existent Tag
-                if (sortedTags[i].name === 'Add Tag' && document.getElementById('tag-search').value.length > 0 && document.getElementById('tag-search').value.toLowerCase() !== 'add tag' && tags.filter(tag => tag.name === document.getElementById('tag-search').value.trim().toLowerCase()).length === 0) handleAddTag(td);
+                if (td.id !== 'tag-modal') {
+                    if (sortedTags[i].name === 'Add Tag' && document.getElementById('tag-search').value.length > 0 && document.getElementById('tag-search').value.toLowerCase() !== 'add tag' && tags.filter(tag => tag.name === document.getElementById('tag-search').value.trim().toLowerCase()).length === 0) handleAddTag(td);
+                }
             });
             resultsDropdown.appendChild(result);
         }
@@ -1747,10 +1831,12 @@ const searchTags = (e) => {
         hover = -1;
         if (document.querySelector('.key-focus')) document.querySelector('.key-focus').classList.remove('key-focus');
     }))
-    if (e.type === 'keyup' && e.key === 'Enter' && document.getElementById('tag-search').value.length > 0 && hover < 0) handleAddTag(td);
+    if (e.type === 'keyup' && e.key === 'Enter' && document.getElementById('tag-search').value.length > 0 && hover < 0) {
+        td.id === 'tag-modal' ? document.getElementById('tag-search').blur() : handleAddTag(td);
+    }
     if (e.type === 'keyup' && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
         if (hover === -1 && e.key === 'ArrowDown') {
-            document.querySelector('.tag-search-result').classList.add('key-focus');
+            if (document.querySelectorAll('.tag-search-result')[hover]) document.querySelector('.tag-search-result').classList.add('key-focus');
             hover++;
         }
         else if (hover === 0 && e.key === 'ArrowUp') {
@@ -1759,10 +1845,13 @@ const searchTags = (e) => {
         }
         else if (hover >= 0 && hover < document.querySelectorAll('.tag-search-result').length) {
             hover += e.key === 'ArrowUp' ? -1 : 1
-            document.querySelectorAll('.tag-search-result')[hover].classList.add('key-focus');
+            if (document.querySelectorAll('.tag-search-result')[hover]) document.querySelectorAll('.tag-search-result')[hover].classList.add('key-focus');
         }
     }
-    if (e.type === 'keyup' && e.key === 'Enter' && hover >= 0) handleAddTag(td);
+    if (e.type === 'keyup' && e.key === 'Enter' && hover >= 0) {
+        td.id === 'tag-modal' ? document.getElementById('tag-search').value = document.querySelectorAll('.tag-search-result')[hover].innerText : handleAddTag(td);
+        document.getElementById('tag-search').blur();
+    }
 };
 
 const handleAddTag = (td) => {
@@ -1847,43 +1936,7 @@ const drawTag = () => {
                                     x.remove();
                                 })
                             }
-                            tag.addEventListener('contextmenu', (e) => {
-                                let tagID = [...e.target.classList].filter(c => c.includes('tag-'))[0].split('-')[1];
-                                let contextMenu = document.createElement('div');
-                                contextMenu.id = 'custom-context-menu';
-                                contextMenu.style.left = `${e.x}px`;
-                                contextMenu.style.top = `${e.y}px`;
-                                ['Edit Tag', 'Merge Tags', 'Remove Tag From All'].forEach(option => {
-                                    let menuOption = document.createElement('div');
-                                    menuOption.classList = 'context-menu-option';
-                                    menuOption.innerText = option;
-                                    contextMenu.appendChild(menuOption);
-                                    menuOption.addEventListener('click', (e) => {
-                                        let action = e.target.innerText;
-                                        blurContextMenu();
-                                        switch (action) {
-                                            case 'Edit Tag':
-                                                openTagModal('edit', tagID);
-                                                break;
-                                            case 'Merge Tags':
-                                                openTagModal('merge', tagID);
-                                                break;
-                                            case 'Remove Tag From All':
-                                                openTagModal('remove-all', tagID);
-                                                break;
-                                            default:
-                                                break;
-                                        }
-                                    })
-                                });
-                                const blurContextMenu = () => {
-                                    contextMenu.remove();
-                                    document.getElementById('container').removeEventListener('click', blurContextMenu);
-                                }
-                                if (!document.getElementById('custom-context-menu')) document.getElementById('container').addEventListener('click', blurContextMenu);
-                                if (document.getElementById('custom-context-menu')) document.getElementById('custom-context-menu').remove();
-                                document.body.appendChild(contextMenu);
-                            })
+                            tag.addEventListener('contextmenu', (e) => createCustomContextMenu(e));
                             tag.addEventListener('click', (e) => {
                                 tagID = [...e.target.classList].filter(t => t.includes('tag-'))[0].split('-')[1];
                                 createTable('tag')
@@ -1914,6 +1967,14 @@ const drawTag = () => {
     })
 }
 
+const massTag = (id, newTag) => {
+    let title = document.getElementById(`${document.getElementById('record-table') ? 'record' : 'tag'}-${id}`).querySelector('.title-col').innerText;
+    globalRecords.forEach(record => {
+        if (record.title.toLowerCase() === title.toLowerCase() && !record.tags.includes(newTag.id)) record.tags.push(newTag.id);
+    })
+    drawTag();
+}
+
 const openTagModal = (action, tagID = null) => {
     document.querySelectorAll('.bring-to-front').forEach(t => t.classList.remove('bring-to-front'));
     let modalBackground = document.createElement('div');
@@ -1942,6 +2003,9 @@ const openTagModal = (action, tagID = null) => {
         case 'edit':
             text.innerText = 'Rename tag:';
             break;
+        case 'mass':
+            text.innerText = 'Please choose a tag name:';
+            break;
         case 'remove-all':
             text.innerHTML = 'This will remove this tag from all records.<br><br>Are you sure?';
             break;
@@ -1954,15 +2018,29 @@ const openTagModal = (action, tagID = null) => {
         let tagName = document.createElement('input');
         tagName.type = 'text';
         tagName.style.width = action === 'merge' ? `${width * .56}px` : '95%';
-        tagName.placeholder = action === 'merge' ? `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}` : tags.filter(t => t.id === parseInt(tagID))[0].name;
+        switch (action) {
+            case 'merge':
+                tagName.placeholder = `${tags.filter(t => t.id === parseInt(dropTag.split('-')[1]))[0].name}-${tags.filter(t => t.id === parseInt(dragTag.split('-')[1]))[0].name}`;
+                break;
+            case 'mass':
+                tagName.placeholder = 'New tag name';
+                break;
+            default:
+                tagName.placeholder = tags.filter(t => t.id === parseInt(tagID))[0].name;
+                break;
+        }
         if (action === 'edit') tagName.value = tags.filter(t => t.id === parseInt(tagID))[0].name;
         const newTagName = () => {
             let input = modal.querySelector('input');
             let title = input.value.length === 0 ? input.placeholder : input.value;
+            let rowID = tagID; // mass tag action passes rowID instead of tagID added for readibility
             if (tags.filter(tag => tag.name === title).length <= 1) {
                 if (tags.filter(tag => tag.name === title).length === 0) createNewTag(title);
-                let newTagID = tags.filter(tag => tag.name === title)[0].id;
-                modifyTags(newTagID, action === 'edit' ? [parseInt(tagID)] : [parseInt(dropTag.split('-')[1]), parseInt(dragTag.split('-')[1])]);
+                if (action === 'mass') massTag(rowID, tags.filter(tag => tag.name === title)[0]);
+                if (action !== 'mass') {
+                    let newTagID = tags.filter(tag => tag.name === title)[0].id;
+                    modifyTags(newTagID, action === 'edit' ? [parseInt(tagID)] : [parseInt(dropTag.split('-')[1]), parseInt(dragTag.split('-')[1])]);
+                }
                 modalBackground.click();
             }
             else {
@@ -1977,7 +2055,7 @@ const openTagModal = (action, tagID = null) => {
             }
         }
         tagName.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') newTagName();
+            if ((e.key === 'Enter' && action !== 'mass') || (action === 'mass' && !document.getElementById('tags-dropdown'))) newTagName();
         })
         let tagLabel = document.createElement('label');
         tagLabel.innerText = action === 'merge' ? 'Merged tag name:' : '';
@@ -1985,6 +2063,12 @@ const openTagModal = (action, tagID = null) => {
         tagDiv.id = 'merge-tag-input';
         tagDiv.appendChild(tagLabel);
         tagDiv.appendChild(tagName);
+        if (action === 'mass') {
+            tagName.id = 'tag-search';
+            tagName.addEventListener('focus', searchTags);
+            tagName.addEventListener('keyup', searchTags);
+            tagName.addEventListener('blur', () => document.getElementById('tags-dropdown').remove());
+        }
         tagDiv.style.width = `${width * .8}px`;
         tagDiv.style.marginLeft = `${width * .1}px`;
         if (action !== 'remove-all') {
@@ -1999,6 +2083,9 @@ const openTagModal = (action, tagID = null) => {
             case 'edit':
                 button.innerText = 'Save';
                 break;
+            case 'mass':
+                button.innerText = 'Save';
+                break;
             case 'remove-all':
                 button.innerHTML = 'Remove Tag';
                 break;
@@ -2007,7 +2094,7 @@ const openTagModal = (action, tagID = null) => {
         }
         button.id = 'tag-modal-button';
         button.style.margin = `${width * .05}px 0 0 ${width * .87}px`;
-        if (action === 'edit') {
+        if (['edit', 'mass'].includes(action)) {
             button.style.position = 'absolute';
             button.style.top = '78%';
         }
@@ -2028,7 +2115,7 @@ const openTagModal = (action, tagID = null) => {
         if (action !== 'remove-all') button.addEventListener('click', newTagName);
         modal.appendChild(button);
     }
-    if (action === 'edit' || action === 'remove-all') {
+    if (['edit', 'remove-all', 'mass'].includes(action)) {
         createRenameInput();
     }
     if (action === 'merge') {

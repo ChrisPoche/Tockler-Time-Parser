@@ -1086,3 +1086,11 @@ thead {
 .dark-mode #unselect-apps {
     font-weight: normal;
 }
+
+.row-highlight {
+    position: fixed;
+    z-index: 2003;
+    -webkit-animation: softFadeInOut 3.5s;
+    animation: softFadeInOut 3.5s;
+    background-color: rgba(0, 0, 0, .25);
+}
