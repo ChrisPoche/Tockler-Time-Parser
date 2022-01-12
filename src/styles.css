@@ -286,6 +286,7 @@ input:checked+.slider:before {
 }
 
 #download-status.center {
+    top: 40%;
     left: 35%;
 }
 
@@ -683,6 +684,12 @@ thead {
     animation: softFadeInOut 4.5s;
     font-weight: bold;
     font-size: x-large;
+    background-color: rgba(255, 255, 255, .8);
+    z-index: 2003;
+    padding: 2%;
+}
+.dark-mode #download-status {
+    background-color: rgba(0, 0, 0, .8);
 }
 
 #tag-exists-error, #custom-folder-error {
