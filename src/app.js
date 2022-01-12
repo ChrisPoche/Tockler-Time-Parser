@@ -835,8 +835,6 @@ const createCustomContextMenu = (e) => {
                     rowHighlight.style.top = `${row.getBoundingClientRect().top}px`;
                     rowHighlight.style.width = `${row.getBoundingClientRect().width}px`;
                     rowHighlight.style.height = `${row.getBoundingClientRect().height}px`;
-                    console.log(row)
-                    console.log(rowHighlight)
                     rowHighlight.addEventListener('animationend', () => rowHighlight.remove());
                     break;
                 default:
@@ -1790,7 +1788,6 @@ const searchTags = (e) => {
             result.innerText = sortedTags[i].name;
             result.addEventListener('mousedown', (e) => { // Clicked to add tag
                 if (td.id === 'unknown-tag') {
-                    console.log(td);
                     let parent = document.getElementById('unknown-tag').parentNode;
                     td.remove();
                     parent.innerText = e.target.innerText + parent.innerText;
@@ -1798,7 +1795,6 @@ const searchTags = (e) => {
                     document.getElementById('merge').click();
                 }
                 if (td.id !== 'unknown-tag' && td.id !== 'tag-modal') {
-                    console.log(td);
                     let record = globalRecords[td.parentNode.id.substring(td.parentNode.id.indexOf('-') + 1)];
                     if (sortedTags[i].name !== 'Add Tag') {
                         let tagID = tags.filter(tag => tag.name === sortedTags[i].name)[0].id;
@@ -2055,7 +2051,7 @@ const openTagModal = (action, tagID = null) => {
             }
         }
         tagName.addEventListener('keydown', (e) => {
-            if ((e.key === 'Enter' && action !== 'mass') || (action === 'mass' && !document.getElementById('tags-dropdown'))) newTagName();
+            if ((e.key === 'Enter' && action !== 'mass') || (e.key === 'Enter' && action === 'mass' && !document.getElementById('tags-dropdown'))) newTagName();
         })
         let tagLabel = document.createElement('label');
         tagLabel.innerText = action === 'merge' ? 'Merged tag name:' : '';
@@ -2067,7 +2063,10 @@ const openTagModal = (action, tagID = null) => {
             tagName.id = 'tag-search';
             tagName.addEventListener('focus', searchTags);
             tagName.addEventListener('keyup', searchTags);
-            tagName.addEventListener('blur', () => document.getElementById('tags-dropdown').remove());
+            tagName.addEventListener('blur', () => {
+                console.trace()
+                if (document.getElementById('tags-dropdown')) document.getElementById('tags-dropdown').remove()
+            });
         }
         tagDiv.style.width = `${width * .8}px`;
         tagDiv.style.marginLeft = `${width * .1}px`;
